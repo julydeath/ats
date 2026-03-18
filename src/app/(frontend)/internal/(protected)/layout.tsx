@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 
 import { InternalNavigation } from '@/components/internal/InternalNavigation'
 import { requireInternalUser } from '@/lib/auth/internal-auth'
-import { APP_ROUTES } from '@/lib/constants/routes'
 import { INTERNAL_ROLE_LABELS } from '@/lib/constants/roles'
 
 type InternalProtectedLayoutProps = {
@@ -29,9 +28,7 @@ export default async function InternalProtectedLayout({ children }: InternalProt
             <p className="user-email">{user.fullName || user.email}</p>
             <p className="muted tiny">{INTERNAL_ROLE_LABELS[user.role]}</p>
           </div>
-          <a className="admin-link" href={APP_ROUTES.payloadAdmin} rel="noreferrer" target="_blank">
-            Open Payload Admin
-          </a>
+          <p className="muted small">Internal Operations Workspace</p>
         </header>
 
         <main className="internal-content">{children}</main>
