@@ -68,6 +68,12 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
+    clients: Client;
+    jobs: Job;
+    'job-requests': JobRequest;
+    'client-lead-assignments': ClientLeadAssignment;
+    'job-lead-assignments': JobLeadAssignment;
+    'recruiter-job-assignments': RecruiterJobAssignment;
     media: Media;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -77,6 +83,12 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    clients: ClientsSelect<false> | ClientsSelect<true>;
+    jobs: JobsSelect<false> | JobsSelect<true>;
+    'job-requests': JobRequestsSelect<false> | JobRequestsSelect<true>;
+    'client-lead-assignments': ClientLeadAssignmentsSelect<false> | ClientLeadAssignmentsSelect<true>;
+    'job-lead-assignments': JobLeadAssignmentsSelect<false> | JobLeadAssignmentsSelect<true>;
+    'recruiter-job-assignments': RecruiterJobAssignmentsSelect<false> | RecruiterJobAssignmentsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -123,6 +135,9 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
+  fullName?: string | null;
+  role: 'admin' | 'headRecruiter' | 'leadRecruiter' | 'recruiter';
+  isActive?: boolean | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -141,6 +156,149 @@ export interface User {
     | null;
   password?: string | null;
   collection: 'users';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clients".
+ */
+export interface Client {
+  id: number;
+  name: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  address?: string | null;
+  billingTerms?: string | null;
+  status: 'active' | 'inactive';
+  owningHeadRecruiter: number | User;
+  notes?: string | null;
+  normalizedName?: string | null;
+  normalizedEmail?: string | null;
+  normalizedPhone?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "jobs".
+ */
+export interface Job {
+  id: number;
+  client: number | Client;
+  title: string;
+  department?: string | null;
+  employmentType: 'fullTime' | 'partTime' | 'contract' | 'internship';
+  location?: string | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  experienceMin?: number | null;
+  experienceMax?: number | null;
+  openings: number;
+  description: string;
+  requiredSkills?:
+    | {
+        skill: string;
+        id?: string | null;
+      }[]
+    | null;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'active' | 'onHold' | 'closed' | 'inactive';
+  targetClosureDate?: string | null;
+  createdBy?: (number | null) | User;
+  owningHeadRecruiter: number | User;
+  sourceJobRequest?: (number | null) | JobRequest;
+  dedupeKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "job-requests".
+ */
+export interface JobRequest {
+  id: number;
+  intakeSource: 'email' | 'phone' | 'portal' | 'manual';
+  subject: string;
+  message: string;
+  client?: (number | null) | Client;
+  /**
+   * Use when client does not exist yet in the clients master.
+   */
+  clientName?: string | null;
+  contactPerson?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  proposedTitle?: string | null;
+  proposedDepartment?: string | null;
+  proposedEmploymentType?: ('fullTime' | 'partTime' | 'contract' | 'internship') | null;
+  proposedLocation?: string | null;
+  proposedSalaryMin?: number | null;
+  proposedSalaryMax?: number | null;
+  proposedExperienceMin?: number | null;
+  proposedExperienceMax?: number | null;
+  proposedOpenings?: number | null;
+  proposedDescription?: string | null;
+  proposedRequiredSkills?:
+    | {
+        skill: string;
+        id?: string | null;
+      }[]
+    | null;
+  priority?: ('low' | 'medium' | 'high' | 'urgent') | null;
+  status: 'new' | 'underReview' | 'approved' | 'rejected' | 'converted' | 'duplicateActive' | 'reactivated';
+  linkedJob?: (number | null) | Job;
+  owningHeadRecruiter?: (number | null) | User;
+  receivedAt: string;
+  processedBy?: (number | null) | User;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "client-lead-assignments".
+ */
+export interface ClientLeadAssignment {
+  id: number;
+  client: number | Client;
+  headRecruiter: number | User;
+  leadRecruiter: number | User;
+  status: 'active' | 'inactive';
+  assignedBy?: (number | null) | User;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "job-lead-assignments".
+ */
+export interface JobLeadAssignment {
+  id: number;
+  client: number | Client;
+  job: number | Job;
+  headRecruiter: number | User;
+  leadRecruiter: number | User;
+  status: 'active' | 'inactive';
+  assignedBy?: (number | null) | User;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "recruiter-job-assignments".
+ */
+export interface RecruiterJobAssignment {
+  id: number;
+  job: number | Job;
+  leadRecruiter: number | User;
+  recruiter: number | User;
+  status: 'active' | 'inactive';
+  assignedBy?: (number | null) | User;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -188,6 +346,30 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'users';
         value: number | User;
+      } | null)
+    | ({
+        relationTo: 'clients';
+        value: number | Client;
+      } | null)
+    | ({
+        relationTo: 'jobs';
+        value: number | Job;
+      } | null)
+    | ({
+        relationTo: 'job-requests';
+        value: number | JobRequest;
+      } | null)
+    | ({
+        relationTo: 'client-lead-assignments';
+        value: number | ClientLeadAssignment;
+      } | null)
+    | ({
+        relationTo: 'job-lead-assignments';
+        value: number | JobLeadAssignment;
+      } | null)
+    | ({
+        relationTo: 'recruiter-job-assignments';
+        value: number | RecruiterJobAssignment;
       } | null)
     | ({
         relationTo: 'media';
@@ -240,6 +422,9 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  fullName?: T;
+  role?: T;
+  isActive?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -256,6 +441,140 @@ export interface UsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clients_select".
+ */
+export interface ClientsSelect<T extends boolean = true> {
+  name?: T;
+  contactPerson?: T;
+  email?: T;
+  phone?: T;
+  address?: T;
+  billingTerms?: T;
+  status?: T;
+  owningHeadRecruiter?: T;
+  notes?: T;
+  normalizedName?: T;
+  normalizedEmail?: T;
+  normalizedPhone?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "jobs_select".
+ */
+export interface JobsSelect<T extends boolean = true> {
+  client?: T;
+  title?: T;
+  department?: T;
+  employmentType?: T;
+  location?: T;
+  salaryMin?: T;
+  salaryMax?: T;
+  experienceMin?: T;
+  experienceMax?: T;
+  openings?: T;
+  description?: T;
+  requiredSkills?:
+    | T
+    | {
+        skill?: T;
+        id?: T;
+      };
+  priority?: T;
+  status?: T;
+  targetClosureDate?: T;
+  createdBy?: T;
+  owningHeadRecruiter?: T;
+  sourceJobRequest?: T;
+  dedupeKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "job-requests_select".
+ */
+export interface JobRequestsSelect<T extends boolean = true> {
+  intakeSource?: T;
+  subject?: T;
+  message?: T;
+  client?: T;
+  clientName?: T;
+  contactPerson?: T;
+  contactEmail?: T;
+  contactPhone?: T;
+  proposedTitle?: T;
+  proposedDepartment?: T;
+  proposedEmploymentType?: T;
+  proposedLocation?: T;
+  proposedSalaryMin?: T;
+  proposedSalaryMax?: T;
+  proposedExperienceMin?: T;
+  proposedExperienceMax?: T;
+  proposedOpenings?: T;
+  proposedDescription?: T;
+  proposedRequiredSkills?:
+    | T
+    | {
+        skill?: T;
+        id?: T;
+      };
+  priority?: T;
+  status?: T;
+  linkedJob?: T;
+  owningHeadRecruiter?: T;
+  receivedAt?: T;
+  processedBy?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "client-lead-assignments_select".
+ */
+export interface ClientLeadAssignmentsSelect<T extends boolean = true> {
+  client?: T;
+  headRecruiter?: T;
+  leadRecruiter?: T;
+  status?: T;
+  assignedBy?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "job-lead-assignments_select".
+ */
+export interface JobLeadAssignmentsSelect<T extends boolean = true> {
+  client?: T;
+  job?: T;
+  headRecruiter?: T;
+  leadRecruiter?: T;
+  status?: T;
+  assignedBy?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "recruiter-job-assignments_select".
+ */
+export interface RecruiterJobAssignmentsSelect<T extends boolean = true> {
+  job?: T;
+  leadRecruiter?: T;
+  recruiter?: T;
+  status?: T;
+  assignedBy?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

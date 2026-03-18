@@ -1,18 +1,22 @@
-import React from 'react'
+import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
+
 import './styles.css'
 
-export const metadata = {
-  description: 'A blank template using Payload in a Next.js app.',
-  title: 'Payload Blank Template',
+export const metadata: Metadata = {
+  description:
+    'Recruitment Operations Platform for Realizing Dreams Inspirix HR Services (Internal + Candidate architecture).',
+  title: {
+    default: 'Recruitment Ops Platform',
+    template: '%s | Recruitment Ops Platform',
+  },
 }
 
-export default async function RootLayout(props: { children: React.ReactNode }) {
-  const { children } = props
-
+export default function FrontendLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <main>{children}</main>
+        <main className="app-root">{children}</main>
       </body>
     </html>
   )

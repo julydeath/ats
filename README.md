@@ -1,67 +1,140 @@
-# Payload Blank Template
+# Recruitment Operations Platform (ATS)
 
-This template comes configured with the bare minimum to get started on anything you need.
+Production-oriented Recruitment Operations Platform for **Realizing Dreams Inspirix HR Services**.
 
-## Quick start
+This repository uses:
+- Next.js (App Router + TypeScript)
+- Payload CMS
+- PostgreSQL
 
-This template can be deployed directly from our Cloud hosting and it will setup MongoDB and cloud S3 object storage for media.
+Phase 1 establishes:
+- Internal user auth foundation
+- Internal role model and access helpers
+- Protected internal routing strategy
+- Base internal login and dashboard shell
+- External candidate auth architecture plan (not full candidate portal yet)
 
-## Quick Start - local setup
+## Internal Roles
 
-To spin up this template locally, follow these steps:
+- `admin`
+- `headRecruiter`
+- `leadRecruiter`
+- `recruiter`
 
-### Clone
+## Quick Start
 
-After you click the `Deploy` button above, you'll want to have standalone copy of this repo on your machine. If you've already cloned this repo, skip to [Development](#development).
+1. Install dependencies:
 
-### Development
+```bash
+npm install
+```
 
-1. First [clone the repo](#clone) if you have not done so already
-2. `cd my-project && cp .env.example .env` to copy the example environment variables. You'll need to add the `MONGODB_URL` from your Cloud project to your `.env` if you want to use S3 storage and the MongoDB database that was created for you.
+2. Copy env file:
 
-3. `pnpm install && pnpm dev` to install dependencies and start the dev server
-4. open `http://localhost:3000` to open the app in your browser
+```bash
+cp .env.example .env
+```
 
-That's it! Changes made in `./src` will be reflected in your app. Follow the on-screen instructions to login and create your first admin user. Then check out [Production](#production) once you're ready to build and serve your app, and [Deployment](#deployment) when you're ready to go live.
+3. Update `.env` with your PostgreSQL credentials and secret.
 
-#### Docker (Optional)
+4. Generate Payload artifacts:
 
-If you prefer to use Docker for local development instead of a local MongoDB instance, the provided docker-compose.yml file can be used.
+```bash
+npm run generate:types
+npm run generate:importmap
+```
 
-To do so, follow these steps:
+5. Start development server:
 
-- Modify the `MONGODB_URL` in your `.env` file to `mongodb://127.0.0.1/<dbname>`
-- Modify the `docker-compose.yml` file's `MONGODB_URL` to match the above `<dbname>`
-- Run `docker-compose up` to start the database, optionally pass `-d` to run in the background.
+```bash
+npm run dev
+```
 
-## How it works
+6. Open:
+- App: `http://localhost:3000`
+- Internal Login: `http://localhost:3000/internal/login`
+- Payload Admin: `http://localhost:3000/admin`
 
-The Payload config is tailored specifically to the needs of most websites. It is pre-configured in the following ways:
+## Environment Variables
 
-### Collections
+Required for Phase 1:
+- `DATABASE_URL`
+- `PAYLOAD_SECRET`
+- `NEXT_PUBLIC_APP_URL`
 
-See the [Collections](https://payloadcms.com/docs/configuration/collections) docs for details on how to extend this functionality.
+Prepared for upcoming phases:
+- SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_EMAIL`)
+- Invite TTL (`CANDIDATE_INVITE_TOKEN_TTL_HOURS`)
+- Resend (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_TEST_TO_EMAIL`)
+- Object storage (`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`)
 
-- #### Users (Authentication)
+## Phase 1 Structure
 
-  Users are auth-enabled collections that have access to the admin panel.
+```text
+src/
+  access/
+    internalRoles.ts
+  app/
+    (frontend)/
+      internal/
+        (auth)/login/page.tsx
+        (protected)/layout.tsx
+        (protected)/dashboard/page.tsx
+      layout.tsx
+      page.tsx
+      styles.css
+    (payload)/...
+  collections/
+    Users.ts
+    Media.ts
+  components/
+    internal/
+      InternalLoginForm.tsx
+      InternalNavigation.tsx
+  lib/
+    auth/
+      internal-auth.ts
+      candidate-auth-plan.ts
+    constants/
+      roles.ts
+      routes.ts
+      internal-navigation.ts
+    utils/
+      safe-redirect.ts
+    env.ts
+  middleware.ts
+  payload.config.ts
+```
 
-  For additional help, see the official [Auth Example](https://github.com/payloadcms/payload/tree/main/examples/auth) or the [Authentication](https://payloadcms.com/docs/authentication/overview#authentication-overview) docs.
+## Auth Strategy (Phase 1)
 
-- #### Media
+- Middleware (`src/middleware.ts`) performs a fast cookie presence check on `/internal/*` routes.
+- Server-side protected layout (`/internal/(protected)/layout.tsx`) performs authoritative auth validation via Payload.
+- Internal login uses Payload auth endpoint (`/api/users/login`) and rejects non-internal roles.
 
-  This is the uploads enabled collection. It features pre-configured sizes, focal point and manual resizing to help you manage your pictures.
+## Candidate Auth Preparation (Phase 1 only)
 
-### Docker
+Candidate-side auth is intentionally not implemented yet. Planning constants are in:
+- `src/lib/auth/candidate-auth-plan.ts`
 
-Alternatively, you can use [Docker](https://www.docker.com) to spin up this template locally. To do so, follow these steps:
+This preserves domain rules:
+- candidates remain external identities
+- applications are the candidate-job mapping source of truth
+- stage progression will live on applications, not candidate master
 
-1. Follow [steps 1 and 2 from above](#development), the docker-compose file will automatically use the `.env` file in your project root
-1. Next run `docker-compose up`
-1. Follow [steps 4 and 5 from above](#development) to login and create your first admin user
+## Resend Setup (Before Phase 2)
 
-That's it! The Docker instance will help you get up and running quickly while also standardizing the development environment across your teams.
+1. Set the following in your `.env`:
+   - `RESEND_API_KEY=re_xxxxxxxxx`
+   - `RESEND_FROM_EMAIL=onboarding@resend.dev`
+   - `RESEND_TEST_TO_EMAIL=manojkarajada.mk@gmail.com`
+2. Replace `re_xxxxxxxxx` with your real Resend API key.
+3. Utility added at `src/lib/email/resend.ts`.
 
-## Questions
+Example call:
 
-If you have any issues or questions, reach out to us on [Discord](https://discord.com/invite/payload) or start a [GitHub discussion](https://github.com/payloadcms/payload/discussions).
+```ts
+import { sendHelloWorldEmail } from '@/lib/email/resend'
+
+await sendHelloWorldEmail()
+```

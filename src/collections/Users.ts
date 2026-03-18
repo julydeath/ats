@@ -1,13 +1,85 @@
 import type { CollectionConfig } from 'payload'
 
+import {
+  adminOnlyAccess,
+  adminOrHeadRecruiterAccess,
+  canManageInternalUsers,
+  internalAdminAccess,
+  selfOrHeadRecruiterAccess,
+  selfOrLeadershipAccess,
+  type InternalUserLike,
+} from '@/access/internalRoles'
+import { INTERNAL_ROLE_OPTIONS } from '@/lib/constants/roles'
+
 export const Users: CollectionConfig = {
   slug: 'users',
-  admin: {
-    useAsTitle: 'email',
+  access: {
+    admin: internalAdminAccess,
+    create: adminOrHeadRecruiterAccess,
+    read: selfOrLeadershipAccess,
+    update: selfOrHeadRecruiterAccess,
+    delete: adminOnlyAccess,
   },
-  auth: true,
+  admin: {
+    defaultColumns: ['fullName', 'email', 'role', 'isActive', 'updatedAt'],
+    useAsTitle: 'fullName',
+  },
+  auth: {
+    cookies: {
+      sameSite: 'Lax',
+      secure: process.env.NODE_ENV === 'production',
+    },
+    tokenExpiration: 60 * 60 * 8,
+  },
+  hooks: {
+    beforeValidate: [
+      async ({ data, operation, req }) => {
+        if (operation !== 'create') {
+          return data
+        }
+
+        if (data?.role) {
+          return data
+        }
+
+        const userCount = await req.payload.count({
+          collection: 'users',
+          req,
+        })
+
+        return {
+          ...data,
+          role: userCount.totalDocs === 0 ? 'admin' : 'recruiter',
+        }
+      },
+    ],
+  },
   fields: [
-    // Email added by default
-    // Add more fields as needed
+    {
+      name: 'fullName',
+      type: 'text',
+      index: true,
+    },
+    {
+      name: 'role',
+      type: 'select',
+      required: true,
+      saveToJWT: true,
+      defaultValue: 'recruiter',
+      options: INTERNAL_ROLE_OPTIONS.map((option) => ({ ...option })),
+      access: {
+        update: ({ req: { user } }) => canManageInternalUsers(user as InternalUserLike),
+      },
+    },
+    {
+      name: 'isActive',
+      type: 'checkbox',
+      defaultValue: true,
+      index: true,
+      saveToJWT: true,
+      access: {
+        update: ({ req: { user } }) => canManageInternalUsers(user as InternalUserLike),
+      },
+    },
   ],
 }
