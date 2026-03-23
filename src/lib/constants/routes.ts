@@ -12,6 +12,28 @@ export const APP_ROUTES = {
     jobs: {
       assigned: '/internal/jobs/assigned',
     },
+    candidates: {
+      create: '/internal/candidates/create',
+      detailBase: '/internal/candidates',
+      list: '/internal/candidates',
+      new: '/internal/candidates/new',
+    },
+    applications: {
+      create: '/internal/applications/create',
+      detailBase: '/internal/applications',
+      list: '/internal/applications',
+      new: '/internal/applications/new',
+      review: '/internal/applications/review',
+      reviewQueue: '/internal/applications/review-queue',
+      submit: '/internal/applications/submit',
+    },
+  },
+  candidate: {
+    base: '/candidate',
+    inviteBase: '/candidate/invite',
+    login: '/candidate/login',
+    dashboard: '/candidate/dashboard',
+    applications: '/candidate/applications',
   },
 } as const
 

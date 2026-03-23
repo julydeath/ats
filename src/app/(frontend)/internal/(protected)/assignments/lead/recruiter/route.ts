@@ -23,6 +23,24 @@ const parseNumericID = (value: FormDataEntryValue | null): number | null => {
   return Number(normalized)
 }
 
+const parseStatus = (value: FormDataEntryValue | null): 'active' | 'inactive' => {
+  if (typeof value !== 'string') {
+    return 'active'
+  }
+
+  const normalized = value.trim()
+  return normalized === 'inactive' ? 'inactive' : 'active'
+}
+
+const readOptionalText = (value: FormDataEntryValue | null): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const normalized = value.trim()
+  return normalized || undefined
+}
+
 const buildRedirectURL = (request: Request): URL => new URL(APP_ROUTES.internal.assignments.lead, request.url)
 
 export async function POST(request: Request) {
@@ -36,9 +54,11 @@ export async function POST(request: Request) {
 
   try {
     const formData = await request.formData()
+    const assignmentID = parseNumericID(formData.get('assignmentId'))
     const jobID = parseNumericID(formData.get('jobId'))
     const recruiterID = parseNumericID(formData.get('recruiterId'))
-    const notesRaw = formData.get('notes')
+    const notes = readOptionalText(formData.get('notes'))
+    const status = parseStatus(formData.get('status'))
     const currentUserID =
       typeof internalUser?.id === 'number'
         ? internalUser.id
@@ -49,6 +69,30 @@ export async function POST(request: Request) {
     const leadRecruiterID = hasInternalRole(internalUser, ['leadRecruiter'])
       ? currentUserID
       : parseNumericID(formData.get('leadRecruiterId'))
+
+    if (assignmentID) {
+      if (!recruiterID) {
+        const failureURL = buildRedirectURL(request)
+        failureURL.searchParams.set('error', 'Recruiter is required to update assignment.')
+        return NextResponse.redirect(failureURL)
+      }
+
+      await payload.update({
+        collection: 'recruiter-job-assignments',
+        data: {
+          notes,
+          recruiter: recruiterID,
+          status,
+        },
+        id: assignmentID,
+        overrideAccess: false,
+        user: internalUser,
+      })
+
+      const successURL = buildRedirectURL(request)
+      successURL.searchParams.set('success', 'recruiterAssignmentUpdated')
+      return NextResponse.redirect(successURL)
+    }
 
     if (!jobID || !recruiterID || !leadRecruiterID) {
       const failureURL = buildRedirectURL(request)
@@ -61,9 +105,9 @@ export async function POST(request: Request) {
       data: {
         job: jobID,
         leadRecruiter: leadRecruiterID,
-        notes: typeof notesRaw === 'string' && notesRaw.trim() ? notesRaw.trim() : undefined,
+        notes,
         recruiter: recruiterID,
-        status: 'active',
+        status,
       },
       overrideAccess: false,
       user: internalUser,

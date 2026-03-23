@@ -1,7 +1,7 @@
 import { APIError, type Access, type CollectionConfig, type Where } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
-import { getLeadAssignedClientIDs, getLeadAssignedJobIDs } from '@/lib/assignments/selectors'
+import { getHeadOwnedJobIDs, getLeadAssignedClientIDs, getLeadAssignedJobIDs } from '@/lib/assignments/selectors'
 import { ASSIGNMENT_STATUS_OPTIONS } from '@/lib/constants/recruitment'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
@@ -17,24 +17,10 @@ const recruiterJobAssignmentsReadAccess: Access = async ({ req }) => {
   }
 
   if (hasInternalRole(user, ['headRecruiter'])) {
-    const { docs } = await req.payload.find({
-      collection: 'jobs',
-      depth: 0,
-      limit: 1000,
-      overrideAccess: false,
+    const ownedJobIDs = await getHeadOwnedJobIDs({
+      headRecruiterID: user.id,
       req,
-      where: {
-        owningHeadRecruiter: {
-          equals: user.id,
-        },
-      },
     })
-
-    const ownedJobIDs = docs
-      .map<number | string | null>((doc) =>
-        typeof doc.id === 'number' || typeof doc.id === 'string' ? doc.id : null,
-      )
-      .filter((id): id is number | string => id !== null)
 
     if (ownedJobIDs.length === 0) {
       return false

@@ -450,5 +450,14 @@ export const Jobs: CollectionConfig = {
     {
       fields: ['status', 'priority'],
     },
+    {
+      fields: ['status', 'updatedAt'],
+    },
+    {
+      fields: ['owningHeadRecruiter', 'status', 'updatedAt'],
+    },
+    {
+      fields: ['client', 'status', 'updatedAt'],
+    },
   ],
 }

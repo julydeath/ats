@@ -112,3 +112,72 @@ export const ASSIGNMENT_STATUS_OPTIONS = ASSIGNMENT_STATUSES.map((value) => ({
   label: ASSIGNMENT_STATUS_LABELS[value],
   value,
 }))
+
+export const CANDIDATE_SOURCES = [
+  'naukri',
+  'linkedin',
+  'reference',
+  'careerPortal',
+  'walkIn',
+  'consultancy',
+  'database',
+  'other',
+] as const
+export type CandidateSource = (typeof CANDIDATE_SOURCES)[number]
+
+export const CANDIDATE_SOURCE_LABELS: Record<CandidateSource, string> = {
+  naukri: 'Naukri',
+  linkedin: 'LinkedIn',
+  reference: 'Reference',
+  careerPortal: 'Career Portal',
+  walkIn: 'Walk-in',
+  consultancy: 'Consultancy',
+  database: 'Database',
+  other: 'Other',
+}
+
+export const CANDIDATE_SOURCE_OPTIONS = CANDIDATE_SOURCES.map((value) => ({
+  label: CANDIDATE_SOURCE_LABELS[value],
+  value,
+}))
+
+export const CANDIDATE_INVITE_STATUSES = ['pending', 'consumed', 'expired', 'revoked'] as const
+export type CandidateInviteStatus = (typeof CANDIDATE_INVITE_STATUSES)[number]
+
+export const CANDIDATE_INVITE_STATUS_LABELS: Record<CandidateInviteStatus, string> = {
+  pending: 'Pending',
+  consumed: 'Consumed',
+  expired: 'Expired',
+  revoked: 'Revoked',
+}
+
+export const CANDIDATE_INVITE_STATUS_OPTIONS = CANDIDATE_INVITE_STATUSES.map((value) => ({
+  label: CANDIDATE_INVITE_STATUS_LABELS[value],
+  value,
+}))
+
+export const APPLICATION_STAGES = [
+  'sourcedByRecruiter',
+  'internalReviewPending',
+  'internalReviewApproved',
+  'internalReviewRejected',
+  'sentBackForCorrection',
+  'candidateInvited',
+  'candidateApplied',
+] as const
+export type ApplicationStage = (typeof APPLICATION_STAGES)[number]
+
+export const APPLICATION_STAGE_LABELS: Record<ApplicationStage, string> = {
+  sourcedByRecruiter: 'Sourced by Recruiter',
+  internalReviewPending: 'Internal Review Pending',
+  internalReviewApproved: 'Internal Review Approved',
+  internalReviewRejected: 'Internal Review Rejected',
+  sentBackForCorrection: 'Sent Back for Correction',
+  candidateInvited: 'Candidate Invited',
+  candidateApplied: 'Candidate Applied',
+}
+
+export const APPLICATION_STAGE_OPTIONS = APPLICATION_STAGES.map((value) => ({
+  label: APPLICATION_STAGE_LABELS[value],
+  value,
+}))

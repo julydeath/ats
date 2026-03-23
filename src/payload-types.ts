@@ -64,16 +64,23 @@ export type SupportedTimezones =
 export interface Config {
   auth: {
     users: UserAuthOperations;
+    'candidate-users': CandidateUserAuthOperations;
   };
   blocks: {};
   collections: {
     users: User;
+    'candidate-users': CandidateUser;
     clients: Client;
     jobs: Job;
     'job-requests': JobRequest;
     'client-lead-assignments': ClientLeadAssignment;
     'job-lead-assignments': JobLeadAssignment;
     'recruiter-job-assignments': RecruiterJobAssignment;
+    'candidate-resumes': CandidateResume;
+    candidates: Candidate;
+    applications: Application;
+    'application-stage-history': ApplicationStageHistory;
+    'candidate-invites': CandidateInvite;
     media: Media;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -83,12 +90,18 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    'candidate-users': CandidateUsersSelect<false> | CandidateUsersSelect<true>;
     clients: ClientsSelect<false> | ClientsSelect<true>;
     jobs: JobsSelect<false> | JobsSelect<true>;
     'job-requests': JobRequestsSelect<false> | JobRequestsSelect<true>;
     'client-lead-assignments': ClientLeadAssignmentsSelect<false> | ClientLeadAssignmentsSelect<true>;
     'job-lead-assignments': JobLeadAssignmentsSelect<false> | JobLeadAssignmentsSelect<true>;
     'recruiter-job-assignments': RecruiterJobAssignmentsSelect<false> | RecruiterJobAssignmentsSelect<true>;
+    'candidate-resumes': CandidateResumesSelect<false> | CandidateResumesSelect<true>;
+    candidates: CandidatesSelect<false> | CandidatesSelect<true>;
+    applications: ApplicationsSelect<false> | ApplicationsSelect<true>;
+    'application-stage-history': ApplicationStageHistorySelect<false> | ApplicationStageHistorySelect<true>;
+    'candidate-invites': CandidateInvitesSelect<false> | CandidateInvitesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -105,13 +118,31 @@ export interface Config {
   widgets: {
     collections: CollectionsWidget;
   };
-  user: User;
+  user: User | CandidateUser;
   jobs: {
     tasks: unknown;
     workflows: unknown;
   };
 }
 export interface UserAuthOperations {
+  forgotPassword: {
+    email: string;
+    password: string;
+  };
+  login: {
+    email: string;
+    password: string;
+  };
+  registerFirstUser: {
+    email: string;
+    password: string;
+  };
+  unlock: {
+    email: string;
+    password: string;
+  };
+}
+export interface CandidateUserAuthOperations {
   forgotPassword: {
     email: string;
     password: string;
@@ -159,24 +190,85 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "clients".
+ * via the `definition` "candidate-users".
  */
-export interface Client {
+export interface CandidateUser {
   id: number;
-  name: string;
-  contactPerson: string;
+  fullName: string;
+  role: 'candidate';
+  candidateProfile: number | Candidate;
+  isActive: boolean;
+  onboardingMethod: 'password' | 'magicLink' | 'oauth';
+  updatedAt: string;
+  createdAt: string;
   email: string;
-  phone: string;
-  address?: string | null;
-  billingTerms?: string | null;
-  status: 'active' | 'inactive';
-  owningHeadRecruiter: number | User;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
+  collection: 'candidate-users';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidates".
+ */
+export interface Candidate {
+  id: number;
+  fullName: string;
+  email?: string | null;
+  phone?: string | null;
+  alternatePhone?: string | null;
+  currentLocation?: string | null;
+  totalExperienceYears?: number | null;
+  currentCompany?: string | null;
+  currentRole?: string | null;
+  expectedSalary?: number | null;
+  noticePeriodDays?: number | null;
+  source: 'naukri' | 'linkedin' | 'reference' | 'careerPortal' | 'walkIn' | 'consultancy' | 'database' | 'other';
+  sourceDetails?: string | null;
+  resume?: (number | null) | CandidateResume;
+  linkedInURL?: string | null;
+  portfolioURL?: string | null;
+  sourceJob: number | Job;
+  sourcedBy?: (number | null) | User;
+  candidateAccount?: (number | null) | CandidateUser;
+  profileCompletedAt?: string | null;
   notes?: string | null;
-  normalizedName?: string | null;
   normalizedEmail?: string | null;
   normalizedPhone?: string | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidate-resumes".
+ */
+export interface CandidateResume {
+  id: number;
+  alt: string;
+  sourceJob: number | Job;
+  uploadedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -208,6 +300,27 @@ export interface Job {
   owningHeadRecruiter: number | User;
   sourceJobRequest?: (number | null) | JobRequest;
   dedupeKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clients".
+ */
+export interface Client {
+  id: number;
+  name: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  address?: string | null;
+  billingTerms?: string | null;
+  status: 'active' | 'inactive';
+  owningHeadRecruiter: number | User;
+  notes?: string | null;
+  normalizedName?: string | null;
+  normalizedEmail?: string | null;
+  normalizedPhone?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -302,6 +415,91 @@ export interface RecruiterJobAssignment {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "applications".
+ */
+export interface Application {
+  id: number;
+  candidate: number | Candidate;
+  job: number | Job;
+  recruiter: number | User;
+  candidateAccount?: (number | null) | CandidateUser;
+  stage:
+    | 'sourcedByRecruiter'
+    | 'internalReviewPending'
+    | 'internalReviewApproved'
+    | 'internalReviewRejected'
+    | 'sentBackForCorrection'
+    | 'candidateInvited'
+    | 'candidateApplied';
+  notes?: string | null;
+  latestComment?: string | null;
+  submittedAt?: string | null;
+  reviewedBy?: (number | null) | User;
+  reviewedAt?: string | null;
+  candidateInvitedAt?: string | null;
+  candidateAppliedAt?: string | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "application-stage-history".
+ */
+export interface ApplicationStageHistory {
+  id: number;
+  application: number | Application;
+  candidate: number | Candidate;
+  candidateAccount?: (number | null) | CandidateUser;
+  job: number | Job;
+  recruiter: number | User;
+  fromStage?:
+    | (
+        | 'sourcedByRecruiter'
+        | 'internalReviewPending'
+        | 'internalReviewApproved'
+        | 'internalReviewRejected'
+        | 'sentBackForCorrection'
+        | 'candidateInvited'
+        | 'candidateApplied'
+      )
+    | null;
+  toStage:
+    | 'sourcedByRecruiter'
+    | 'internalReviewPending'
+    | 'internalReviewApproved'
+    | 'internalReviewRejected'
+    | 'sentBackForCorrection'
+    | 'candidateInvited'
+    | 'candidateApplied';
+  comment?: string | null;
+  actor?: (number | null) | User;
+  changedAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidate-invites".
+ */
+export interface CandidateInvite {
+  id: number;
+  candidate: number | Candidate;
+  application: number | Application;
+  inviteEmail: string;
+  tokenHash: string;
+  status: 'pending' | 'consumed' | 'expired' | 'revoked';
+  expiresAt: string;
+  sentAt: string;
+  sentBy?: (number | null) | User;
+  consumedAt?: string | null;
+  revokedAt?: string | null;
+  accountAccessSentAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
  */
 export interface Media {
@@ -348,6 +546,10 @@ export interface PayloadLockedDocument {
         value: number | User;
       } | null)
     | ({
+        relationTo: 'candidate-users';
+        value: number | CandidateUser;
+      } | null)
+    | ({
         relationTo: 'clients';
         value: number | Client;
       } | null)
@@ -372,14 +574,39 @@ export interface PayloadLockedDocument {
         value: number | RecruiterJobAssignment;
       } | null)
     | ({
+        relationTo: 'candidate-resumes';
+        value: number | CandidateResume;
+      } | null)
+    | ({
+        relationTo: 'candidates';
+        value: number | Candidate;
+      } | null)
+    | ({
+        relationTo: 'applications';
+        value: number | Application;
+      } | null)
+    | ({
+        relationTo: 'application-stage-history';
+        value: number | ApplicationStageHistory;
+      } | null)
+    | ({
+        relationTo: 'candidate-invites';
+        value: number | CandidateInvite;
+      } | null)
+    | ({
         relationTo: 'media';
         value: number | Media;
       } | null);
   globalSlug?: string | null;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'candidate-users';
+        value: number | CandidateUser;
+      };
   updatedAt: string;
   createdAt: string;
 }
@@ -389,10 +616,15 @@ export interface PayloadLockedDocument {
  */
 export interface PayloadPreference {
   id: number;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'candidate-users';
+        value: number | CandidateUser;
+      };
   key?: string | null;
   value?:
     | {
@@ -425,6 +657,33 @@ export interface UsersSelect<T extends boolean = true> {
   fullName?: T;
   role?: T;
   isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidate-users_select".
+ */
+export interface CandidateUsersSelect<T extends boolean = true> {
+  fullName?: T;
+  role?: T;
+  candidateProfile?: T;
+  isActive?: T;
+  onboardingMethod?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -573,6 +832,114 @@ export interface RecruiterJobAssignmentsSelect<T extends boolean = true> {
   status?: T;
   assignedBy?: T;
   notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidate-resumes_select".
+ */
+export interface CandidateResumesSelect<T extends boolean = true> {
+  alt?: T;
+  sourceJob?: T;
+  uploadedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidates_select".
+ */
+export interface CandidatesSelect<T extends boolean = true> {
+  fullName?: T;
+  email?: T;
+  phone?: T;
+  alternatePhone?: T;
+  currentLocation?: T;
+  totalExperienceYears?: T;
+  currentCompany?: T;
+  currentRole?: T;
+  expectedSalary?: T;
+  noticePeriodDays?: T;
+  source?: T;
+  sourceDetails?: T;
+  resume?: T;
+  linkedInURL?: T;
+  portfolioURL?: T;
+  sourceJob?: T;
+  sourcedBy?: T;
+  candidateAccount?: T;
+  profileCompletedAt?: T;
+  notes?: T;
+  normalizedEmail?: T;
+  normalizedPhone?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "applications_select".
+ */
+export interface ApplicationsSelect<T extends boolean = true> {
+  candidate?: T;
+  job?: T;
+  recruiter?: T;
+  candidateAccount?: T;
+  stage?: T;
+  notes?: T;
+  latestComment?: T;
+  submittedAt?: T;
+  reviewedBy?: T;
+  reviewedAt?: T;
+  candidateInvitedAt?: T;
+  candidateAppliedAt?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "application-stage-history_select".
+ */
+export interface ApplicationStageHistorySelect<T extends boolean = true> {
+  application?: T;
+  candidate?: T;
+  candidateAccount?: T;
+  job?: T;
+  recruiter?: T;
+  fromStage?: T;
+  toStage?: T;
+  comment?: T;
+  actor?: T;
+  changedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidate-invites_select".
+ */
+export interface CandidateInvitesSelect<T extends boolean = true> {
+  candidate?: T;
+  application?: T;
+  inviteEmail?: T;
+  tokenHash?: T;
+  status?: T;
+  expiresAt?: T;
+  sentAt?: T;
+  sentBy?: T;
+  consumedAt?: T;
+  revokedAt?: T;
+  accountAccessSentAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

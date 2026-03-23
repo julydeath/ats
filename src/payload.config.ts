@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
 import { Users } from './collections/Users'
+import { CandidateUsers } from './collections/CandidateUsers'
 import { Media } from './collections/Media'
 import { Clients } from './collections/Clients'
 import { Jobs } from './collections/Jobs'
@@ -13,6 +14,11 @@ import { JobRequests } from './collections/JobRequests'
 import { ClientLeadAssignments } from './collections/ClientLeadAssignments'
 import { JobLeadAssignments } from './collections/JobLeadAssignments'
 import { RecruiterJobAssignments } from './collections/RecruiterJobAssignments'
+import { CandidateResumes } from './collections/CandidateResumes'
+import { Candidates } from './collections/Candidates'
+import { Applications } from './collections/Applications'
+import { ApplicationStageHistory } from './collections/ApplicationStageHistory'
+import { CandidateInvites } from './collections/CandidateInvites'
 import { env } from './lib/env'
 
 const filename = fileURLToPath(import.meta.url)
@@ -28,12 +34,18 @@ export default buildConfig({
   },
   collections: [
     Users,
+    CandidateUsers,
     Clients,
     Jobs,
     JobRequests,
     ClientLeadAssignments,
     JobLeadAssignments,
     RecruiterJobAssignments,
+    CandidateResumes,
+    Candidates,
+    Applications,
+    ApplicationStageHistory,
+    CandidateInvites,
     Media,
   ],
   cors: [appURL],

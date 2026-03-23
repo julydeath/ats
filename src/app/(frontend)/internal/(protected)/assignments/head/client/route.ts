@@ -24,6 +24,24 @@ const parseNumericID = (value: FormDataEntryValue | null): number | null => {
   return Number(normalized)
 }
 
+const parseStatus = (value: FormDataEntryValue | null): 'active' | 'inactive' => {
+  if (typeof value !== 'string') {
+    return 'active'
+  }
+
+  const normalized = value.trim()
+  return normalized === 'inactive' ? 'inactive' : 'active'
+}
+
+const readOptionalText = (value: FormDataEntryValue | null): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const normalized = value.trim()
+  return normalized || undefined
+}
+
 const buildRedirectURL = (request: Request): URL => new URL(APP_ROUTES.internal.assignments.head, request.url)
 
 export async function POST(request: Request) {
@@ -37,9 +55,35 @@ export async function POST(request: Request) {
 
   try {
     const formData = await request.formData()
+    const assignmentID = parseNumericID(formData.get('assignmentId'))
     const clientID = parseNumericID(formData.get('clientId'))
     const leadRecruiterID = parseNumericID(formData.get('leadRecruiterId'))
-    const notesRaw = formData.get('notes')
+    const notes = readOptionalText(formData.get('notes'))
+    const status = parseStatus(formData.get('status'))
+
+    if (assignmentID) {
+      if (!leadRecruiterID) {
+        const failureURL = buildRedirectURL(request)
+        failureURL.searchParams.set('error', 'Lead recruiter is required to update assignment.')
+        return NextResponse.redirect(failureURL)
+      }
+
+      await payload.update({
+        collection: 'client-lead-assignments',
+        data: {
+          leadRecruiter: leadRecruiterID,
+          notes,
+          status,
+        },
+        id: assignmentID,
+        overrideAccess: false,
+        user: internalUser,
+      })
+
+      const successURL = buildRedirectURL(request)
+      successURL.searchParams.set('success', 'clientAssignmentUpdated')
+      return NextResponse.redirect(successURL)
+    }
 
     if (!clientID || !leadRecruiterID) {
       const failureURL = buildRedirectURL(request)
@@ -75,8 +119,8 @@ export async function POST(request: Request) {
         client: clientID,
         headRecruiter: normalizedOwningHeadRecruiterID,
         leadRecruiter: leadRecruiterID,
-        notes: typeof notesRaw === 'string' && notesRaw.trim() ? notesRaw.trim() : undefined,
-        status: 'active',
+        notes,
+        status,
       },
       overrideAccess: false,
       user: internalUser,

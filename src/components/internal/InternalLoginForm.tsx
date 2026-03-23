@@ -128,7 +128,7 @@ export const InternalLoginForm = () => {
       {error ? <p className="error-text">{error}</p> : null}
 
       <button className="button" disabled={isSubmitting} type="submit">
-        {isSubmitting ? 'Signing in...' : 'Sign in'}
+        {isSubmitting ? 'Signing in...' : 'Open My Workspace'}
       </button>
     </form>
   )

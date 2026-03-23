@@ -15,8 +15,8 @@ export default async function InternalLoginPage() {
     <section className="auth-page">
       <div className="auth-card">
         <p className="eyebrow">Realizing Dreams Inspirix HR Services</p>
-        <h1>Internal Recruitment Operations</h1>
-        <p className="muted">Sign in with your internal employee account.</p>
+        <h1>Internal Recruitment Workflow</h1>
+        <p className="muted">Sign in with your employee account to open your role-based workflow dashboard.</p>
         <InternalLoginForm />
       </div>
     </section>

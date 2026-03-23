@@ -5,6 +5,7 @@ export const CANDIDATE_AUTH_PLAN = {
   reservedCollections: {
     applications: 'applications',
     candidateInvites: 'candidate-invites',
+    candidateUsers: 'candidate-users',
     candidates: 'candidates',
   },
   invitePolicy: {
@@ -12,6 +13,7 @@ export const CANDIDATE_AUTH_PLAN = {
     tokenTTLHours: Number(process.env.CANDIDATE_INVITE_TOKEN_TTL_HOURS || 72),
     verificationRequiredBeforeActivation: true,
   },
+  onboardingModes: ['inviteTokenPlusPassword', 'inviteTokenPlusMagicLinkCompatible'] as const,
   lifecycle: [
     'recruiter_adds_candidate_under_job',
     'lead_recruiter_approves_candidate',

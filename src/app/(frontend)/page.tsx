@@ -9,13 +9,15 @@ export default function HomePage() {
         <p className="eyebrow">Realizing Dreams Inspirix HR Services</p>
         <h1>Recruitment Operations Platform</h1>
         <p className="muted">
-          Phase 1 foundation is active for internal users. Candidate architecture is prepared for
-          upcoming phases.
+          Internal workflow and external candidate invite portal are active.
         </p>
 
         <div className="public-actions">
           <Link className="button" href={APP_ROUTES.internal.login}>
             Internal Login
+          </Link>
+          <Link className="button button-secondary" href={APP_ROUTES.candidate.login}>
+            Candidate Login
           </Link>
           <Link className="button button-secondary" href={APP_ROUTES.payloadAdmin}>
             Payload Admin

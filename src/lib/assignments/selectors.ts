@@ -76,8 +76,12 @@ export const getLeadAssignedClientIDs = async ({
         collection: 'client-lead-assignments',
         depth: 0,
         limit: 1000,
+        pagination: false,
         overrideAccess: false,
         req,
+        select: {
+          client: true,
+        },
         where: {
           and: [
             {
@@ -113,8 +117,12 @@ export const getLeadAssignedJobIDs = async ({
         collection: 'job-lead-assignments',
         depth: 0,
         limit: 1000,
+        pagination: false,
         overrideAccess: false,
         req,
+        select: {
+          job: true,
+        },
         where: {
           and: [
             {
@@ -153,8 +161,12 @@ export const getLeadVisibleClientIDs = async ({
             collection: 'job-lead-assignments',
             depth: 0,
             limit: 1000,
+            pagination: false,
             overrideAccess: false,
             req,
+            select: {
+              client: true,
+            },
             where: {
               and: [
                 {
@@ -179,6 +191,51 @@ export const getLeadVisibleClientIDs = async ({
     },
   })
 
+export const getLeadVisibleJobIDs = async ({
+  leadRecruiterID,
+  req,
+}: {
+  leadRecruiterID: ID
+  req: PayloadRequest
+}): Promise<ID[]> =>
+  readCachedIDs({
+    cacheKey: `lead-visible-job:${String(leadRecruiterID)}`,
+    req,
+    resolver: async () => {
+      const [directJobIDs, assignedClientIDs] = await Promise.all([
+        getLeadAssignedJobIDs({ leadRecruiterID, req }),
+        getLeadAssignedClientIDs({ leadRecruiterID, req }),
+      ])
+
+      if (assignedClientIDs.length === 0) {
+        return uniqueIDs(directJobIDs.map((id) => id))
+      }
+
+      const { docs } = await req.payload.find({
+        collection: 'jobs',
+        depth: 0,
+        limit: 1000,
+        pagination: false,
+        overrideAccess: false,
+        req,
+        select: {
+          title: true,
+        },
+        where: {
+          client: {
+            in: assignedClientIDs,
+          },
+        },
+      })
+
+      const viaClientJobIDs = docs.map((doc) =>
+        typeof doc.id === 'number' || typeof doc.id === 'string' ? doc.id : null,
+      )
+
+      return uniqueIDs([...directJobIDs, ...viaClientJobIDs])
+    },
+  })
+
 export const getRecruiterAssignedJobIDs = async ({
   recruiterID,
   req,
@@ -194,8 +251,12 @@ export const getRecruiterAssignedJobIDs = async ({
         collection: 'recruiter-job-assignments',
         depth: 0,
         limit: 1000,
+        pagination: false,
         overrideAccess: false,
         req,
+        select: {
+          job: true,
+        },
         where: {
           and: [
             {
@@ -231,8 +292,12 @@ export const getHeadOwnedJobIDs = async ({
         collection: 'jobs',
         depth: 0,
         limit: 1000,
+        pagination: false,
         overrideAccess: false,
         req,
+        select: {
+          title: true,
+        },
         where: {
           owningHeadRecruiter: {
             equals: headRecruiterID,
