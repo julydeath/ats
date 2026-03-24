@@ -5,6 +5,9 @@ import { getPayload } from 'payload'
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { APP_ROUTES } from '@/lib/constants/routes'
 
+const LOGO_MIME_TYPES = new Set<string>(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'])
+const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024
+
 const readString = (value: FormDataEntryValue | null): string => {
   if (typeof value !== 'string') {
     return ''
@@ -44,19 +47,102 @@ export async function POST(request: Request) {
   const leadRecruiterID = parseNumericID(formData.get('leadRecruiterId'))
   const statusInput = readString(formData.get('status'))
   const address = readString(formData.get('address')) || undefined
+  const location = readString(formData.get('location')) || undefined
+  const website = readString(formData.get('website')) || undefined
+  const companySize = readString(formData.get('companySize')) || undefined
   const billingTerms = readString(formData.get('billingTerms')) || undefined
   const notes = readString(formData.get('notes')) || undefined
   const status = statusInput === 'inactive' ? 'inactive' : 'active'
+  const logoInput = formData.get('logo')
+  let uploadedLogoID: number | null = null
 
   try {
+    if (logoInput instanceof File && logoInput.size > 0) {
+      if (!LOGO_MIME_TYPES.has(logoInput.type)) {
+        const failureURL = buildClientsRedirectURL(request)
+        failureURL.searchParams.set('error', 'Client logo must be JPG, PNG, WEBP, or SVG.')
+        return NextResponse.redirect(failureURL, 303)
+      }
+
+      if (logoInput.size > MAX_LOGO_SIZE_BYTES) {
+        const failureURL = buildClientsRedirectURL(request)
+        failureURL.searchParams.set('error', 'Client logo must be up to 5MB.')
+        return NextResponse.redirect(failureURL, 303)
+      }
+
+      const logoBuffer = Buffer.from(await logoInput.arrayBuffer())
+      const logoDoc = await payload.create({
+        collection: 'media',
+        data: {
+          alt: `${name || 'Client'} logo`,
+        },
+        file: {
+          data: logoBuffer,
+          mimetype: logoInput.type,
+          name: logoInput.name,
+          size: logoInput.size,
+        },
+        overrideAccess: false,
+        user: internalUser,
+      })
+
+      uploadedLogoID = logoDoc.id
+    }
+
     if (clientID) {
+      const updateData: Record<string, unknown> = {
+        notes,
+        owningHeadRecruiter: leadRecruiterID ?? null,
+        status,
+      }
+
+      if (name) {
+        updateData.name = name
+      }
+
+      if (contactPerson) {
+        updateData.contactPerson = contactPerson
+      }
+
+      if (email) {
+        updateData.email = email
+      }
+
+      if (phone) {
+        updateData.phone = phone
+      }
+
+      if (industry) {
+        updateData.industry = industry
+      }
+
+      if (location) {
+        updateData.location = location
+      }
+
+      if (website) {
+        updateData.website = website
+      }
+
+      if (companySize) {
+        updateData.companySize = companySize
+      }
+
+      if (address !== undefined) {
+        updateData.address = address
+      }
+
+      if (billingTerms !== undefined) {
+        updateData.billingTerms = billingTerms
+      }
+
+      if (uploadedLogoID !== null) {
+        updateData.logo = uploadedLogoID
+      }
+
       await payload.update({
         collection: 'clients',
-        data: {
-          notes,
-          owningHeadRecruiter: leadRecruiterID ?? null,
-          status,
-        },
+        data: updateData,
         id: clientID,
         overrideAccess: false,
         user: internalUser,
@@ -73,20 +159,23 @@ export async function POST(request: Request) {
       return NextResponse.redirect(failureURL, 303)
     }
 
-    const mergedNotes = [industry ? `Industry: ${industry}` : '', notes || ''].filter(Boolean).join('\n')
-
     await payload.create({
       collection: 'clients',
       data: {
         address,
         billingTerms,
+        companySize,
         contactPerson,
         email,
+        industry: industry || undefined,
+        location,
+        logo: uploadedLogoID ?? undefined,
         name,
-        notes: mergedNotes || undefined,
+        notes: notes || undefined,
         owningHeadRecruiter: leadRecruiterID ?? undefined,
         phone,
         status,
+        website,
       },
       overrideAccess: false,
       user: internalUser,
@@ -96,6 +185,19 @@ export async function POST(request: Request) {
     successURL.searchParams.set('success', 'clientCreated')
     return NextResponse.redirect(successURL, 303)
   } catch (error) {
+    if (uploadedLogoID !== null) {
+      try {
+        await payload.delete({
+          collection: 'media',
+          id: uploadedLogoID,
+          overrideAccess: false,
+          user: internalUser,
+        })
+      } catch {
+        // noop: best effort cleanup only
+      }
+    }
+
     const failureURL = buildClientsRedirectURL(request)
     failureURL.searchParams.set(
       'error',

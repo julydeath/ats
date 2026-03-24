@@ -3,7 +3,7 @@ import { APIError, type CollectionConfig, type Where } from 'payload'
 import { isCandidateAuthenticated, type CandidateUserLike } from '@/access/candidateRoles'
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { candidatesCreateAccess, candidatesManageAccess, candidatesReadAccess } from '@/access/visibility'
-import { getRecruiterAssignedJobIDs } from '@/lib/assignments/selectors'
+import { getLeadVisibleJobIDs, getRecruiterAssignedJobIDs } from '@/lib/assignments/selectors'
 import { buildCandidateDuplicateSignals } from '@/lib/candidates/dedupe'
 import { CANDIDATE_SOURCE_OPTIONS } from '@/lib/constants/recruitment'
 import { extractRelationshipID } from '@/lib/utils/relationships'
@@ -67,6 +67,11 @@ export const Candidates: CollectionConfig = {
     {
       name: 'currentRole',
       type: 'text',
+    },
+    {
+      name: 'skills',
+      type: 'text',
+      hasMany: true,
     },
     {
       name: 'expectedSalary',
@@ -214,6 +219,24 @@ export const Candidates: CollectionConfig = {
 
           if (!canUseJob) {
             throw new APIError('Recruiter can add candidates only for jobs assigned to them.', 403)
+          }
+        }
+
+        if (hasInternalRole(user, ['leadRecruiter'])) {
+          const leadRecruiterID = user?.id
+
+          if (!leadRecruiterID) {
+            throw new APIError('Lead Recruiter context is missing on this request.', 401)
+          }
+
+          const visibleJobIDs = await getLeadVisibleJobIDs({
+            leadRecruiterID,
+            req,
+          })
+
+          const canUseJob = visibleJobIDs.some((jobID) => String(jobID) === String(sourceJobID))
+          if (!canUseJob) {
+            throw new APIError('Lead Recruiter can add candidates only under visible jobs.', 403)
           }
         }
 

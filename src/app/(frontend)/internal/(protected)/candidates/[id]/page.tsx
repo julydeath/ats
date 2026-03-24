@@ -168,6 +168,7 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
           sourceDetails: true,
           sourceJob: true,
           sourcedBy: true,
+          skills: true,
           totalExperienceYears: true,
           updatedAt: true,
         },
@@ -198,12 +199,13 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
     ])
 
     const resumeMeta = getResumeMeta(candidate.resume)
-    const canCreateApplication = user.role === 'admin' || user.role === 'recruiter'
+    const canCreateApplication = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
     const sourceJobID = extractRelationshipID(candidate.sourceJob)
     const latestApplication = applicationsForCandidate.docs[0] || null
     const latestStage = (latestApplication?.stage as ApplicationStage | undefined) || null
     const latestStageLabel = latestStage ? APPLICATION_STAGE_LABELS[latestStage] : 'Profile Created'
     const skillTags = getSkillTags([
+      ...(Array.isArray(candidate.skills) ? candidate.skills : []),
       candidate.currentRole,
       candidate.sourceDetails,
       candidate.notes,

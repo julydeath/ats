@@ -69,6 +69,10 @@ const canLeadTransition = (previousStage: ApplicationStage, nextStage: Applicati
     return true
   }
 
+  if (canRecruiterTransition(previousStage, nextStage)) {
+    return true
+  }
+
   return (
     previousStage === 'internalReviewPending' &&
     (nextStage === 'internalReviewApproved' ||
@@ -93,15 +97,15 @@ const validateStageTransition = ({
   }
 
   if (operation === 'create') {
-    if (hasInternalRole(user, ['recruiter'])) {
+    if (hasInternalRole(user, ['recruiter', 'leadRecruiter'])) {
       if (nextStage !== 'sourcedByRecruiter' && nextStage !== 'internalReviewPending') {
-        throw new APIError('Recruiter can only create applications as sourced or pending review.', 403)
+        throw new APIError('Recruiter/Lead can only create applications as sourced or pending review.', 403)
       }
 
       return
     }
 
-    throw new APIError('Only recruiter or admin can create applications.', 403)
+    throw new APIError('Only recruiter, lead recruiter, or admin can create applications.', 403)
   }
 
   if (!previousStage) {

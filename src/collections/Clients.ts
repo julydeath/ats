@@ -9,6 +9,13 @@ import { CLIENT_STATUS_OPTIONS } from '@/lib/constants/recruitment'
 import { buildClientDuplicateSignals } from '@/lib/jobs/dedupe'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
+const CLIENT_COMPANY_SIZE_OPTIONS = [
+  { label: '1-50', value: '1-50' },
+  { label: '51-200', value: '51-200' },
+  { label: '201-1000', value: '201-1000' },
+  { label: '1000+', value: '1000+' },
+] as const
+
 const getCandidateClientSignals = (data?: Record<string, unknown>, originalDoc?: Record<string, unknown>) =>
   buildClientDuplicateSignals({
     email: data?.email ?? originalDoc?.email,
@@ -27,7 +34,7 @@ export const Clients: CollectionConfig = {
     delete: clientManageAccess,
   },
   admin: {
-    defaultColumns: ['name', 'owningHeadRecruiter', 'contactPerson', 'email', 'status', 'updatedAt'],
+    defaultColumns: ['name', 'industry', 'location', 'contactPerson', 'email', 'status', 'updatedAt'],
     group: 'Recruitment Ops',
     useAsTitle: 'name',
   },
@@ -37,6 +44,11 @@ export const Clients: CollectionConfig = {
       type: 'text',
       required: true,
       index: true,
+    },
+    {
+      name: 'logo',
+      type: 'relationship',
+      relationTo: 'media',
     },
     {
       name: 'contactPerson',
@@ -55,6 +67,24 @@ export const Clients: CollectionConfig = {
       type: 'text',
       required: true,
       index: true,
+    },
+    {
+      name: 'industry',
+      type: 'text',
+    },
+    {
+      name: 'location',
+      type: 'text',
+      index: true,
+    },
+    {
+      name: 'website',
+      type: 'text',
+    },
+    {
+      name: 'companySize',
+      type: 'select',
+      options: CLIENT_COMPANY_SIZE_OPTIONS.map((option) => ({ ...option })),
     },
     {
       name: 'address',

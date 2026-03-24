@@ -232,6 +232,7 @@ export interface Candidate {
   totalExperienceYears?: number | null;
   currentCompany?: string | null;
   currentRole?: string | null;
+  skills?: string[] | null;
   expectedSalary?: number | null;
   noticePeriodDays?: number | null;
   source: 'naukri' | 'linkedin' | 'reference' | 'careerPortal' | 'walkIn' | 'consultancy' | 'database' | 'other';
@@ -313,9 +314,14 @@ export interface Job {
 export interface Client {
   id: number;
   name: string;
+  logo?: (number | null) | Media;
   contactPerson: string;
   email: string;
   phone: string;
+  industry?: string | null;
+  location?: string | null;
+  website?: string | null;
+  companySize?: ('1-50' | '51-200' | '201-1000' | '1000+') | null;
   address?: string | null;
   billingTerms?: string | null;
   status: 'active' | 'inactive';
@@ -329,6 +335,25 @@ export interface Client {
   normalizedPhone?: string | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  alt: string;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -509,25 +534,6 @@ export interface CandidateInvite {
   accountAccessSentAt?: string | null;
   updatedAt: string;
   createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: number;
-  alt: string;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -719,9 +725,14 @@ export interface CandidateUsersSelect<T extends boolean = true> {
  */
 export interface ClientsSelect<T extends boolean = true> {
   name?: T;
+  logo?: T;
   contactPerson?: T;
   email?: T;
   phone?: T;
+  industry?: T;
+  location?: T;
+  website?: T;
+  companySize?: T;
   address?: T;
   billingTerms?: T;
   status?: T;
@@ -880,6 +891,7 @@ export interface CandidatesSelect<T extends boolean = true> {
   totalExperienceYears?: T;
   currentCompany?: T;
   currentRole?: T;
+  skills?: T;
   expectedSalary?: T;
   noticePeriodDays?: T;
   source?: T;

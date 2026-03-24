@@ -42,8 +42,8 @@ export async function POST(request: Request) {
   const { user } = await payload.auth({ headers: request.headers })
   const internalUser = user as InternalUserLike
 
-  if (!hasInternalRole(internalUser, ['admin', 'recruiter'])) {
-    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url))
+  if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter', 'recruiter'])) {
+    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
   }
 
   const formData = await request.formData()
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   if (!candidateID || !jobID || !recruiterID) {
     const failureURL = buildCreateRedirectURL(request)
     failureURL.searchParams.set('error', 'Candidate, job, and recruiter are required.')
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 
   try {
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
 
     const successURL = new URL(`${APP_ROUTES.internal.applications.detailBase}/${application.id}`, request.url)
     successURL.searchParams.set('success', 'applicationCreated')
-    return NextResponse.redirect(successURL)
+    return NextResponse.redirect(successURL, 303)
   } catch (error) {
     const failureURL = buildCreateRedirectURL(request)
     failureURL.searchParams.set('candidateId', String(candidateID))
@@ -88,6 +88,6 @@ export async function POST(request: Request) {
       'error',
       error instanceof Error ? error.message : 'Unable to create application.',
     )
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 }

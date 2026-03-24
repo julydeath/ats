@@ -324,7 +324,7 @@ export const candidatesManageAccess: Access = async ({ req }) => {
 }
 
 export const candidatesCreateAccess: Access = ({ req }) =>
-  hasInternalRole(req.user as InternalUserLike, ['admin', 'recruiter'])
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter'])
 
 export const candidateResumeReadAccess: Access = async ({ req }) => {
   const user = toVisibilityUser(req.user as InternalUserLike)
@@ -341,7 +341,7 @@ export const candidateResumeReadAccess: Access = async ({ req }) => {
 }
 
 export const candidateResumeCreateAccess: Access = ({ req }) =>
-  hasInternalRole(req.user as InternalUserLike, ['admin', 'recruiter'])
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter'])
 
 export const candidateResumeDeleteAccess: Access = ({ req }) => {
   const user = toVisibilityUser(req.user as InternalUserLike)
@@ -420,7 +420,7 @@ export const applicationsReadAccess: Access = async ({ req }) => {
 }
 
 export const applicationsCreateAccess: Access = ({ req }) =>
-  hasInternalRole(req.user as InternalUserLike, ['admin', 'recruiter'])
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter'])
 
 export const applicationsUpdateAccess: Access = async ({ req }) => {
   const user = toVisibilityUser(req.user as InternalUserLike)

@@ -141,7 +141,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
     : '30'
   const isCreateModalOpen = resolvedSearchParams.create === '1'
   const canCreateJobs = user.role === 'admin' || user.role === 'leadRecruiter'
-  const canSourceCandidates = user.role === 'admin' || user.role === 'recruiter'
+  const canSourceCandidates = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
 
   const rangeStart = new Date()
   rangeStart.setDate(rangeStart.getDate() - Number(dateRangeFilter))

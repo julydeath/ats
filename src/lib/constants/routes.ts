@@ -18,6 +18,7 @@ export const APP_ROUTES = {
     },
     clients: {
       create: '/internal/clients/create',
+      detailBase: '/internal/clients',
       list: '/internal/clients',
     },
     candidates: {

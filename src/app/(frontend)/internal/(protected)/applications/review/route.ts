@@ -24,18 +24,37 @@ const readString = (value: FormDataEntryValue | null): string => {
   return value.trim()
 }
 
-const parseNumericID = (value: FormDataEntryValue | null): number | null => {
+const parseDocumentID = (value: FormDataEntryValue | null): number | string | null => {
   const raw = readString(value)
 
-  if (!raw || !/^\d+$/.test(raw)) {
+  if (!raw) {
     return null
   }
 
-  return Number(raw)
+  if (/^\d+$/.test(raw)) {
+    return Number(raw)
+  }
+
+  return raw
 }
 
-const isReviewAction = (value: string): value is ReviewAction =>
-  value === 'approve' || value === 'reject' || value === 'sendBack'
+const normalizeReviewAction = (value: string): ReviewAction | null => {
+  const normalized = value.replace(/[\s_-]/g, '').toLowerCase()
+
+  if (normalized === 'approve') {
+    return 'approve'
+  }
+
+  if (normalized === 'reject') {
+    return 'reject'
+  }
+
+  if (normalized === 'sendback') {
+    return 'sendBack'
+  }
+
+  return null
+}
 
 const buildQueueRedirectURL = (request: Request): URL =>
   new URL(APP_ROUTES.internal.applications.reviewQueue, request.url)
@@ -50,11 +69,16 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData()
-  const applicationID = parseNumericID(formData.get('applicationId'))
-  const action = readString(formData.get('action'))
+  const applicationID =
+    parseDocumentID(formData.get('applicationId')) ??
+    parseDocumentID(formData.get('applicationID')) ??
+    parseDocumentID(formData.get('id'))
+  const action = normalizeReviewAction(
+    readString(formData.get('action')) || readString(formData.get('reviewAction')) || readString(formData.get('intent')),
+  )
   const latestComment = readString(formData.get('latestComment')) || undefined
 
-  if (!applicationID || !isReviewAction(action)) {
+  if (!applicationID || !action) {
     const failureURL = buildQueueRedirectURL(request)
     failureURL.searchParams.set('error', 'Valid review action and application ID are required.')
     return NextResponse.redirect(failureURL, 303)

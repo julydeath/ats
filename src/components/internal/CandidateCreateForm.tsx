@@ -265,6 +265,10 @@ export const CandidateCreateForm = ({ errorMessage, jobs, selectedJobID }: Candi
                   <span>Current Role</span>
                   <input name="currentRole" ref={currentRoleRef} type="text" />
                 </label>
+                <label className="candidate-intake-field-span-2">
+                  <span>Skills</span>
+                  <input name="skills" placeholder="e.g. React, Node.js, Figma" type="text" />
+                </label>
                 <label>
                   <span>Total Experience (Years)</span>
                   <input min={0} name="totalExperienceYears" ref={totalExperienceYearsRef} type="number" />

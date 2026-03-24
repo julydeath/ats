@@ -42,7 +42,7 @@ const canRecruiterSubmit = ({
   userID: number | string
   userRole: string
 }): boolean => {
-  if (userRole !== 'admin' && userRole !== 'recruiter') {
+  if (userRole !== 'admin' && userRole !== 'leadRecruiter' && userRole !== 'recruiter') {
     return false
   }
 
@@ -50,7 +50,7 @@ const canRecruiterSubmit = ({
     return false
   }
 
-  if (userRole === 'admin') {
+  if (userRole === 'admin' || userRole === 'leadRecruiter') {
     return true
   }
 
@@ -86,7 +86,7 @@ export default async function ApplicationsListPage({ searchParams }: Application
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
-  const canCreate = user.role === 'admin' || user.role === 'recruiter'
+  const canCreate = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
   const canReview = user.role === 'admin' || user.role === 'leadRecruiter'
   const query = (resolvedSearchParams.q || '').trim().toLowerCase()
   const stageFilter = (resolvedSearchParams.stage || '').trim()

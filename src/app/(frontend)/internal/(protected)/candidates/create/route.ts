@@ -60,7 +60,7 @@ export async function POST(request: Request) {
   const { user } = await payload.auth({ headers: request.headers })
   const internalUser = user as InternalUserLike
 
-  if (!hasInternalRole(internalUser, ['admin', 'recruiter'])) {
+  if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter', 'recruiter'])) {
     return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
   }
 
@@ -80,12 +80,21 @@ export async function POST(request: Request) {
     ? (sourceInput as CandidateSource)
     : 'linkedin'
   const sourceDetails = readString(formData.get('sourceDetails')) || undefined
+  const skillsInput = readString(formData.get('skills'))
   const notes = readString(formData.get('notes')) || undefined
   const sourceJobID = parseNumericID(formData.get('sourceJob'))
   const totalExperienceYears = parseOptionalNumber(formData.get('totalExperienceYears'))
   const expectedSalary = parseOptionalNumber(formData.get('expectedSalary'))
   const noticePeriodDays = parseOptionalNumber(formData.get('noticePeriodDays'))
   const currentUserID = toNumericID(internalUser?.id)
+  const skills = Array.from(
+    new Set(
+      skillsInput
+        .split(',')
+        .map((skill) => skill.trim())
+        .filter((skill) => skill.length > 0),
+    ),
+  ).slice(0, 20)
 
   if (!fullName || !sourceJobID) {
     const failureURL = buildCreateRedirectURL(request)
@@ -152,6 +161,7 @@ export async function POST(request: Request) {
         sourceDetails,
         sourceJob: sourceJobID,
         sourcedBy: currentUserID ?? undefined,
+        skills: skills.length > 0 ? skills : undefined,
         totalExperienceYears,
       },
       overrideAccess: false,

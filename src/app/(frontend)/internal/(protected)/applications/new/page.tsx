@@ -16,11 +16,7 @@ const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   }
 
   if (typeof value === 'object') {
-    const typed = value as {
-      name?: string
-      title?: string
-    }
-
+    const typed = value as { name?: string; title?: string }
     return typed.title || typed.name || fallback
   }
 
@@ -36,25 +32,26 @@ type ApplicationsNewPageProps = {
 }
 
 export default async function ApplicationsNewPage({ searchParams }: ApplicationsNewPageProps) {
-  const user = await requireInternalRole(['admin', 'recruiter'])
+  const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
-  const selectedCandidateID = resolvedSearchParams.candidateId || ''
-  const selectedJobID = resolvedSearchParams.jobId || ''
-  const isAdmin = user.role === 'admin'
+  const selectedCandidateID = String(resolvedSearchParams.candidateId || '')
+  const selectedJobID = String(resolvedSearchParams.jobId || '')
+  const canSelectRecruiter = user.role === 'admin' || user.role === 'leadRecruiter'
 
-  const [jobs, candidates, recruiters] = await Promise.all([
+  const [jobsResult, candidatesResult, recruitersResult] = await Promise.all([
     payload.find({
       collection: 'jobs',
-      depth: 1,
-      limit: 120,
+      depth: 0,
+      limit: 150,
       pagination: false,
       overrideAccess: false,
       select: {
         client: true,
         id: true,
+        location: true,
+        priority: true,
         title: true,
-        updatedAt: true,
       },
       sort: '-updatedAt',
       user,
@@ -66,8 +63,8 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
     }),
     payload.find({
       collection: 'candidates',
-      depth: 1,
-      limit: 140,
+      depth: 0,
+      limit: 200,
       pagination: false,
       overrideAccess: false,
       select: {
@@ -76,8 +73,9 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
         id: true,
         phone: true,
         resume: true,
+        skills: true,
         sourceJob: true,
-        updatedAt: true,
+        totalExperienceYears: true,
       },
       sort: '-updatedAt',
       user,
@@ -112,165 +110,213 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
     }),
   ])
 
+  const unresolvedClientIDs = Array.from(
+    new Set(
+      jobsResult.docs
+        .map((job) => extractRelationshipID(job.client))
+        .filter((id): id is number | string => typeof id === 'number' || typeof id === 'string')
+        .map((id) => String(id)),
+    ),
+  )
+
+  const fallbackClients =
+    unresolvedClientIDs.length === 0
+      ? { docs: [] as Array<{ id: number | string; name?: string }> }
+      : await payload.find({
+          collection: 'clients',
+          depth: 0,
+          limit: unresolvedClientIDs.length,
+          overrideAccess: true,
+          pagination: false,
+          select: {
+            id: true,
+            name: true,
+          },
+          where: {
+            id: {
+              in: unresolvedClientIDs,
+            },
+          },
+        })
+
+  const clientNameByID = new Map(fallbackClients.docs.map((client) => [String(client.id), client.name || String(client.id)]))
+
+  const jobs = jobsResult.docs.map((job) => {
+    const clientID = extractRelationshipID(job.client)
+    const clientLabel =
+      typeof job.client === 'object'
+        ? readLabel(job.client)
+        : clientID
+          ? clientNameByID.get(String(clientID)) || String(clientID)
+          : 'Unknown'
+
+    return {
+      clientLabel,
+      id: String(job.id),
+      location: job.location || 'Location not specified',
+      priority: String(job.priority || 'medium'),
+      title: job.title,
+    }
+  })
+
+  const candidates = candidatesResult.docs.map((candidate) => ({
+    contact: candidate.email || candidate.phone || 'No contact',
+    id: String(candidate.id),
+    name: candidate.fullName,
+    resumeUploaded: Boolean(extractRelationshipID(candidate.resume)),
+    skills: Array.isArray(candidate.skills)
+      ? candidate.skills
+          .map((skill) => (typeof skill === 'string' ? skill.trim() : ''))
+          .filter((skill) => skill.length > 0)
+      : [],
+    sourceJobID: extractRelationshipID(candidate.sourceJob),
+    totalExperienceYears:
+      typeof candidate.totalExperienceYears === 'number' ? candidate.totalExperienceYears : null,
+  }))
+
+  const normalizedJobID = jobs.some((job) => job.id === selectedJobID) ? selectedJobID : ''
+  const normalizedCandidateID = candidates.some((candidate) => candidate.id === selectedCandidateID) ? selectedCandidateID : ''
+
+  const missingCoreData =
+    jobs.length === 0 ||
+    candidates.length === 0 ||
+    (canSelectRecruiter && recruitersResult.docs.length === 0)
+
   return (
-    <section className="dashboard-grid">
-      <article className="panel panel-span-2">
-        <p className="eyebrow">Step 4: Create Application</p>
-        <h1>Create Candidate to Job Mapping</h1>
-        <p className="panel-intro">
-          This creates the internal workflow record. It starts in sourced state and moves to review when
-          submitted.
-        </p>
-        {resolvedSearchParams.error ? <p className="error-text">{resolvedSearchParams.error}</p> : null}
-        <div className="public-actions">
-          <Link className="button button-secondary" href={APP_ROUTES.internal.candidates.list}>
+    <section className="application-create-page">
+      <header className="application-create-header">
+        <div>
+          <p className="application-create-kicker">Applications</p>
+          <h1>Create Application Mapping</h1>
+          <p>Link candidate to job with recruiter ownership before moving into review workflow.</p>
+        </div>
+        <div className="application-create-header-actions">
+          <Link className="application-create-head-btn" href={APP_ROUTES.internal.candidates.list}>
             Candidate Bank
           </Link>
-          <Link className="button button-secondary" href={APP_ROUTES.internal.applications.list}>
+          <Link className="application-create-head-btn" href={APP_ROUTES.internal.applications.list}>
             Applications
           </Link>
         </div>
-      </article>
+      </header>
 
-      <article className="panel">
-        <h2>Submission Checklist</h2>
-        <div className="workflow-steps">
-          <div className="workflow-step">
-            <span className="workflow-step-number">1</span>
-            <div>
-              <p className="workflow-step-title">Select candidate</p>
-              <p className="workflow-step-desc">Candidate master record must exist first.</p>
-            </div>
-          </div>
-          <div className="workflow-step">
-            <span className="workflow-step-number">2</span>
-            <div>
-              <p className="workflow-step-title">Select job</p>
-              <p className="workflow-step-desc">Only visible/assigned jobs are shown.</p>
-            </div>
-          </div>
-          <div className="workflow-step">
-            <span className="workflow-step-number">3</span>
-            <div>
-              <p className="workflow-step-title">Add recruiter note</p>
-              <p className="workflow-step-desc">Help lead recruiter with quick evaluation context.</p>
-            </div>
-          </div>
-        </div>
-      </article>
+      {resolvedSearchParams.error ? (
+        <p className="application-create-feedback application-create-feedback-error">{resolvedSearchParams.error}</p>
+      ) : null}
 
-      <article className="panel">
-        <h2>Current Scope</h2>
-        <div className="kpi-grid">
-          <div className="kpi-card">
-            <p className="kpi-value">{candidates.docs.length}</p>
-            <p className="kpi-label">Visible Candidates</p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-value">{jobs.docs.length}</p>
-            <p className="kpi-label">Visible Jobs</p>
-          </div>
-          {isAdmin ? (
-            <div className="kpi-card">
-              <p className="kpi-value">{recruiters.docs.length}</p>
-              <p className="kpi-label">Active Recruiters</p>
-            </div>
-          ) : null}
-        </div>
-      </article>
+      <section className="application-create-kpis">
+        <article>
+          <p>Visible Candidates</p>
+          <strong>{candidates.length}</strong>
+        </article>
+        <article>
+          <p>Visible Jobs</p>
+          <strong>{jobs.length}</strong>
+        </article>
+        <article>
+          <p>Recruiters</p>
+          <strong>{recruitersResult.docs.length}</strong>
+        </article>
+      </section>
 
-      <article className="panel panel-span-2">
-        {jobs.docs.length === 0 || candidates.docs.length === 0 ? (
-          <p className="board-empty">
-            At least one visible candidate and one visible job are required to create an application.
-          </p>
-        ) : (
-          <form action={APP_ROUTES.internal.applications.create} className="auth-form" method="post">
-            <div className="split-grid">
-              <div>
-                <label className="form-field" htmlFor="candidateId">
-                  Candidate
-                </label>
-                <select className="input" defaultValue={selectedCandidateID} id="candidateId" name="candidateId" required>
+      {missingCoreData ? (
+        <article className="application-create-empty">
+          {canSelectRecruiter && recruitersResult.docs.length === 0
+            ? 'No active recruiters found. Add or activate a recruiter first.'
+            : 'At least one visible candidate and one visible job are required to create an application mapping.'}
+        </article>
+      ) : (
+        <form action={APP_ROUTES.internal.applications.create} className="application-create-form" method="post">
+          <div className="application-create-grid">
+            <section className="application-create-card">
+              <h2>Application Details</h2>
+
+              <label>
+                <span>Candidate *</span>
+                <select defaultValue={normalizedCandidateID} name="candidateId" required>
                   <option value="">Select candidate</option>
-                  {candidates.docs.map((candidate) => (
-                    <option key={`application-candidate-${candidate.id}`} value={candidate.id}>
-                      {candidate.fullName} | {candidate.email || candidate.phone || 'No contact'}
+                  {candidates.map((candidate) => (
+                    <option key={`candidate-option-${candidate.id}`} value={candidate.id}>
+                      {candidate.name} | {candidate.contact}
                     </option>
                   ))}
                 </select>
+              </label>
 
-                <label className="form-field" htmlFor="jobId">
-                  Job
-                </label>
-                <select className="input" defaultValue={selectedJobID} id="jobId" name="jobId" required>
+              <label>
+                <span>Job *</span>
+                <select defaultValue={normalizedJobID} name="jobId" required>
                   <option value="">Select job</option>
-                  {jobs.docs.map((job) => (
-                    <option key={`application-job-${job.id}`} value={job.id}>
-                      {job.title} | {readLabel(job.client)}
+                  {jobs.map((job) => (
+                    <option key={`job-option-${job.id}`} value={job.id}>
+                      {job.title} | {job.clientLabel}
                     </option>
                   ))}
                 </select>
-              </div>
+              </label>
 
-              <div>
-                {isAdmin ? (
-                  <>
-                    <label className="form-field" htmlFor="recruiterId">
-                      Recruiter
-                    </label>
-                    <select className="input" id="recruiterId" name="recruiterId" required>
-                      <option value="">Select recruiter</option>
-                      {recruiters.docs.map((recruiter) => (
-                        <option key={`application-recruiter-${recruiter.id}`} value={recruiter.id}>
-                          {recruiter.fullName || recruiter.email}
-                        </option>
-                      ))}
-                    </select>
-                  </>
-                ) : (
-                  <input name="recruiterId" type="hidden" value={String(user.id)} />
-                )}
-
-                <label className="form-field" htmlFor="latestComment">
-                  Recruiter Comment
+              {canSelectRecruiter ? (
+                <label>
+                  <span>Recruiter *</span>
+                  <select name="recruiterId" required>
+                    <option value="">Select recruiter</option>
+                    {recruitersResult.docs.map((recruiter) => (
+                      <option key={`recruiter-option-${recruiter.id}`} value={String(recruiter.id)}>
+                        {recruiter.fullName || recruiter.email}
+                      </option>
+                    ))}
+                  </select>
                 </label>
+              ) : (
+                <input name="recruiterId" type="hidden" value={String(user.id)} />
+              )}
+
+              <label>
+                <span>Recruiter Comment</span>
                 <textarea
-                  className="input"
-                  id="latestComment"
                   name="latestComment"
-                  placeholder="Short summary for review (skills, fit, availability)"
-                  rows={4}
+                  placeholder="Short summary for lead review (fit, availability, strengths)"
+                  rows={3}
                 />
+              </label>
 
-                <label className="form-field" htmlFor="notes">
-                  Notes
-                </label>
-                <textarea className="input" id="notes" name="notes" rows={4} />
+              <label>
+                <span>Internal Notes</span>
+                <textarea name="notes" placeholder="Additional private notes for internal team" rows={3} />
+              </label>
+            </section>
+
+            <aside className="application-create-card">
+              <h2>Quick Context</h2>
+              <div className="application-create-list">
+                {candidates.slice(0, 8).map((candidate) => (
+                  <article key={`candidate-preview-${candidate.id}`}>
+                    <p>{candidate.name}</p>
+                    <small>
+                      {candidate.totalExperienceYears === null
+                        ? 'Experience not set'
+                        : `${candidate.totalExperienceYears}y exp`}
+                    </small>
+                    <small>
+                      {candidate.skills.length > 0 ? candidate.skills.slice(0, 3).join(', ') : 'Skills not set'}
+                    </small>
+                    <small>{candidate.resumeUploaded ? 'Resume uploaded' : 'Resume missing'}</small>
+                  </article>
+                ))}
               </div>
-            </div>
+            </aside>
+          </div>
 
-            <button className="button" data-pending-label="Creating..." type="submit">
+          <footer className="application-create-footer">
+            <Link className="application-create-cancel" href={APP_ROUTES.internal.applications.list}>
+              Cancel
+            </Link>
+            <button className="application-create-submit" data-pending-label="Creating..." type="submit">
               Create Application
             </button>
-          </form>
-        )}
-      </article>
-
-      <article className="panel panel-span-2">
-        <h2>Candidate Quick Context</h2>
-        <div className="kanban-cards">
-          {candidates.docs.slice(0, 10).map((candidate) => (
-            <article className="kanban-card" key={`new-app-candidate-${candidate.id}`}>
-              <p className="kanban-title">{candidate.fullName}</p>
-              <p className="kanban-meta">Source Job: {readLabel(candidate.sourceJob)}</p>
-              <p className="kanban-meta">
-                Resume: {extractRelationshipID(candidate.resume) ? 'Uploaded' : 'Not uploaded'}
-              </p>
-            </article>
-          ))}
-        </div>
-      </article>
+          </footer>
+        </form>
+      )}
     </section>
   )
 }

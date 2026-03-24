@@ -1,4 +1,5 @@
 import configPromise from '@payload-config'
+import Image from 'next/image'
 import Link from 'next/link'
 import { getPayload, type Where } from 'payload'
 
@@ -6,19 +7,105 @@ import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
-const toDateTimeLabel = (value: string): string =>
-  new Date(value).toLocaleString('en-IN', {
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+const PAGE_SIZE = 9
+
+const CLIENT_SIZE_OPTIONS = [
+  { label: '1-50', value: '1-50' },
+  { label: '51-200', value: '51-200' },
+  { label: '201-1000', value: '201-1000' },
+  { label: '1000+', value: '1000+' },
+] as const
+
+const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
+  if (!value) {
+    return fallback
+  }
+
+  if (typeof value === 'number' || typeof value === 'string') {
+    return String(value)
+  }
+
+  if (typeof value === 'object') {
+    const typed = value as { email?: string; fullName?: string; name?: string; title?: string }
+    return typed.fullName || typed.name || typed.title || typed.email || fallback
+  }
+
+  return fallback
+}
+
+const getInitials = (value: string): string =>
+  value
+    .split(' ')
+    .map((part) => part[0] || '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+const parsePage = (value: string | undefined): number => {
+  if (!value || !/^\d+$/.test(value)) {
+    return 1
+  }
+
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+}
+
+const buildClientsQuery = ({
+  page,
+  q,
+  status,
+}: {
+  page: number
+  q: string
+  status: string
+}): string => {
+  const params = new URLSearchParams()
+
+  if (q) {
+    params.set('q', q)
+  }
+
+  if (status) {
+    params.set('status', status)
+  }
+
+  if (page > 1) {
+    params.set('page', String(page))
+  }
+
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
+
+const readLogoMeta = (
+  value: unknown,
+): {
+  alt: string
+  url: string | null
+} => {
+  if (!value || typeof value !== 'object') {
+    return {
+      alt: 'Client logo',
+      url: null,
+    }
+  }
+
+  const typed = value as {
+    alt?: unknown
+    url?: unknown
+  }
+
+  return {
+    alt: typeof typed.alt === 'string' && typed.alt.trim().length > 0 ? typed.alt : 'Client logo',
+    url: typeof typed.url === 'string' ? typed.url : null,
+  }
+}
 
 type ClientsPageProps = {
   searchParams?: Promise<{
     create?: string
     error?: string
+    page?: string
     q?: string
     status?: string
     success?: string
@@ -30,21 +117,18 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
   const searchTerm = String(resolvedSearchParams.q || '').trim()
-  const statusFilter = resolvedSearchParams.status === 'active' || resolvedSearchParams.status === 'inactive'
-    ? resolvedSearchParams.status
-    : ''
+  const statusFilter =
+    resolvedSearchParams.status === 'active' || resolvedSearchParams.status === 'inactive'
+      ? resolvedSearchParams.status
+      : ''
+  const requestedPage = parsePage(resolvedSearchParams.page)
   const isCreateModalOpen = resolvedSearchParams.create === '1'
 
   const whereConditions: Where[] = []
 
   if (searchTerm) {
     whereConditions.push({
-      or: [
-        { name: { contains: searchTerm } },
-        { contactPerson: { contains: searchTerm } },
-        { email: { contains: searchTerm } },
-        { phone: { contains: searchTerm } },
-      ],
+      or: [{ name: { contains: searchTerm } }, { location: { contains: searchTerm } }, { contactPerson: { contains: searchTerm } }],
     })
   }
 
@@ -59,23 +143,30 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const whereQuery: Where | undefined =
     whereConditions.length === 0 ? undefined : whereConditions.length === 1 ? whereConditions[0] : { and: whereConditions }
 
-  const [clients, leads] = await Promise.all([
+  const [clientsResult, leadsResult, totalCount, activeCount, inactiveCount, unassignedCount] = await Promise.all([
     payload.find({
       collection: 'clients',
       depth: 1,
-      limit: 200,
+      limit: PAGE_SIZE,
       overrideAccess: false,
-      pagination: false,
+      page: requestedPage,
       select: {
+        address: true,
+        billingTerms: true,
+        companySize: true,
         contactPerson: true,
         email: true,
         id: true,
+        industry: true,
+        location: true,
+        logo: true,
         name: true,
         notes: true,
         owningHeadRecruiter: true,
         phone: true,
         status: true,
         updatedAt: true,
+        website: true,
       },
       sort: '-updatedAt',
       user,
@@ -109,12 +200,80 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
         ],
       },
     }),
+    payload.count({
+      collection: 'clients',
+      overrideAccess: false,
+      user,
+    }),
+    payload.count({
+      collection: 'clients',
+      overrideAccess: false,
+      user,
+      where: {
+        status: {
+          equals: 'active',
+        },
+      },
+    }),
+    payload.count({
+      collection: 'clients',
+      overrideAccess: false,
+      user,
+      where: {
+        status: {
+          equals: 'inactive',
+        },
+      },
+    }),
+    payload.count({
+      collection: 'clients',
+      overrideAccess: false,
+      user,
+      where: {
+        owningHeadRecruiter: {
+          exists: false,
+        },
+      },
+    }),
   ])
 
-  const totalCount = clients.docs.length
-  const activeCount = clients.docs.filter((client) => client.status === 'active').length
-  const inactiveCount = clients.docs.filter((client) => client.status === 'inactive').length
-  const unassignedCount = clients.docs.filter((client) => !extractRelationshipID(client.owningHeadRecruiter)).length
+  const clientIDs = clientsResult.docs.map((client) => client.id)
+  const jobsForVisibleClients =
+    clientIDs.length === 0
+      ? { docs: [] as Array<{ client?: number | string | null; status?: string | null }> }
+      : await payload.find({
+          collection: 'jobs',
+          depth: 0,
+          limit: 500,
+          overrideAccess: false,
+          pagination: false,
+          select: {
+            client: true,
+            status: true,
+          },
+          user,
+          where: {
+            client: {
+              in: clientIDs,
+            },
+          },
+        })
+
+  const jobStatsByClientID = new Map<string, { active: number; total: number }>()
+  jobsForVisibleClients.docs.forEach((job) => {
+    const clientID = extractRelationshipID(job.client)
+    if (!clientID) {
+      return
+    }
+
+    const key = String(clientID)
+    const prev = jobStatsByClientID.get(key) || { active: 0, total: 0 }
+    const isActive = job.status === 'active' || job.status === 'onHold'
+    jobStatsByClientID.set(key, {
+      active: prev.active + (isActive ? 1 : 0),
+      total: prev.total + 1,
+    })
+  })
 
   const successMessage =
     resolvedSearchParams.success === 'clientCreated'
@@ -123,268 +282,291 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
         ? 'Client details updated successfully.'
         : ''
 
+  const currentPage = clientsResult.page || 1
+  const totalPages = Math.max(clientsResult.totalPages || 1, 1)
+  const previousPage = Math.max(currentPage - 1, 1)
+  const nextPage = Math.min(currentPage + 1, totalPages)
+
   return (
-    <section className="clients-admin-page">
-      <header className="clients-admin-header">
+    <section className="clients-grid-page">
+      <header className="clients-grid-header">
         <div>
-          <p className="clients-admin-kicker">Clients | Admin</p>
-          <h1>Client Management</h1>
-          <p>Manage organization profiles, ownership, and status controls from one workspace.</p>
+          <p className="clients-grid-kicker">Clients | Admin</p>
+          <h1>Clients Directory</h1>
+          <p>Manage client accounts with clear ownership, branding, and hiring context.</p>
         </div>
-        <div className="clients-admin-header-actions">
-          <Link className="clients-header-button" href={APP_ROUTES.internal.assignments.head}>
+        <div className="clients-grid-header-actions">
+          <Link className="clients-grid-header-btn" href={APP_ROUTES.internal.assignments.head}>
             Assign Leads
           </Link>
-          <Link className="clients-header-button clients-header-button-primary" href={`${APP_ROUTES.internal.clients.list}?create=1`}>
-            + Create Client
+          <Link className="clients-grid-header-btn clients-grid-header-btn-primary" href={`${APP_ROUTES.internal.clients.list}?create=1`}>
+            + Add Client
           </Link>
         </div>
       </header>
 
-      {successMessage ? <p className="clients-feedback clients-feedback-success">{successMessage}</p> : null}
-      {resolvedSearchParams.error ? <p className="clients-feedback clients-feedback-error">{resolvedSearchParams.error}</p> : null}
+      {successMessage ? <p className="clients-grid-feedback clients-grid-feedback-success">{successMessage}</p> : null}
+      {resolvedSearchParams.error ? <p className="clients-grid-feedback clients-grid-feedback-error">{resolvedSearchParams.error}</p> : null}
 
-      <section className="clients-admin-kpi-grid">
-        <article className="clients-admin-kpi">
+      <section className="clients-grid-kpis">
+        <article className="clients-grid-kpi">
           <p>Total Clients</p>
-          <strong>{totalCount}</strong>
+          <strong>{totalCount.totalDocs}</strong>
         </article>
-        <article className="clients-admin-kpi">
+        <article className="clients-grid-kpi">
           <p>Active</p>
-          <strong>{activeCount}</strong>
+          <strong>{activeCount.totalDocs}</strong>
         </article>
-        <article className="clients-admin-kpi">
+        <article className="clients-grid-kpi">
           <p>Inactive</p>
-          <strong>{inactiveCount}</strong>
+          <strong>{inactiveCount.totalDocs}</strong>
         </article>
-        <article className="clients-admin-kpi">
+        <article className="clients-grid-kpi">
           <p>Unassigned Lead</p>
-          <strong>{unassignedCount}</strong>
+          <strong>{unassignedCount.totalDocs}</strong>
         </article>
       </section>
 
-      <article className="clients-admin-card">
-        <form className="clients-toolbar" method="get">
-          <label className="clients-toolbar-search" htmlFor="clients-search">
-            <span>Search</span>
-            <input
-              defaultValue={searchTerm}
-              id="clients-search"
-              name="q"
-              placeholder="Search by client, contact, email, phone..."
-              type="text"
-            />
-          </label>
+      <article className="clients-grid-toolbar-card">
+        <form className="clients-grid-toolbar" method="get">
+          <input
+            defaultValue={searchTerm}
+            name="q"
+            placeholder="Search by client, location, contact..."
+            type="search"
+          />
 
-          <label className="clients-toolbar-filter" htmlFor="clients-status">
-            <span>Status</span>
-            <select defaultValue={statusFilter} id="clients-status" name="status">
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </label>
+          <select defaultValue={statusFilter} name="status">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
 
-          <button className="clients-toolbar-button" type="submit">
-            Apply
-          </button>
-          <Link className="clients-toolbar-button clients-toolbar-button-secondary" href={APP_ROUTES.internal.clients.list}>
-            Reset
-          </Link>
+          <button type="submit">Apply</button>
+          <Link href={APP_ROUTES.internal.clients.list}>Reset</Link>
         </form>
-
-        <div className="clients-table-wrapper">
-          <table className="clients-table">
-            <thead>
-              <tr>
-                <th>Organization</th>
-                <th>Contact</th>
-                <th>Primary Lead</th>
-                <th>Status</th>
-                <th>Notes</th>
-                <th>Updated</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.docs.length === 0 ? (
-                <tr>
-                  <td className="clients-table-empty" colSpan={7}>
-                    No clients found for current filters.
-                  </td>
-                </tr>
-              ) : (
-                clients.docs.map((client) => {
-                  const formID = `client-update-${client.id}`
-
-                  return (
-                    <tr key={`client-row-${client.id}`}>
-                      <td>
-                        <p className="clients-table-name">{client.name}</p>
-                        <p className="clients-table-subtitle">{client.contactPerson}</p>
-                      </td>
-                      <td>
-                        <p className="clients-table-subtitle">{client.email}</p>
-                        <p className="clients-table-subtitle">{client.phone}</p>
-                      </td>
-                      <td>
-                        <select
-                          className="clients-inline-select"
-                          defaultValue={String(extractRelationshipID(client.owningHeadRecruiter) || '')}
-                          form={formID}
-                          name="leadRecruiterId"
-                        >
-                          <option value="">Unassigned</option>
-                          {leads.docs.map((lead) => (
-                            <option key={`client-row-${client.id}-lead-${lead.id}`} value={String(lead.id)}>
-                              {lead.fullName || lead.email}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <span
-                          className={
-                            client.status === 'active'
-                              ? 'clients-status-pill clients-status-pill-active'
-                              : 'clients-status-pill clients-status-pill-inactive'
-                          }
-                        >
-                          {client.status === 'active' ? 'Active' : 'Inactive'}
-                        </span>
-                        <select
-                          className="clients-inline-select clients-inline-select-sm"
-                          defaultValue={client.status}
-                          form={formID}
-                          name="status"
-                        >
-                          <option value="active">Active</option>
-                          <option value="inactive">Inactive</option>
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          className="clients-inline-input"
-                          defaultValue={client.notes || ''}
-                          form={formID}
-                          name="notes"
-                          placeholder="Add note"
-                          type="text"
-                        />
-                      </td>
-                      <td className="clients-table-subtitle">{toDateTimeLabel(client.updatedAt)}</td>
-                      <td>
-                        <form action={APP_ROUTES.internal.clients.create} id={formID} method="post">
-                          <input name="clientId" type="hidden" value={String(client.id)} />
-                          <button className="clients-row-save" data-pending-label="Saving..." type="submit">
-                            Save
-                          </button>
-                        </form>
-                        <Link className="clients-row-link" href={APP_ROUTES.internal.jobs.assigned}>
-                          Jobs
-                        </Link>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
       </article>
 
+      {clientsResult.docs.length === 0 ? (
+        <article className="clients-grid-empty">
+          No clients found for this filter set.
+        </article>
+      ) : (
+        <section className="clients-grid-cards">
+          {clientsResult.docs.map((client) => {
+            const logo = readLogoMeta(client.logo)
+            const leadLabel = readLabel(client.owningHeadRecruiter, 'Unassigned')
+            const stats = jobStatsByClientID.get(String(client.id)) || { active: 0, total: 0 }
+
+            return (
+              <article className="client-grid-card" key={`client-${client.id}`}>
+                <header className="client-grid-card-head">
+                  <div className="client-grid-logo-wrap">
+                    {logo.url ? (
+                      <Image alt={logo.alt} className="client-grid-logo" height={36} src={logo.url} width={36} />
+                    ) : (
+                      <span className="client-grid-logo-fallback">{getInitials(client.name)}</span>
+                    )}
+                  </div>
+                  <div className="client-grid-card-title-wrap">
+                    <h3>{client.name}</h3>
+                    <p>{client.industry || 'Industry not set'}</p>
+                  </div>
+                  <span
+                    className={
+                      client.status === 'active'
+                        ? 'client-grid-status client-grid-status-active'
+                        : 'client-grid-status client-grid-status-inactive'
+                    }
+                  >
+                    {client.status === 'active' ? 'Active' : 'Inactive'}
+                  </span>
+                </header>
+
+                <div className="client-grid-info">
+                  <p>
+                    <span>Location</span>
+                    {client.location || client.address || 'Not provided'}
+                  </p>
+                  <p>
+                    <span>Contact</span>
+                    {client.contactPerson}
+                  </p>
+                  <p>
+                    <span>Email</span>
+                    {client.email}
+                  </p>
+                  <p>
+                    <span>Phone</span>
+                    {client.phone}
+                  </p>
+                  <p>
+                    <span>Lead</span>
+                    {leadLabel}
+                  </p>
+                  <p>
+                    <span>Jobs</span>
+                    {stats.active} active / {stats.total} total
+                  </p>
+                </div>
+
+                <footer className="client-grid-actions">
+                  <Link className="client-grid-action client-grid-action-primary" href={`${APP_ROUTES.internal.jobs.assigned}?client=${client.id}`}>
+                    Jobs
+                  </Link>
+                  <Link className="client-grid-action" href={`${APP_ROUTES.internal.clients.detailBase}/${client.id}`}>
+                    See More
+                  </Link>
+                </footer>
+              </article>
+            )
+          })}
+        </section>
+      )}
+
+      <footer className="clients-grid-pagination">
+        <p>
+          Page {currentPage} of {totalPages}
+        </p>
+
+        <div className="clients-grid-pagination-links">
+          <Link
+            aria-disabled={currentPage <= 1}
+            className={currentPage <= 1 ? 'clients-grid-page-link clients-grid-page-link-disabled' : 'clients-grid-page-link'}
+            href={`${APP_ROUTES.internal.clients.list}${buildClientsQuery({ page: previousPage, q: searchTerm, status: statusFilter })}`}
+          >
+            ‹
+          </Link>
+          <span className="clients-grid-page-indicator">{currentPage}</span>
+          <Link
+            aria-disabled={currentPage >= totalPages}
+            className={currentPage >= totalPages ? 'clients-grid-page-link clients-grid-page-link-disabled' : 'clients-grid-page-link'}
+            href={`${APP_ROUTES.internal.clients.list}${buildClientsQuery({ page: nextPage, q: searchTerm, status: statusFilter })}`}
+          >
+            ›
+          </Link>
+        </div>
+      </footer>
+
       {isCreateModalOpen ? (
-        <section className="clients-modal-layer" role="dialog" aria-modal="true" aria-label="Create Client Profile">
-          <div className="clients-modal-backdrop" />
-          <article className="clients-modal">
-            <div className="clients-modal-head">
+        <section aria-label="Create Client Profile" aria-modal="true" className="clients-create-modal-layer" role="dialog">
+          <div className="clients-create-modal-backdrop" />
+          <article className="clients-create-modal">
+            <div className="clients-create-modal-head">
               <div>
                 <h2>Create Client Profile</h2>
-                <p>Add a new organization to the recruitment ecosystem.</p>
+                <p>Capture branding, primary ownership, and business details in one step.</p>
               </div>
-              <Link className="clients-modal-close" href={APP_ROUTES.internal.clients.list}>
+              <Link className="clients-create-modal-close" href={APP_ROUTES.internal.clients.list}>
                 ✕
               </Link>
             </div>
 
-            <form action={APP_ROUTES.internal.clients.create} className="clients-modal-form" method="post">
-              <label className="clients-modal-field" htmlFor="client-modal-name">
-                <span>Organization Name</span>
-                <input id="client-modal-name" name="name" placeholder="e.g. Acme Corp" required type="text" />
+            <form
+              action={APP_ROUTES.internal.clients.create}
+              className="clients-create-modal-form"
+              encType="multipart/form-data"
+              method="post"
+            >
+              <label>
+                <span>Organization Name *</span>
+                <input name="name" placeholder="e.g. Acme Corp" required type="text" />
               </label>
 
-              <div className="clients-modal-grid">
-                <label className="clients-modal-field" htmlFor="client-modal-industry">
-                  <span>Industry</span>
-                  <select defaultValue="" id="client-modal-industry" name="industry">
-                    <option value="">Select industry</option>
-                    <option value="technology">Technology</option>
-                    <option value="finance">Finance</option>
-                    <option value="healthcare">Healthcare</option>
-                    <option value="logistics">Logistics</option>
-                    <option value="other">Other</option>
-                  </select>
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>Contact Person *</span>
+                  <input name="contactPerson" placeholder="Primary stakeholder" required type="text" />
                 </label>
+                <label>
+                  <span>Phone *</span>
+                  <input name="phone" placeholder="+91 90000 00000" required type="text" />
+                </label>
+              </div>
 
-                <label className="clients-modal-field" htmlFor="client-modal-status">
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>Contact Email *</span>
+                  <input name="email" placeholder="contact@company.com" required type="email" />
+                </label>
+                <label>
                   <span>Status</span>
-                  <select defaultValue="active" id="client-modal-status" name="status">
+                  <select defaultValue="active" name="status">
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
                 </label>
               </div>
 
-              <div className="clients-modal-grid">
-                <label className="clients-modal-field" htmlFor="client-modal-contact">
-                  <span>Contact Person</span>
-                  <input id="client-modal-contact" name="contactPerson" placeholder="Primary contact name" required type="text" />
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>Industry</span>
+                  <input name="industry" placeholder="Technology, Finance..." type="text" />
                 </label>
-                <label className="clients-modal-field" htmlFor="client-modal-phone">
-                  <span>Phone</span>
-                  <input id="client-modal-phone" name="phone" placeholder="+91 90000 00000" required type="text" />
+                <label>
+                  <span>Company Size</span>
+                  <select defaultValue="" name="companySize">
+                    <option value="">Select size</option>
+                    {CLIENT_SIZE_OPTIONS.map((option) => (
+                      <option key={`company-size-${option.value}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
 
-              <label className="clients-modal-field" htmlFor="client-modal-email">
-                <span>Primary Contact Email</span>
-                <input id="client-modal-email" name="email" placeholder="contact@company.com" required type="email" />
-              </label>
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>Location</span>
+                  <input name="location" placeholder="Hyderabad, India" type="text" />
+                </label>
+                <label>
+                  <span>Website</span>
+                  <input name="website" placeholder="https://example.com" type="url" />
+                </label>
+              </div>
 
-              <label className="clients-modal-field" htmlFor="client-modal-lead">
-                <span>Assigned Account Lead</span>
-                <select defaultValue="" id="client-modal-lead" name="leadRecruiterId">
-                  <option value="">Unassigned</option>
-                  {leads.docs.map((lead) => (
-                    <option key={`client-modal-lead-${lead.id}`} value={String(lead.id)}>
-                      {lead.fullName || lead.email}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>Assigned Lead</span>
+                  <select defaultValue="" name="leadRecruiterId">
+                    <option value="">Unassigned</option>
+                    {leadsResult.docs.map((lead) => (
+                      <option key={`lead-${lead.id}`} value={String(lead.id)}>
+                        {lead.fullName || lead.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Logo</span>
+                  <input accept=".jpg,.jpeg,.png,.webp,.svg,image/jpeg,image/png,image/webp,image/svg+xml" name="logo" type="file" />
+                </label>
+              </div>
 
-              <div className="clients-modal-grid">
-                <label className="clients-modal-field" htmlFor="client-modal-address">
+              <div className="clients-create-modal-grid">
+                <label>
                   <span>Address</span>
-                  <input id="client-modal-address" name="address" placeholder="City, state, country" type="text" />
+                  <textarea name="address" placeholder="Street, city, state, country" rows={2} />
                 </label>
-                <label className="clients-modal-field" htmlFor="client-modal-billing">
+                <label>
                   <span>Billing Terms</span>
-                  <input id="client-modal-billing" name="billingTerms" placeholder="e.g. Net 30" type="text" />
+                  <textarea name="billingTerms" placeholder="Net 30, milestone based, etc." rows={2} />
                 </label>
               </div>
 
-              <label className="clients-modal-field" htmlFor="client-modal-notes">
+              <label>
                 <span>Notes</span>
-                <textarea id="client-modal-notes" name="notes" placeholder="Any additional notes" rows={3} />
+                <textarea name="notes" placeholder="Client expectations, constraints, SLA notes..." rows={3} />
               </label>
 
-              <div className="clients-modal-footer">
-                <Link className="clients-modal-cancel" href={APP_ROUTES.internal.clients.list}>
-                  Discard Draft
+              <div className="clients-create-modal-footer">
+                <Link className="clients-create-modal-cancel" href={APP_ROUTES.internal.clients.list}>
+                  Discard
                 </Link>
-                <button className="clients-modal-submit" data-pending-label="Creating..." type="submit">
-                  Initialize Client
+                <button className="clients-create-modal-submit" data-pending-label="Creating..." type="submit">
+                  Create Client
                 </button>
               </div>
             </form>

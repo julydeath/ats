@@ -120,8 +120,8 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
   const skillFilter = (resolvedSearchParams.skill || '').trim()
   const expFilter = (resolvedSearchParams.exp || '').trim()
   const requestedPage = Number.parseInt(String(resolvedSearchParams.page || '1'), 10)
-  const canCreateCandidate = user.role === 'admin' || user.role === 'recruiter'
-  const canCreateApplication = user.role === 'admin' || user.role === 'recruiter'
+  const canCreateCandidate = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
+  const canCreateApplication = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
 
   const candidatesResult = await payload.find({
     collection: 'candidates',
@@ -136,6 +136,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
       fullName: true,
       id: true,
       phone: true,
+      skills: true,
       source: true,
       sourceJob: true,
       totalExperienceYears: true,
@@ -145,11 +146,17 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
     user,
   })
 
-  const roleOptions = Array.from(
+  const skillOptions = Array.from(
     new Set(
-      candidatesResult.docs
-        .map((candidate) => (candidate.currentRole || '').trim())
-        .filter((value) => value.length > 0),
+      candidatesResult.docs.flatMap((candidate) => {
+        const skills = Array.isArray(candidate.skills)
+          ? candidate.skills
+              .map((skill) => (typeof skill === 'string' ? skill.trim() : ''))
+              .filter((skill) => skill.length > 0)
+          : []
+        const role = (candidate.currentRole || '').trim()
+        return role ? [...skills, role] : skills
+      }),
     ),
   )
     .sort((a, b) => a.localeCompare(b))
@@ -159,6 +166,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
     const searchable = [
       candidate.fullName,
       candidate.currentRole || '',
+      Array.isArray(candidate.skills) ? candidate.skills.join(' ') : '',
       candidate.currentCompany || '',
       candidate.email || '',
       candidate.phone || '',
@@ -167,6 +175,11 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
       .toLowerCase()
 
     const role = (candidate.currentRole || '').trim()
+    const skills = Array.isArray(candidate.skills)
+      ? candidate.skills
+          .map((skill) => (typeof skill === 'string' ? skill.trim() : ''))
+          .filter((skill) => skill.length > 0)
+      : []
     const source = String(candidate.source || '')
     const bucket = getExperienceBucket(
       typeof candidate.totalExperienceYears === 'number' ? candidate.totalExperienceYears : null,
@@ -181,7 +194,12 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
     }
 
     if (skillFilter && normalize(role) !== normalize(skillFilter)) {
-      return false
+      const wantedSkill = normalize(skillFilter)
+      const hasSkillMatch = skills.some((skill) => normalize(skill) === wantedSkill)
+
+      if (!hasSkillMatch) {
+        return false
+      }
     }
 
     if (expFilter && bucket !== expFilter) {
@@ -243,9 +261,9 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
 
           <select className="candidate-mgmt-select" defaultValue={skillFilter} name="skill">
             <option value="">Primary Skill</option>
-            {roleOptions.map((role) => (
-              <option key={`role-${role}`} value={role}>
-                {role}
+            {skillOptions.map((skill) => (
+              <option key={`skill-${skill}`} value={skill}>
+                {skill}
               </option>
             ))}
           </select>
@@ -301,7 +319,13 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                 pagedRows.map((candidate) => {
                   const sourceJobID = extractRelationshipID(candidate.sourceJob)
                   const years = typeof candidate.totalExperienceYears === 'number' ? candidate.totalExperienceYears : null
-                  const skillTag = (candidate.currentRole || 'Generalist').toUpperCase()
+                  const skills = Array.isArray(candidate.skills)
+                    ? candidate.skills
+                        .map((skill) => (typeof skill === 'string' ? skill.trim() : ''))
+                        .filter((skill) => skill.length > 0)
+                    : []
+                  const primarySkill = (skills[0] || candidate.currentRole || 'Generalist').toUpperCase()
+                  const extraSkillsCount = Math.max(skills.length - 1, 0)
                   const sourceLabel = SOURCE_LABELS.get(String(candidate.source || '')) || String(candidate.source || 'Unknown')
 
                   return (
@@ -318,8 +342,14 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
 
                       <td>
                         <div className="candidate-mgmt-skill-cell">
-                          <span className="candidate-mgmt-skill-pill">{skillTag}</span>
-                          <p>{years === null ? 'Experience not specified' : `${years} Years Experience`}</p>
+                          <span className="candidate-mgmt-skill-pill">{primarySkill}</span>
+                          <p>
+                            {extraSkillsCount > 0
+                              ? `+${extraSkillsCount} additional skill${extraSkillsCount > 1 ? 's' : ''}`
+                              : years === null
+                                ? 'Experience not specified'
+                                : `${years} Years Experience`}
+                          </p>
                         </div>
                       </td>
 

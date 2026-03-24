@@ -4,8 +4,9 @@ import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 
 import { requireInternalRole } from '@/lib/auth/internal-auth'
-import { APPLICATION_STAGE_LABELS } from '@/lib/constants/recruitment'
+import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
+import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   if (!value) {
@@ -17,17 +18,56 @@ const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   }
 
   if (typeof value === 'object') {
-    const typed = value as {
-      email?: string
-      fullName?: string
-      name?: string
-      title?: string
-    }
-
+    const typed = value as { email?: string; fullName?: string; name?: string; title?: string }
     return typed.fullName || typed.title || typed.name || typed.email || fallback
   }
 
   return fallback
+}
+
+const formatDateTime = (value: string | Date | null | undefined): string => {
+  if (!value) {
+    return 'Not set'
+  }
+
+  const date = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(date.getTime())) {
+    return 'Not set'
+  }
+
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+const canSubmitForReview = ({
+  recruiter,
+  stage,
+  userID,
+  userRole,
+}: {
+  recruiter: unknown
+  stage: ApplicationStage
+  userID: number | string
+  userRole: string
+}): boolean => {
+  if (stage !== 'sourcedByRecruiter' && stage !== 'sentBackForCorrection') {
+    return false
+  }
+
+  if (userRole === 'admin' || userRole === 'leadRecruiter') {
+    return true
+  }
+
+  if (userRole !== 'recruiter') {
+    return false
+  }
+
+  return String(extractRelationshipID(recruiter)) === String(userID)
 }
 
 type ApplicationDetailPageProps = {
@@ -70,6 +110,7 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
           reviewedBy: true,
           stage: true,
           submittedAt: true,
+          updatedAt: true,
         },
         user,
       }),
@@ -97,82 +138,119 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
       }),
     ])
 
+    const stage = application.stage as ApplicationStage
+    const stageLabel = APPLICATION_STAGE_LABELS[stage] || stage
+    const allowSubmitForReview = canSubmitForReview({
+      recruiter: application.recruiter,
+      stage,
+      userID: user.id,
+      userRole: user.role,
+    })
+    const allowReview = (user.role === 'admin' || user.role === 'leadRecruiter') && stage === 'internalReviewPending'
+
     return (
-      <section className="dashboard-grid">
-        <article className="panel panel-span-2">
-          <p className="eyebrow">Application Detail</p>
-          <h1>{readLabel(application.candidate)}</h1>
-          <p className="panel-intro">
-            Current stage: <strong>{APPLICATION_STAGE_LABELS[application.stage] || application.stage}</strong>
-          </p>
-          {resolvedSearchParams.success ? <p className="muted small">Application action completed.</p> : null}
-          <div className="public-actions">
-            <Link className="button button-secondary" href={APP_ROUTES.internal.applications.list}>
-              Back to Applications
-            </Link>
-            <Link className="button button-secondary" href={APP_ROUTES.internal.applications.reviewQueue}>
-              Open Review Queue
+      <section className="application-detail-page">
+        <header className="application-detail-header">
+          <div>
+            <p className="application-detail-kicker">Application Detail</p>
+            <h1>{readLabel(application.candidate)}</h1>
+            <p>Job: {readLabel(application.job)} · Recruiter: {readLabel(application.recruiter)}</p>
+          </div>
+          <div className="application-detail-header-actions">
+            <span className="application-detail-stage">{stageLabel}</span>
+            <Link className="application-detail-header-btn" href={APP_ROUTES.internal.applications.list}>
+              Back
             </Link>
           </div>
-        </article>
+        </header>
 
-        <article className="panel">
-          <h2>Mapping</h2>
-          <p className="kanban-meta">Candidate: {readLabel(application.candidate)}</p>
-          <p className="kanban-meta">Job: {readLabel(application.job)}</p>
-          <p className="kanban-meta">Recruiter: {readLabel(application.recruiter)}</p>
-          <p className="kanban-meta">
-            Stage: {APPLICATION_STAGE_LABELS[application.stage] || application.stage}
-          </p>
-        </article>
+        {resolvedSearchParams.success ? (
+          <p className="application-detail-feedback">Application action completed successfully.</p>
+        ) : null}
 
-        <article className="panel">
-          <h2>Timeline Snapshot</h2>
-          <p className="kanban-meta">Submitted At: {application.submittedAt || 'Not submitted yet'}</p>
-          <p className="kanban-meta">Reviewed At: {application.reviewedAt || 'Not reviewed yet'}</p>
-          <p className="kanban-meta">Reviewed By: {readLabel(application.reviewedBy, 'Not reviewed yet')}</p>
-          <p className="kanban-meta">Candidate Invited At: {application.candidateInvitedAt || 'Not invited yet'}</p>
-          <p className="kanban-meta">Candidate Applied At: {application.candidateAppliedAt || 'Not applied yet'}</p>
-        </article>
+        <div className="application-detail-grid">
+          <article className="application-detail-card">
+            <h2>Timeline</h2>
+            <div className="application-detail-info-list">
+              <p><span>Submitted At</span>{formatDateTime(application.submittedAt)}</p>
+              <p><span>Reviewed At</span>{formatDateTime(application.reviewedAt)}</p>
+              <p><span>Reviewed By</span>{readLabel(application.reviewedBy, 'Not reviewed')}</p>
+              <p><span>Candidate Invited At</span>{formatDateTime(application.candidateInvitedAt)}</p>
+              <p><span>Candidate Applied At</span>{formatDateTime(application.candidateAppliedAt)}</p>
+              <p><span>Last Updated</span>{formatDateTime(application.updatedAt)}</p>
+            </div>
+          </article>
 
-        <article className="panel">
-          <h2>Current Notes</h2>
-          <p className="kanban-meta">Latest Comment: {application.latestComment || 'No comment'}</p>
-          <p className="kanban-meta">Notes: {application.notes || 'No notes added'}</p>
-        </article>
+          <article className="application-detail-card">
+            <h2>Comments</h2>
+            <div className="application-detail-comment-block">
+              <p><span>Latest Comment</span>{application.latestComment || 'No comment'}</p>
+              <p><span>Notes</span>{application.notes || 'No notes'}</p>
+            </div>
+          </article>
+        </div>
 
-        <article className="panel panel-span-2">
+        {(allowSubmitForReview || allowReview) ? (
+          <article className="application-detail-card">
+            <h2>Actions</h2>
+            <div className="application-detail-actions-grid">
+              {allowSubmitForReview ? (
+                <form action={APP_ROUTES.internal.applications.submit} className="application-detail-form" method="post">
+                  <input name="applicationId" type="hidden" value={String(application.id)} />
+                  <label>
+                    <span>Comment for Reviewer</span>
+                    <textarea name="latestComment" placeholder="Summary for review queue..." rows={3} />
+                  </label>
+                  <button data-pending-label="Submitting..." type="submit">
+                    Send For Review
+                  </button>
+                </form>
+              ) : null}
+
+              {allowReview ? (
+                <form action={APP_ROUTES.internal.applications.review} className="application-detail-form" method="post">
+                  <input name="applicationId" type="hidden" value={String(application.id)} />
+                  <label>
+                    <span>Review Comment</span>
+                    <textarea name="latestComment" placeholder="Decision notes..." rows={3} />
+                  </label>
+                  <div className="application-detail-review-buttons">
+                    <button data-pending-label="Approving..." name="action" type="submit" value="approve">
+                      Approve
+                    </button>
+                    <button data-pending-label="Sending..." name="action" type="submit" value="sendBack">
+                      Send Back
+                    </button>
+                    <button data-pending-label="Rejecting..." name="action" type="submit" value="reject">
+                      Reject
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+            </div>
+          </article>
+        ) : null}
+
+        <article className="application-detail-card">
           <h2>Stage Activity</h2>
           {stageHistory.docs.length === 0 ? (
-            <p className="board-empty">No stage transitions recorded yet.</p>
+            <p className="application-detail-empty">No stage transitions recorded yet.</p>
           ) : (
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Transition</th>
-                    <th>Actor</th>
-                    <th>Comment</th>
-                    <th>Changed At</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stageHistory.docs.map((entry) => (
-                    <tr key={`stage-entry-${entry.id}`}>
-                      <td>
-                        {entry.fromStage
-                          ? `${APPLICATION_STAGE_LABELS[entry.fromStage] || entry.fromStage} -> ${
-                              APPLICATION_STAGE_LABELS[entry.toStage] || entry.toStage
-                            }`
-                          : APPLICATION_STAGE_LABELS[entry.toStage] || entry.toStage}
-                      </td>
-                      <td>{readLabel(entry.actor, 'System')}</td>
-                      <td>{entry.comment || 'No comment'}</td>
-                      <td>{new Date(entry.changedAt).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="application-detail-history-list">
+              {stageHistory.docs.map((entry) => (
+                <article className="application-detail-history-item" key={`stage-history-${entry.id}`}>
+                  <p>
+                    {entry.fromStage
+                      ? `${APPLICATION_STAGE_LABELS[entry.fromStage as ApplicationStage] || entry.fromStage} -> ${
+                          APPLICATION_STAGE_LABELS[entry.toStage as ApplicationStage] || entry.toStage
+                        }`
+                      : APPLICATION_STAGE_LABELS[entry.toStage as ApplicationStage] || entry.toStage}
+                  </p>
+                  <small>Actor: {readLabel(entry.actor, 'System')}</small>
+                  <small>{entry.comment || 'No comment'}</small>
+                  <small>{formatDateTime(entry.changedAt)}</small>
+                </article>
+              ))}
             </div>
           )}
         </article>
