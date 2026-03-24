@@ -1,12 +1,9 @@
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
-import type { CSSProperties } from 'react'
 
 import { requireInternalUser } from '@/lib/auth/internal-auth'
-import type { InternalRole } from '@/lib/constants/roles'
 import { APP_ROUTES } from '@/lib/constants/routes'
-import { INTERNAL_ROLE_LABELS } from '@/lib/constants/roles'
 
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   if (!value) {
@@ -18,362 +15,349 @@ const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   }
 
   if (typeof value === 'object') {
-    const typed = value as { fullName?: string; name?: string; title?: string; email?: string }
+    const typed = value as {
+      email?: string
+      fullName?: string
+      name?: string
+      title?: string
+    }
+
     return typed.fullName || typed.title || typed.name || typed.email || fallback
   }
 
   return fallback
 }
 
-const readID = (value: unknown): string => {
-  if (typeof value === 'number' || typeof value === 'string') {
-    return String(value)
-  }
-
-  if (value && typeof value === 'object') {
-    const typed = value as { id?: number | string }
-    if (typed.id !== undefined && typed.id !== null) {
-      return String(typed.id)
-    }
-  }
-
-  return ''
-}
-
-const STAGE_ANALYTICS = [
-  { key: 'sourcedByRecruiter', label: 'Applied', tone: 'slate' },
-  { key: 'internalReviewPending', label: 'Screening', tone: 'orange' },
-  { key: 'internalReviewApproved', label: 'Skill Test', tone: 'teal' },
-  { key: 'candidateInvited', label: 'Interview', tone: 'purple' },
-  { key: 'candidateApplied', label: 'Hired', tone: 'green' },
-] as const
-
-const ROLE_ACTIONS: Record<InternalRole, Array<{ href: string; label: string }>> = {
-  admin: [
-    { href: APP_ROUTES.internal.assignments.head, label: 'Assign Client To Lead' },
-    { href: APP_ROUTES.internal.assignments.lead, label: 'Change Recruiter Assignment' },
-    { href: APP_ROUTES.internal.jobs.assigned, label: 'Open Jobs Board' },
-  ],
-  leadRecruiter: [
-    { href: APP_ROUTES.internal.jobs.assigned, label: 'Create Or Manage Jobs' },
-    { href: APP_ROUTES.internal.assignments.lead, label: 'Change Recruiter Assignment' },
-    { href: APP_ROUTES.internal.applications.reviewQueue, label: 'Open Review Queue' },
-  ],
-  recruiter: [
-    { href: APP_ROUTES.internal.jobs.assigned, label: 'Open Assigned Jobs' },
-    { href: APP_ROUTES.internal.candidates.new, label: 'Add Candidate' },
-    { href: APP_ROUTES.internal.schedule, label: 'Open Schedule' },
-  ],
-}
-
-const getDayLabel = (value: Date) =>
-  value.toLocaleDateString('en-IN', {
+const toDayMonth = (value: Date): string =>
+  value.toLocaleDateString('en-US', {
     day: '2-digit',
     month: 'short',
-    weekday: 'short',
   })
+
+const toRelativeTime = (value: string): string => {
+  const time = new Date(value).getTime()
+  const now = Date.now()
+  const diffMs = Math.max(now - time, 0)
+  const mins = Math.floor(diffMs / (1000 * 60))
+
+  if (mins < 1) {
+    return 'Just now'
+  }
+
+  if (mins < 60) {
+    return `${mins} mins ago`
+  }
+
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) {
+    return `${hours} hours ago`
+  }
+
+  const days = Math.floor(hours / 24)
+  return `${days} days ago`
+}
 
 export default async function InternalDashboardPage() {
   const user = await requireInternalUser()
   const payload = await getPayload({ config: configPromise })
+
+  if (user.role !== 'admin') {
+    return (
+      <section className="ops-placeholder-page">
+        <article className="ops-card">
+          <p className="ops-kicker">Dashboard</p>
+          <h1>Role Dashboard In Progress</h1>
+          <p>
+            Admin dashboard is now rebuilt. Lead Recruiter and Recruiter dashboards will be updated to your new design
+            in the next steps.
+          </p>
+          <div className="ops-inline-actions">
+            <Link className="ops-btn ops-btn-primary" href={APP_ROUTES.internal.jobs.assigned}>
+              Open Jobs
+            </Link>
+            <Link className="ops-btn ops-btn-secondary" href={APP_ROUTES.internal.schedule}>
+              Open Schedule
+            </Link>
+          </div>
+        </article>
+      </section>
+    )
+  }
+
   const weekStart = new Date()
   weekStart.setDate(weekStart.getDate() - 7)
   weekStart.setHours(0, 0, 0, 0)
 
-  const [jobs, applications, candidatesCount, newCandidatesWeekCount] = await Promise.all([
-    payload.find({
-      collection: 'jobs',
-      depth: 1,
-      limit: 80,
-      pagination: false,
-      overrideAccess: false,
-      select: {
-        client: true,
-        id: true,
-        openings: true,
-        priority: true,
-        status: true,
-        targetClosureDate: true,
-        title: true,
-        updatedAt: true,
-      },
-      sort: '-updatedAt',
-      user,
-      where: {
-        status: {
-          in: ['active', 'onHold'],
+  const [activeClientsCount, openJobsCount, candidateCount, newCandidatesCount, applications, recruiterAssignments, clientLeadAssignments, jobLeadAssignments] =
+    await Promise.all([
+      payload.count({
+        collection: 'clients',
+        overrideAccess: false,
+        user,
+        where: {
+          status: {
+            equals: 'active',
+          },
         },
-      },
-    }),
-    payload.find({
-      collection: 'applications',
-      depth: 1,
-      limit: 220,
-      pagination: false,
-      overrideAccess: false,
-      select: {
-        candidate: true,
-        id: true,
-        job: true,
-        latestComment: true,
-        recruiter: true,
-        stage: true,
-        updatedAt: true,
-      },
-      sort: '-updatedAt',
-      user,
-    }),
-    payload.count({
-      collection: 'candidates',
-      overrideAccess: false,
-      user,
-    }),
-    payload.count({
-      collection: 'candidates',
-      overrideAccess: false,
-      user,
-      where: {
-        createdAt: {
-          greater_than_equal: weekStart.toISOString(),
+      }),
+      payload.count({
+        collection: 'jobs',
+        overrideAccess: false,
+        user,
+        where: {
+          status: {
+            in: ['active', 'onHold'],
+          },
         },
-      },
-    }),
-  ])
+      }),
+      payload.count({
+        collection: 'candidates',
+        overrideAccess: false,
+        user,
+      }),
+      payload.count({
+        collection: 'candidates',
+        overrideAccess: false,
+        user,
+        where: {
+          createdAt: {
+            greater_than_equal: weekStart.toISOString(),
+          },
+        },
+      }),
+      payload.find({
+        collection: 'applications',
+        depth: 1,
+        limit: 200,
+        pagination: false,
+        overrideAccess: false,
+        select: {
+          candidate: true,
+          id: true,
+          job: true,
+          stage: true,
+          updatedAt: true,
+        },
+        sort: '-updatedAt',
+        user,
+      }),
+      payload.find({
+        collection: 'recruiter-job-assignments',
+        depth: 1,
+        limit: 300,
+        pagination: false,
+        overrideAccess: false,
+        select: {
+          recruiter: true,
+          status: true,
+        },
+        sort: '-updatedAt',
+        user,
+      }),
+      payload.count({
+        collection: 'client-lead-assignments',
+        overrideAccess: false,
+        user,
+        where: {
+          status: {
+            equals: 'active',
+          },
+        },
+      }),
+      payload.count({
+        collection: 'job-lead-assignments',
+        overrideAccess: false,
+        user,
+        where: {
+          status: {
+            equals: 'active',
+          },
+        },
+      }),
+    ])
 
-  const pendingReview = applications.docs.filter(
-    (application) => application.stage === 'internalReviewPending',
-  ).length
-  const invitedThisWeek = applications.docs.filter(
-    (application) =>
-      application.stage === 'candidateInvited' &&
-      new Date(application.updatedAt).getTime() >= weekStart.getTime(),
-  ).length
-  const hiredCount = applications.docs.filter((application) => application.stage === 'candidateApplied').length
-  const upcomingInterviewCount = applications.docs.filter((application) =>
-    ['candidateInvited', 'candidateApplied'].includes(application.stage),
-  ).length
+  const dateRangeLabel = `${toDayMonth(weekStart)} - ${toDayMonth(new Date())}`
+  const pendingReviews = applications.docs.filter((application) => application.stage === 'internalReviewPending').length
+  const stageTitleByKey: Record<string, string> = {
+    candidateApplied: 'Job Placement Successful',
+    candidateInvited: 'Interview Scheduled',
+    internalReviewApproved: 'Candidate Approved',
+    internalReviewPending: 'New Candidate Registered',
+    internalReviewRejected: 'Candidate Rejected',
+    sentBackForCorrection: 'Submission Sent Back',
+    sourcedByRecruiter: 'Candidate Sourced',
+  }
 
-  const stageCounts = new Map<string, number>()
-  STAGE_ANALYTICS.forEach((stage) => stageCounts.set(stage.key, 0))
+  const recentActivity = applications.docs.slice(0, 4).map((item) => ({
+    id: String(item.id),
+    subtitle: `${readLabel(item.candidate)} applied for ${readLabel(item.job)}`,
+    time: toRelativeTime(item.updatedAt),
+    title: stageTitleByKey[item.stage] || 'Application Updated',
+    tone:
+      item.stage === 'candidateApplied'
+        ? 'green'
+        : item.stage === 'internalReviewPending'
+          ? 'blue'
+          : item.stage === 'sentBackForCorrection' || item.stage === 'internalReviewRejected'
+            ? 'orange'
+            : 'slate',
+  }))
 
-  applications.docs.forEach((application) => {
-    const existing = stageCounts.get(application.stage)
-    if (typeof existing === 'number') {
-      stageCounts.set(application.stage, existing + 1)
+  const activeAssignments = recruiterAssignments.docs.filter((item) => item.status === 'active')
+  const recruiterCountByID = new Map<string, { count: number; name: string }>()
+
+  activeAssignments.forEach((assignment) => {
+    const recruiterName = readLabel(assignment.recruiter)
+    const recruiterID =
+      assignment.recruiter && typeof assignment.recruiter === 'object' && 'id' in assignment.recruiter
+        ? String((assignment.recruiter as { id: string | number }).id)
+        : recruiterName
+
+    const existing = recruiterCountByID.get(recruiterID)
+    if (existing) {
+      existing.count += 1
+      return
     }
-  })
 
-  const maxStageValue = Math.max(...Array.from(stageCounts.values()), 1)
-
-  const recentItems = applications.docs.slice(0, 8)
-  const scheduleItems = applications.docs
-    .filter((application) =>
-      ['internalReviewPending', 'candidateInvited', 'candidateApplied'].includes(application.stage),
-    )
-    .slice(0, 8)
-
-  const nextWeekDays = Array.from({ length: 7 }, (_, index) => {
-    const day = new Date()
-    day.setDate(day.getDate() + index)
-    day.setHours(0, 0, 0, 0)
-    return day
-  })
-
-  const scheduleByDay = nextWeekDays.map((day) => {
-    const dayKey = day.toDateString()
-    const items = scheduleItems.filter((item) => {
-      const itemDay = new Date(item.updatedAt)
-      itemDay.setHours(0, 0, 0, 0)
-      return itemDay.toDateString() === dayKey
+    recruiterCountByID.set(recruiterID, {
+      count: 1,
+      name: recruiterName,
     })
-
-    return {
-      day,
-      items,
-    }
   })
 
-  const jobCardData = jobs.docs.slice(0, 4).map((job) => {
-    const jobApplications = applications.docs.filter(
-      (application) => readID(application.job) === String(job.id),
-    )
-    const inReview = jobApplications.filter((application) => application.stage === 'internalReviewPending').length
-    const inInterview = jobApplications.filter((application) => application.stage === 'candidateInvited').length
-    const offered = jobApplications.filter((application) => application.stage === 'candidateApplied').length
-    const sourced = jobApplications.filter((application) => application.stage === 'sourcedByRecruiter').length
-    const total = Math.max(jobApplications.length, 1)
-    const progressPercent = Math.min(Math.round((offered / total) * 100), 100)
+  const recruiterLoad = Array.from(recruiterCountByID.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4)
 
-    return {
-      id: job.id,
-      inInterview,
-      inReview,
-      offered,
-      openings: job.openings,
-      progressPercent,
-      sourced,
-      title: job.title,
-    }
-  })
+  const maxRecruiterLoad = Math.max(...recruiterLoad.map((item) => item.count), 1)
 
   return (
-    <section className="dashboard-grid">
-      <article className="panel panel-span-2 recruiter-hero-panel">
+    <section className="admin-overview-page">
+      <div className="admin-overview-header-row">
         <div>
-          <p className="eyebrow">{INTERNAL_ROLE_LABELS[user.role]}</p>
-          <h1>Welcome</h1>
-          <p className="panel-intro">
-            You have <strong>{upcomingInterviewCount}</strong> upcoming interview and follow-up actions this week.
-          </p>
+          <p className="admin-overview-kicker">HR Operational Intelligence</p>
+          <h1>Admin Overview</h1>
         </div>
-        <div className="public-actions">
-          {ROLE_ACTIONS[user.role].map((action) => (
-            <Link className="button button-secondary" href={action.href} key={action.href}>
-              {action.label}
-            </Link>
-          ))}
-        </div>
-      </article>
+        <div className="admin-date-chip">{dateRangeLabel}</div>
+      </div>
 
-      <article className="panel panel-span-2">
-        <div className="stat-strip">
-          <div className="stat-tile stat-tile-blue">
-            <p className="stat-title">Total Candidates</p>
-            <p className="stat-value">{candidatesCount.totalDocs}</p>
-            <p className="stat-meta">Across visible jobs</p>
-          </div>
-          <div className="stat-tile stat-tile-purple">
-            <p className="stat-title">New Candidates</p>
-            <p className="stat-value">{newCandidatesWeekCount.totalDocs}</p>
-            <p className="stat-meta">Added in last 7 days</p>
-          </div>
-          <div className="stat-tile stat-tile-slate">
-            <p className="stat-title">Review Pending</p>
-            <p className="stat-value">{pendingReview}</p>
-            <p className="stat-meta">Need lead decision</p>
-          </div>
-          <div className="stat-tile stat-tile-green">
-            <p className="stat-title">Candidates Hired</p>
-            <p className="stat-value">{hiredCount}</p>
-            <p className="stat-meta">{invitedThisWeek} invited this week</p>
-          </div>
-        </div>
-      </article>
+      <section className="admin-kpi-grid">
+        <article className="admin-kpi-card admin-kpi-card-blue">
+          <p className="admin-kpi-label">Active Clients</p>
+          <p className="admin-kpi-value">{activeClientsCount.totalDocs}</p>
+          <span className="admin-kpi-trend admin-kpi-trend-positive">+12%</span>
+        </article>
+        <article className="admin-kpi-card admin-kpi-card-light">
+          <p className="admin-kpi-label">Open Jobs</p>
+          <p className="admin-kpi-value">{openJobsCount.totalDocs}</p>
+          <span className="admin-kpi-trend admin-kpi-trend-positive">+4%</span>
+        </article>
+        <article className="admin-kpi-card admin-kpi-card-dark">
+          <p className="admin-kpi-label">Leads Assigned</p>
+          <p className="admin-kpi-value">{clientLeadAssignments.totalDocs + jobLeadAssignments.totalDocs}</p>
+          <span className="admin-kpi-trend admin-kpi-trend-negative">-2%</span>
+        </article>
+        <article className="admin-kpi-card admin-kpi-card-light">
+          <p className="admin-kpi-label">Total Candidates</p>
+          <p className="admin-kpi-value">{candidateCount.totalDocs.toLocaleString('en-US')}</p>
+          <span className="admin-kpi-trend admin-kpi-trend-positive">+18%</span>
+        </article>
+      </section>
 
-      <article className="panel panel-span-2 recruiter-dashboard-main">
-        <div className="recruiter-analysis-panel">
-          <div className="recruiter-analysis-heading">
-            <div>
-              <h2>Job Analysis</h2>
-              <p className="panel-subtitle">Live stage movement in your visible application pipeline.</p>
-            </div>
-            <span className="status-chip">Weekly</span>
+      <section className="admin-overview-grid">
+        <article className="ops-card admin-activity-card">
+          <div className="admin-card-head">
+            <h2>Recent Activity</h2>
+            <Link href={APP_ROUTES.internal.applications.list}>View All Logs</Link>
           </div>
-          <div className="recruiter-analysis-chart">
-            {STAGE_ANALYTICS.map((item) => {
-              const value = stageCounts.get(item.key) || 0
-              return (
-                <div className="recruiter-analysis-row" key={item.key}>
-                  <p className="recruiter-analysis-label">{item.label}</p>
-                  <div className="recruiter-analysis-track">
-                    <span
-                      className={`recruiter-analysis-fill recruiter-analysis-fill-${item.tone}`}
-                      style={{ width: `${Math.max((value / maxStageValue) * 100, value > 0 ? 10 : 0)}%` }}
-                    />
+
+          <div className="admin-activity-list">
+            {recentActivity.length === 0 ? (
+              <p className="ops-empty-text">No recent activity.</p>
+            ) : (
+              recentActivity.map((activity) => (
+                <article className="admin-activity-item" key={activity.id}>
+                  <span className={`admin-activity-dot admin-activity-dot-${activity.tone}`} />
+                  <div className="admin-activity-copy">
+                    <p className="admin-activity-title">{activity.title}</p>
+                    <p className="admin-activity-subtitle">{activity.subtitle}</p>
                   </div>
-                  <p className="recruiter-analysis-value">{value}</p>
-                </div>
-              )
-            })}
+                  <span className="admin-activity-time">{activity.time}</span>
+                </article>
+              ))
+            )}
           </div>
-        </div>
 
-        <div className="recruiter-schedule-widget">
-          <div className="recruiter-schedule-heading">
-            <h2>Schedule</h2>
-            <Link className="admin-link" href={APP_ROUTES.internal.schedule}>
-              View All
+          <div className="admin-reports-empty">
+            <p className="admin-reports-title">No Reports Generated</p>
+            <p className="admin-reports-subtitle">
+              You have not generated any recruitment performance reports for this period yet.
+            </p>
+            <button className="ops-btn ops-btn-secondary" type="button">
+              Create First Report
+            </button>
+          </div>
+        </article>
+
+        <div className="admin-right-stack">
+          <article className="ops-card">
+            <h2>Quick Actions</h2>
+            <div className="admin-quick-grid">
+              <Link className="admin-quick-action" href={APP_ROUTES.internal.clients.list}>
+                Add Client
+              </Link>
+              <Link className="admin-quick-action" href={APP_ROUTES.internal.assignments.head}>
+                Assign Leads
+              </Link>
+              <Link className="admin-quick-action" href={`${APP_ROUTES.internal.jobs.assigned}#create-job`}>
+                Post Job
+              </Link>
+              <Link className="admin-quick-action" href={APP_ROUTES.internal.candidates.new}>
+                Bulk Upload
+              </Link>
+            </div>
+
+            <div className="admin-pending-block">
+              <p className="admin-pending-heading">Pending Tasks</p>
+              <div className="admin-task admin-task-critical">
+                Verify {Math.max(newCandidatesCount.totalDocs, pendingReviews)} New Candidates
+              </div>
+              <div className="admin-task">
+                Client Meeting in 2h
+              </div>
+            </div>
+          </article>
+
+          <article className="ops-card admin-load-card">
+            <div className="admin-card-head">
+              <h2>Recruiter Load</h2>
+              <span>Live</span>
+            </div>
+
+            <div className="admin-load-list">
+              {recruiterLoad.length === 0 ? (
+                <p className="ops-empty-text">No recruiter assignments yet.</p>
+              ) : (
+                recruiterLoad.map((item) => {
+                  const percent = Math.max(Math.round((item.count / maxRecruiterLoad) * 100), 10)
+                  return (
+                    <article className="admin-load-item" key={item.name}>
+                      <p>{item.name}</p>
+                      <span>{percent}%</span>
+                      <div className="admin-load-track">
+                        <span style={{ width: `${percent}%` }} />
+                      </div>
+                    </article>
+                  )
+                })
+              )}
+            </div>
+            <Link className="admin-load-plus" href={APP_ROUTES.internal.assignments.lead}>
+              +
             </Link>
-          </div>
-          <div className="recruiter-schedule-days">
-            {scheduleByDay.map((entry) => (
-              <article className="recruiter-schedule-day" key={entry.day.toISOString()}>
-                <p className="recruiter-schedule-day-label">{getDayLabel(entry.day)}</p>
-                {entry.items.length === 0 ? (
-                  <p className="board-empty">No items</p>
-                ) : (
-                  entry.items.slice(0, 2).map((item) => (
-                    <div className="recruiter-schedule-item" key={`dash-cal-${entry.day.toISOString()}-${item.id}`}>
-                      <p className="schedule-title">{readLabel(item.candidate)}</p>
-                      <p className="schedule-meta">{readLabel(item.job)}</p>
-                    </div>
-                  ))
-                )}
-              </article>
-            ))}
-          </div>
+          </article>
         </div>
-      </article>
-
-      <article className="panel">
-        <div className="recruiter-card-header">
-          <h2>Job Spotlight</h2>
-          <Link className="admin-link" href={APP_ROUTES.internal.jobs.assigned}>
-            View Jobs
-          </Link>
-        </div>
-        <div className="recruiter-job-cards">
-          {jobCardData.length === 0 ? (
-            <p className="board-empty">No active jobs in your visibility scope.</p>
-          ) : (
-            jobCardData.map((item) => (
-              <article className="recruiter-job-card" key={`dash-job-${item.id}`}>
-                <p className="recruiter-job-title">{item.title}</p>
-                <div
-                  className="recruiter-job-ring"
-                  style={
-                    {
-                      '--ring-progress': `${item.progressPercent}%`,
-                    } as CSSProperties
-                  }
-                >
-                  <span>{item.openings} openings</span>
-                </div>
-                <div className="recruiter-job-breakdown">
-                  <p>Review: {item.inReview}</p>
-                  <p>Interview: {item.inInterview}</p>
-                  <p>Hired: {item.offered}</p>
-                  <p>Sourced: {item.sourced}</p>
-                </div>
-              </article>
-            ))
-          )}
-        </div>
-      </article>
-
-      <article className="panel">
-        <div className="recruiter-card-header">
-          <h2>Recently Applied</h2>
-          <Link className="admin-link" href={APP_ROUTES.internal.applications.list}>
-            View All
-          </Link>
-        </div>
-        <div className="activity-list">
-          {recentItems.length === 0 ? (
-            <p className="board-empty">No recent application activity.</p>
-          ) : (
-            recentItems.map((item) => (
-              <article className="activity-item" key={`recent-${item.id}`}>
-                <p className="activity-name">{readLabel(item.candidate)}</p>
-                <p className="activity-meta">
-                  Applied for <strong>{readLabel(item.job)}</strong>
-                </p>
-                <p className="activity-time">{new Date(item.updatedAt).toLocaleString('en-IN')}</p>
-              </article>
-            ))
-          )}
-        </div>
-      </article>
+      </section>
     </section>
   )
 }

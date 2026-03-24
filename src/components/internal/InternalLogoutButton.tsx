@@ -30,7 +30,7 @@ export const InternalLogoutButton = () => {
 
   return (
     <button className="button button-secondary logout-button" disabled={isSubmitting} onClick={handleLogout} type="button">
-      {isSubmitting ? 'Signing out...' : 'Sign out'}
+      {isSubmitting ? 'Logging out...' : 'Logout'}
     </button>
   )
 }

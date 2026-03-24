@@ -5,7 +5,6 @@ import { FormUXEnhancer } from '@/components/internal/FormUXEnhancer'
 import { InternalNavigation } from '@/components/internal/InternalNavigation'
 import { InternalLogoutButton } from '@/components/internal/InternalLogoutButton'
 import { InternalUXToasts } from '@/components/internal/InternalUXToasts'
-import { RoleOnboardingWalkthrough } from '@/components/internal/RoleOnboardingWalkthrough'
 import { requireInternalUser } from '@/lib/auth/internal-auth'
 import type { InternalRole } from '@/lib/constants/roles'
 import { APP_ROUTES } from '@/lib/constants/routes'
@@ -15,38 +14,26 @@ type InternalProtectedLayoutProps = {
   children: ReactNode
 }
 
-const ROLE_OBJECTIVE: Readonly<Record<InternalRole, string>> = {
-  admin: 'Create clients, assign leads, and keep ownership and review flow healthy.',
-  leadRecruiter: 'Create jobs, assign recruiters, and complete internal review decisions.',
-  recruiter: 'Source candidates, create applications, and submit complete profiles for review.',
+const ROLE_BADGE_LABEL: Readonly<Record<InternalRole, string>> = {
+  admin: 'ADMIN',
+  leadRecruiter: 'LEAD RECRUITER',
+  recruiter: 'RECRUITER',
 }
 
-const PRIMARY_ACTION: Readonly<
-  Record<InternalRole, { href: string; label: string }>
-> = {
-  admin: {
-    href: '/internal/clients',
-    label: 'Create Client',
-  },
-  leadRecruiter: {
-    href: `${APP_ROUTES.internal.jobs.assigned}#create-job`,
-    label: 'Create Job',
-  },
-  recruiter: {
-    href: '/internal/candidates/new',
-    label: 'Add Candidate',
-  },
+const TOP_TABS: Readonly<Record<InternalRole, Array<{ href: string; label: string }>>> = {
+  admin: [
+    { href: APP_ROUTES.internal.dashboard, label: 'Dashboard' },
+    { href: APP_ROUTES.internal.jobs.assigned, label: 'Analytics' },
+    { href: APP_ROUTES.internal.candidates.list, label: 'Directory' },
+  ],
+  leadRecruiter: [],
+  recruiter: [],
 }
 
 export default async function InternalProtectedLayout({ children }: InternalProtectedLayoutProps) {
   const user = await requireInternalUser()
-  const today = new Date().toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    weekday: 'short',
-    year: 'numeric',
-  })
-  const action = PRIMARY_ACTION[user.role]
+
+  const topTabs = TOP_TABS[user.role]
   const avatarText = (user.fullName || user.email || 'User')
     .split(' ')
     .map((part) => part[0] || '')
@@ -55,68 +42,74 @@ export default async function InternalProtectedLayout({ children }: InternalProt
     .toUpperCase()
 
   return (
-    <div className="internal-shell">
-      <aside className="internal-sidebar">
-        <div className="sidebar-brand">
-          <span className="sidebar-brand-mark">RD</span>
-          <div>
-            <p className="sidebar-brand-title">Realizing Dreams</p>
-            <p className="sidebar-brand-subtitle">Inspirix HR Services</p>
-          </div>
-        </div>
-        <div>
-          <p className="sidebar-role">{INTERNAL_ROLE_LABELS[user.role]}</p>
-          <p className="sidebar-objective">{ROLE_OBJECTIVE[user.role]}</p>
-        </div>
-        <InternalNavigation role={user.role} />
-        <div className="sidebar-footer">
-          <Link className="button button-secondary sidebar-settings-button" href={APP_ROUTES.internal.settings}>
-            Settings
+    <div className="ops-shell">
+      <header className="ops-topbar">
+        <div className="ops-topbar-left">
+          <Link className="ops-topbar-brand" href={APP_ROUTES.internal.dashboard}>
+            Inspirix HR
           </Link>
-          <InternalLogoutButton />
+          <span className="ops-role-badge">{ROLE_BADGE_LABEL[user.role]}</span>
         </div>
-      </aside>
 
-      <div className="internal-main">
-        <header className="internal-header">
-          <div className="header-top-row">
-            <Link className="button button-secondary header-browse-jobs" href={APP_ROUTES.internal.jobs.assigned}>
-              Browse Jobs
-            </Link>
-            <form action={APP_ROUTES.internal.candidates.list} className="header-search-form" method="get">
-              <input className="input header-search-input" name="q" placeholder="Search Candidate" type="search" />
-            </form>
-          </div>
-          <div className="header-main-row">
-            <div className="header-user">
-              <p className="muted small">Welcome back</p>
-              <p className="user-email">{user.fullName || user.email}</p>
-              <p className="muted tiny">{INTERNAL_ROLE_LABELS[user.role]} · {today}</p>
-            </div>
-            <div className="header-actions">
-              <Link className="button header-cta" href={action.href}>
-                {action.label}
+        {topTabs.length > 0 ? (
+          <nav aria-label="Dashboard tabs" className="ops-top-tabs">
+            {topTabs.map((tab, index) => (
+              <Link className={`ops-top-tab ${index === 0 ? 'ops-top-tab-active' : ''}`} href={tab.href} key={tab.label}>
+                {tab.label}
               </Link>
-              <div className="header-notification" title="Notifications">
-                <span className="header-notification-dot" />
-              </div>
-              <div className="header-profile">
-                <div className="header-avatar" title={user.fullName || user.email}>
-                  {avatarText}
-                </div>
-                <div className="header-profile-copy">
-                  <p className="header-profile-name">{user.fullName || user.email}</p>
-                  <p className="header-profile-role">{INTERNAL_ROLE_LABELS[user.role]}</p>
-                </div>
-              </div>
+            ))}
+          </nav>
+        ) : (
+          <div />
+        )}
+
+        <div className="ops-topbar-right">
+          <span className="ops-top-icon" title="Notifications">
+            ●
+          </span>
+          <span className="ops-top-icon" title="Apps">
+            ◼
+          </span>
+          <div className="ops-user-pill">
+            <span className="ops-user-avatar">{avatarText}</span>
+            <div className="ops-user-copy">
+              <p className="ops-user-name">{user.fullName || user.email}</p>
+              <p className="ops-user-role">{INTERNAL_ROLE_LABELS[user.role]}</p>
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="internal-content">{children}</main>
+      <div className="ops-body">
+        <aside className="ops-sidebar">
+          <div className="ops-side-brand">
+            <span className="ops-side-brand-mark">■</span>
+            <div>
+              <p className="ops-side-brand-title">Inspirix HR</p>
+              <p className="ops-side-brand-subtitle">Recruitment Ops</p>
+            </div>
+          </div>
+
+          <Link className="ops-post-job-button" href={`${APP_ROUTES.internal.jobs.assigned}#create-job`}>
+            + Post New Job
+          </Link>
+
+          <div className="ops-sidebar-nav-wrap">
+            <InternalNavigation role={user.role} />
+          </div>
+
+          <div className="ops-sidebar-footer">
+            <Link className="ops-help-link" href={APP_ROUTES.root}>
+              Help Center
+            </Link>
+            <InternalLogoutButton />
+          </div>
+        </aside>
+
+        <main className="ops-content">{children}</main>
       </div>
+
       <InternalUXToasts />
-      <RoleOnboardingWalkthrough role={user.role} roleLabel={INTERNAL_ROLE_LABELS[user.role]} />
       <FormUXEnhancer />
     </div>
   )
