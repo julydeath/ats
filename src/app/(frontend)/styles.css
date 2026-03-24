@@ -4713,6 +4713,346 @@ ul {
   width: 2.9rem;
 }
 
+.lead-overview-page {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.lead-overview-header-row {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+}
+
+.lead-overview-header-row h1 {
+  color: #202a38;
+  font-size: 2.3rem;
+  line-height: 1.05;
+}
+
+.lead-overview-header-row p {
+  color: #65758f;
+  font-size: 1rem;
+  margin-top: 0.24rem;
+}
+
+.lead-cycle-chip {
+  background: #eef2f8;
+  border: 1px solid #dce5f3;
+  border-radius: 0.55rem;
+  color: #4f6180;
+  font-size: 0.87rem;
+  font-weight: 700;
+  padding: 0.62rem 0.92rem;
+}
+
+.lead-top-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(290px, 1fr) minmax(0, 2fr);
+}
+
+.lead-bottom-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 2fr) minmax(310px, 1fr);
+}
+
+.lead-card-kicker {
+  color: #62718a;
+  font-size: 0.79rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lead-mandates-card {
+  min-height: 188px;
+}
+
+.lead-mandates-value {
+  color: #1f2a3c;
+  font-size: 3.1rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-top: 0.7rem;
+}
+
+.lead-mandates-meta {
+  align-items: center;
+  color: #7f8ba1;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  gap: 0.45rem;
+  margin-top: 0.68rem;
+}
+
+.lead-positive-pill {
+  background: #e8f8ec;
+  border-radius: 999px;
+  color: #1a8f4e;
+  font-weight: 700;
+  padding: 0.22rem 0.5rem;
+}
+
+.lead-velocity-card {
+  min-height: 188px;
+}
+
+.lead-card-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.lead-card-head h2 {
+  color: #243044;
+  font-size: 1.02rem;
+  margin-top: 0.18rem;
+}
+
+.lead-card-head a,
+.lead-card-head span {
+  color: #1f56bf;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.lead-velocity-legend {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.44rem;
+}
+
+.lead-velocity-legend span {
+  background: #1f57c0;
+  border-radius: 999px;
+  display: inline-flex;
+  height: 0.72rem;
+  min-width: 0.72rem;
+}
+
+.lead-velocity-legend p {
+  color: #5f6f89;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.lead-velocity-bars {
+  align-items: end;
+  display: grid;
+  gap: 0.42rem;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-top: 0.62rem;
+}
+
+.lead-velocity-point {
+  align-items: center;
+  display: grid;
+  gap: 0.26rem;
+  justify-items: center;
+}
+
+.lead-velocity-track {
+  align-items: end;
+  background: #ecf1f9;
+  border-radius: 0.42rem;
+  display: flex;
+  height: 96px;
+  justify-content: center;
+  overflow: hidden;
+  width: 100%;
+}
+
+.lead-velocity-bar {
+  background: #b8c7de;
+  border-radius: 0.42rem 0.42rem 0 0;
+  display: block;
+  min-height: 8%;
+  width: 100%;
+}
+
+.lead-velocity-bar-highlight {
+  background: #1049ac;
+}
+
+.lead-velocity-point p {
+  color: #6d7b93;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.lead-pending-card {
+  min-height: 320px;
+}
+
+.lead-pending-list {
+  margin-top: 0.58rem;
+}
+
+.lead-pending-item {
+  align-items: center;
+  border-bottom: 1px solid #e9eff8;
+  display: grid;
+  gap: 0.62rem;
+  grid-template-columns: 2.15rem 1fr auto;
+  padding: 0.68rem 0.08rem;
+}
+
+.lead-pending-item:last-child {
+  border-bottom: 0;
+}
+
+.lead-pending-avatar {
+  align-items: center;
+  background: #dbe8ff;
+  border-radius: 999px;
+  color: #1954bd;
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-weight: 800;
+  height: 2rem;
+  justify-content: center;
+  min-width: 2rem;
+}
+
+.lead-pending-name {
+  color: #212f45;
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.lead-pending-meta {
+  color: #6c7b93;
+  font-size: 0.88rem;
+  margin-top: 0.12rem;
+}
+
+.lead-pending-time {
+  color: #7f8ea6;
+  font-size: 0.79rem;
+  font-weight: 600;
+}
+
+.lead-right-stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.lead-performance-card,
+.lead-actions-card {
+  min-height: 156px;
+}
+
+.lead-performance-list {
+  display: grid;
+  gap: 0.58rem;
+  margin-top: 0.62rem;
+}
+
+.lead-performance-item {
+  align-items: center;
+  display: grid;
+  gap: 0.52rem;
+  grid-template-columns: 1.9rem 1fr;
+}
+
+.lead-performance-avatar {
+  align-items: center;
+  background: #0f4cb7;
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.66rem;
+  font-weight: 800;
+  height: 1.82rem;
+  justify-content: center;
+  min-width: 1.82rem;
+}
+
+.lead-performance-name {
+  color: #2a3950;
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.lead-performance-meta {
+  color: #70809a;
+  font-size: 0.8rem;
+}
+
+.lead-performance-track {
+  background: #e5edf9;
+  border-radius: 999px;
+  grid-column: 1 / -1;
+  height: 0.35rem;
+  margin-top: 0.1rem;
+  overflow: hidden;
+}
+
+.lead-performance-track span {
+  background: #1f59c6;
+  border-radius: 999px;
+  display: block;
+  height: 100%;
+}
+
+.lead-actions-card h2 {
+  color: #263247;
+  font-size: 1.08rem;
+}
+
+.lead-action-list {
+  display: grid;
+  gap: 0.62rem;
+  margin-top: 0.58rem;
+}
+
+.lead-action-item {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 0.72rem 1fr;
+}
+
+.lead-action-dot {
+  border-radius: 999px;
+  display: inline-flex;
+  height: 0.6rem;
+  margin-top: 0.35rem;
+  width: 0.6rem;
+}
+
+.lead-action-dot-green {
+  background: #28ab63;
+}
+
+.lead-action-dot-red {
+  background: #d34d4d;
+}
+
+.lead-action-dot-blue {
+  background: #1c59c4;
+}
+
+.lead-action-title {
+  color: #2a364b;
+  font-size: 0.93rem;
+  font-weight: 700;
+}
+
+.lead-action-meta {
+  color: #6f7f98;
+  font-size: 0.8rem;
+  margin-top: 0.1rem;
+}
+
+.lead-action-comment {
+  color: #5e6f88;
+  font-size: 0.81rem;
+  margin-top: 0.22rem;
+}
+
 @media (max-width: 1180px) {
   .ops-body {
     grid-template-columns: 1fr;
@@ -4733,6 +5073,11 @@ ul {
   }
 
   .admin-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lead-top-grid,
+  .lead-bottom-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -4763,5 +5108,22 @@ ul {
 
   .admin-kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  .lead-overview-header-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .lead-overview-header-row h1 {
+    font-size: 1.9rem;
+  }
+
+  .lead-pending-item {
+    grid-template-columns: 1.9rem 1fr;
+  }
+
+  .lead-pending-time {
+    grid-column: 2;
   }
 }
