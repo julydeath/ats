@@ -1,8 +1,8 @@
 import { APIError, type CollectionConfig, type Endpoint } from 'payload'
 
 import {
-  adminOrHeadRecruiterAccess,
-  adminOrHeadRecruiterAdminAccess,
+  adminLeadershipAccess,
+  adminLeadershipAdminAccess,
   canManageInternalUsers,
   type InternalUserLike,
 } from '@/access/internalRoles'
@@ -263,11 +263,11 @@ const processJobRequestEndpoint: Endpoint = {
 export const JobRequests: CollectionConfig = {
   slug: 'job-requests',
   access: {
-    admin: adminOrHeadRecruiterAdminAccess,
-    create: adminOrHeadRecruiterAccess,
-    read: adminOrHeadRecruiterAccess,
-    update: adminOrHeadRecruiterAccess,
-    delete: adminOrHeadRecruiterAccess,
+    admin: adminLeadershipAdminAccess,
+    create: adminLeadershipAccess,
+    read: adminLeadershipAccess,
+    update: adminLeadershipAccess,
+    delete: adminLeadershipAccess,
   },
   admin: {
     defaultColumns: ['subject', 'client', 'status', 'intakeSource', 'receivedAt', 'processedBy'],
@@ -403,7 +403,7 @@ export const JobRequests: CollectionConfig = {
       relationTo: 'users',
       filterOptions: {
         role: {
-          equals: 'headRecruiter',
+          equals: 'leadRecruiter',
         },
       },
     },

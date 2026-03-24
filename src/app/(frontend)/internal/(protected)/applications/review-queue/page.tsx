@@ -39,7 +39,7 @@ type ApplicationsReviewQueuePageProps = {
 }
 
 export default async function ApplicationsReviewQueuePage({ searchParams }: ApplicationsReviewQueuePageProps) {
-  const user = await requireInternalRole(['admin', 'headRecruiter', 'leadRecruiter'])
+  const user = await requireInternalRole(['admin', 'leadRecruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
   const canReview = user.role === 'admin' || user.role === 'leadRecruiter'

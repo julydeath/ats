@@ -7,18 +7,18 @@ import { EXTERNAL_CANDIDATE_ROLE } from '@/lib/constants/roles'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const internalCandidateUserAdminAccess: Access = ({ req: { user } }) =>
-  hasInternalRole(user as InternalUserLike, ['admin', 'headRecruiter'])
+  hasInternalRole(user as InternalUserLike, ['admin'])
 
 const internalCandidateUserAdminBooleanAccess = ({
   req: { user },
 }: {
   req: { user: InternalUserLike }
-}): boolean => hasInternalRole(user as InternalUserLike, ['admin', 'headRecruiter'])
+}): boolean => hasInternalRole(user as InternalUserLike, ['admin'])
 
 const candidateUserReadAccess: Access = ({ req: { user } }) => {
   const internalUser = user as InternalUserLike
 
-  if (hasInternalRole(internalUser, ['admin', 'headRecruiter', 'leadRecruiter', 'recruiter'])) {
+  if (hasInternalRole(internalUser, ['admin', 'leadRecruiter', 'recruiter'])) {
     return true
   }
 
@@ -38,7 +38,7 @@ const candidateUserReadAccess: Access = ({ req: { user } }) => {
 const candidateUserUpdateAccess: Access = ({ req: { user } }) => {
   const internalUser = user as InternalUserLike
 
-  if (hasInternalRole(internalUser, ['admin', 'headRecruiter'])) {
+  if (hasInternalRole(internalUser, ['admin'])) {
     return true
   }
 
@@ -96,7 +96,7 @@ export const CandidateUsers: CollectionConfig = {
         },
       ],
       access: {
-        update: ({ req: { user } }) => hasInternalRole(user as InternalUserLike, ['admin', 'headRecruiter']),
+        update: ({ req: { user } }) => hasInternalRole(user as InternalUserLike, ['admin']),
       },
     },
     {
@@ -108,7 +108,7 @@ export const CandidateUsers: CollectionConfig = {
       index: true,
       saveToJWT: true,
       access: {
-        update: ({ req: { user } }) => hasInternalRole(user as InternalUserLike, ['admin', 'headRecruiter']),
+        update: ({ req: { user } }) => hasInternalRole(user as InternalUserLike, ['admin']),
       },
     },
     {
@@ -119,7 +119,7 @@ export const CandidateUsers: CollectionConfig = {
       saveToJWT: true,
       index: true,
       access: {
-        update: ({ req: { user } }) => hasInternalRole(user as InternalUserLike, ['admin', 'headRecruiter']),
+        update: ({ req: { user } }) => hasInternalRole(user as InternalUserLike, ['admin']),
       },
     },
     {
@@ -129,7 +129,7 @@ export const CandidateUsers: CollectionConfig = {
       defaultValue: 'password',
       options: CANDIDATE_ONBOARDING_METHOD_OPTIONS.map((option) => ({ ...option })),
       access: {
-        update: ({ req: { user } }) => hasInternalRole(user as InternalUserLike, ['admin', 'headRecruiter']),
+        update: ({ req: { user } }) => hasInternalRole(user as InternalUserLike, ['admin']),
       },
     },
   ],

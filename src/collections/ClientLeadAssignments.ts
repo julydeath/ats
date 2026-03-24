@@ -15,16 +15,6 @@ const clientLeadAssignmentsReadAccess: Access = ({ req }) => {
     return true
   }
 
-  if (hasInternalRole(user, ['headRecruiter'])) {
-    const where: Where = {
-      headRecruiter: {
-        equals: user.id,
-      },
-    }
-
-    return where
-  }
-
   if (hasInternalRole(user, ['leadRecruiter'])) {
     const where: Where = {
       leadRecruiter: {
@@ -45,34 +35,20 @@ const clientLeadAssignmentsManageAccess: Access = ({ req }) => {
     return false
   }
 
-  if (hasInternalRole(user, ['admin'])) {
-    return true
-  }
-
-  if (hasInternalRole(user, ['headRecruiter'])) {
-    const where: Where = {
-      headRecruiter: {
-        equals: user.id,
-      },
-    }
-
-    return where
-  }
-
-  return false
+  return hasInternalRole(user, ['admin'])
 }
 
 export const ClientLeadAssignments: CollectionConfig = {
   slug: 'client-lead-assignments',
   access: {
-    admin: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter', 'leadRecruiter']),
-    create: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter']),
+    admin: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter']),
+    create: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin']),
     read: clientLeadAssignmentsReadAccess,
     update: clientLeadAssignmentsManageAccess,
     delete: clientLeadAssignmentsManageAccess,
   },
   admin: {
-    defaultColumns: ['client', 'headRecruiter', 'leadRecruiter', 'status', 'updatedAt'],
+    defaultColumns: ['client', 'leadRecruiter', 'status', 'assignedBy', 'updatedAt'],
     group: 'Assignments',
     useAsTitle: 'leadRecruiter',
   },
@@ -90,9 +66,13 @@ export const ClientLeadAssignments: CollectionConfig = {
       relationTo: 'users',
       required: true,
       index: true,
+      admin: {
+        description: 'Admin owner for this assignment row.',
+        readOnly: true,
+      },
       filterOptions: {
         role: {
-          equals: 'headRecruiter',
+          equals: 'admin',
         },
       },
     },
@@ -140,11 +120,8 @@ export const ClientLeadAssignments: CollectionConfig = {
         const user = req.user as InternalUserLike
         const currentUserID = user?.id ?? null
 
-        if (hasInternalRole(user, ['headRecruiter'])) {
-          typedData.headRecruiter = currentUserID
-        }
-
         if (currentUserID !== null) {
+          typedData.headRecruiter = currentUserID
           typedData.assignedBy = currentUserID
         }
 
@@ -155,35 +132,19 @@ export const ClientLeadAssignments: CollectionConfig = {
       async ({ data, operation, originalDoc, req }) => {
         const typedData = data as Record<string, unknown>
         const clientID = extractRelationshipID(typedData.client ?? originalDoc?.client)
-        const headRecruiterID = extractRelationshipID(typedData.headRecruiter ?? originalDoc?.headRecruiter)
+        const currentUserID = (req.user as InternalUserLike | null | undefined)?.id ?? null
+        const headRecruiterID = extractRelationshipID(
+          typedData.headRecruiter ?? originalDoc?.headRecruiter ?? currentUserID,
+        )
         const leadRecruiterID = extractRelationshipID(typedData.leadRecruiter ?? originalDoc?.leadRecruiter)
         const status = String(typedData.status ?? originalDoc?.status ?? 'active')
-        const user = req.user as InternalUserLike
-        const currentUserID = user?.id ?? null
 
-        if (!clientID || !headRecruiterID || !leadRecruiterID) {
-          throw new APIError('Client, head recruiter, and lead recruiter are required.', 400)
+        if (!clientID || !leadRecruiterID) {
+          throw new APIError('Client and lead recruiter are required.', 400)
         }
 
-        if (hasInternalRole(user, ['headRecruiter']) && String(headRecruiterID) !== String(currentUserID)) {
-          throw new APIError('Head Recruiter can only create assignments under their own ownership.', 403)
-        }
-
-        const clientDoc = await req.payload.findByID({
-          collection: 'clients',
-          id: clientID,
-          depth: 0,
-          overrideAccess: false,
-          req,
-        })
-
-        const owningHeadID = extractRelationshipID(clientDoc.owningHeadRecruiter)
-
-        if (!owningHeadID || String(owningHeadID) !== String(headRecruiterID)) {
-          throw new APIError(
-            'Client ownership mismatch. The assignment head recruiter must match the client owner.',
-            400,
-          )
+        if (!headRecruiterID) {
+          throw new APIError('Admin context is required for assignment ownership.', 400)
         }
 
         if (status === 'active') {

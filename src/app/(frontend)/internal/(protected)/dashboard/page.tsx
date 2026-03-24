@@ -1,201 +1,127 @@
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
+import type { CSSProperties } from 'react'
 
 import { requireInternalUser } from '@/lib/auth/internal-auth'
+import type { InternalRole } from '@/lib/constants/roles'
 import { APP_ROUTES } from '@/lib/constants/routes'
-import { INTERNAL_ROLE_LABELS, type InternalRole } from '@/lib/constants/roles'
-import { extractRelationshipID } from '@/lib/utils/relationships'
+import { INTERNAL_ROLE_LABELS } from '@/lib/constants/roles'
 
-type WorkspaceCard = {
-  cta: string
-  description: string
-  href: string
-  key: string
-  title: string
+const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
+  if (!value) {
+    return fallback
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value)
+  }
+
+  if (typeof value === 'object') {
+    const typed = value as { fullName?: string; name?: string; title?: string; email?: string }
+    return typed.fullName || typed.title || typed.name || typed.email || fallback
+  }
+
+  return fallback
 }
 
-type RoleDashboardConfig = {
-  subtitle: string
-  title: string
-  workspaces: readonly WorkspaceCard[]
+const readID = (value: unknown): string => {
+  if (typeof value === 'number' || typeof value === 'string') {
+    return String(value)
+  }
+
+  if (value && typeof value === 'object') {
+    const typed = value as { id?: number | string }
+    if (typed.id !== undefined && typed.id !== null) {
+      return String(typed.id)
+    }
+  }
+
+  return ''
 }
 
-type AlertCard = {
-  label: string
-  priority: 'high' | 'medium' | 'normal'
-  value: number
+const STAGE_ANALYTICS = [
+  { key: 'sourcedByRecruiter', label: 'Applied', tone: 'slate' },
+  { key: 'internalReviewPending', label: 'Screening', tone: 'orange' },
+  { key: 'internalReviewApproved', label: 'Skill Test', tone: 'teal' },
+  { key: 'candidateInvited', label: 'Interview', tone: 'purple' },
+  { key: 'candidateApplied', label: 'Hired', tone: 'green' },
+] as const
+
+const ROLE_ACTIONS: Record<InternalRole, Array<{ href: string; label: string }>> = {
+  admin: [
+    { href: APP_ROUTES.internal.assignments.head, label: 'Assign Client To Lead' },
+    { href: APP_ROUTES.internal.assignments.lead, label: 'Change Recruiter Assignment' },
+    { href: APP_ROUTES.internal.jobs.assigned, label: 'Open Jobs Board' },
+  ],
+  leadRecruiter: [
+    { href: APP_ROUTES.internal.jobs.assigned, label: 'Create Or Manage Jobs' },
+    { href: APP_ROUTES.internal.assignments.lead, label: 'Change Recruiter Assignment' },
+    { href: APP_ROUTES.internal.applications.reviewQueue, label: 'Open Review Queue' },
+  ],
+  recruiter: [
+    { href: APP_ROUTES.internal.jobs.assigned, label: 'Open Assigned Jobs' },
+    { href: APP_ROUTES.internal.candidates.new, label: 'Add Candidate' },
+    { href: APP_ROUTES.internal.schedule, label: 'Open Schedule' },
+  ],
 }
 
-const ROLE_DASHBOARD: Readonly<Record<InternalRole, RoleDashboardConfig>> = {
-  admin: {
-    title: 'Operations Home',
-    subtitle: 'Manage ownership, delivery flow, and review quality across the recruitment team.',
-    workspaces: [
-      {
-        key: 'ownership',
-        title: 'Ownership Hub',
-        description: 'Assign and rebalance clients and jobs across lead recruiters.',
-        href: APP_ROUTES.internal.assignments.head,
-        cta: 'Open Ownership Hub',
-      },
-      {
-        key: 'allocation',
-        title: 'Allocation Hub',
-        description: 'Monitor recruiter bandwidth and assign jobs for execution.',
-        href: APP_ROUTES.internal.assignments.lead,
-        cta: 'Open Allocation Hub',
-      },
-      {
-        key: 'jobs',
-        title: 'Job Pipeline',
-        description: 'Track active demand, priorities, and sourcing movement.',
-        href: APP_ROUTES.internal.jobs.assigned,
-        cta: 'Open Job Pipeline',
-      },
-      {
-        key: 'applications',
-        title: 'Review Desk',
-        description: 'Clear pending internal reviews and decision bottlenecks.',
-        href: APP_ROUTES.internal.applications.reviewQueue,
-        cta: 'Open Review Desk',
-      },
-    ],
-  },
-  headRecruiter: {
-    title: 'Head Recruiter Home',
-    subtitle: 'Drive ownership distribution and keep team execution healthy.',
-    workspaces: [
-      {
-        key: 'ownership',
-        title: 'Ownership Hub',
-        description: 'Distribute clients and jobs to lead recruiters.',
-        href: APP_ROUTES.internal.assignments.head,
-        cta: 'Open Ownership Hub',
-      },
-      {
-        key: 'allocation',
-        title: 'Allocation Monitor',
-        description: 'Check recruiter coverage under your hierarchy.',
-        href: APP_ROUTES.internal.assignments.lead,
-        cta: 'Open Allocation Monitor',
-      },
-      {
-        key: 'jobs',
-        title: 'Job Pipeline',
-        description: 'Track active jobs and priority closures.',
-        href: APP_ROUTES.internal.jobs.assigned,
-        cta: 'Open Job Pipeline',
-      },
-      {
-        key: 'applications',
-        title: 'Application Pipeline',
-        description: 'Monitor applications and stage movement.',
-        href: APP_ROUTES.internal.applications.list,
-        cta: 'Open Application Pipeline',
-      },
-    ],
-  },
-  leadRecruiter: {
-    title: 'Lead Recruiter Home',
-    subtitle: 'Manage recruiter execution and complete internal reviews.',
-    workspaces: [
-      {
-        key: 'allocation',
-        title: 'Allocation Hub',
-        description: 'Assign jobs to recruiters and rebalance workload.',
-        href: APP_ROUTES.internal.assignments.lead,
-        cta: 'Open Allocation Hub',
-      },
-      {
-        key: 'jobs',
-        title: 'Job Pipeline',
-        description: 'Track assigned jobs and urgency.',
-        href: APP_ROUTES.internal.jobs.assigned,
-        cta: 'Open Job Pipeline',
-      },
-      {
-        key: 'candidates',
-        title: 'Candidate Bank',
-        description: 'Review sourcing quality and profile completeness.',
-        href: APP_ROUTES.internal.candidates.list,
-        cta: 'Open Candidate Bank',
-      },
-      {
-        key: 'review',
-        title: 'Review Desk',
-        description: 'Approve, reject, or send back recruiter submissions.',
-        href: APP_ROUTES.internal.applications.reviewQueue,
-        cta: 'Open Review Desk',
-      },
-    ],
-  },
-  recruiter: {
-    title: 'Recruiter Home',
-    subtitle: 'Execute sourcing quickly from assigned jobs through review submission.',
-    workspaces: [
-      {
-        key: 'jobs',
-        title: 'Job Pipeline',
-        description: 'Start from assigned jobs and priority roles.',
-        href: APP_ROUTES.internal.jobs.assigned,
-        cta: 'Open Job Pipeline',
-      },
-      {
-        key: 'candidateCreate',
-        title: 'Add Candidate',
-        description: 'Create external candidate profile with resume and source details.',
-        href: APP_ROUTES.internal.candidates.new,
-        cta: 'Add Candidate',
-      },
-      {
-        key: 'applicationCreate',
-        title: 'Create Application',
-        description: 'Map candidate to job and move to internal review.',
-        href: APP_ROUTES.internal.applications.new,
-        cta: 'Create Application',
-      },
-      {
-        key: 'applications',
-        title: 'My Application Pipeline',
-        description: 'Track submissions, corrections, and pending actions.',
-        href: APP_ROUTES.internal.applications.list,
-        cta: 'Open My Pipeline',
-      },
-    ],
-  },
-}
+const getDayLabel = (value: Date) =>
+  value.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    weekday: 'short',
+  })
 
 export default async function InternalDashboardPage() {
   const user = await requireInternalUser()
   const payload = await getPayload({ config: configPromise })
-  const roleConfig = ROLE_DASHBOARD[user.role]
-  const canManageLeadAssignments = user.role === 'admin' || user.role === 'headRecruiter'
-  const canManageRecruiterAssignments =
-    user.role === 'admin' || user.role === 'headRecruiter' || user.role === 'leadRecruiter'
+  const weekStart = new Date()
+  weekStart.setDate(weekStart.getDate() - 7)
+  weekStart.setHours(0, 0, 0, 0)
 
-  const [
-    activeJobsCount,
-    onHoldJobsCount,
-    visibleCandidatesCount,
-    visibleApplicationsCount,
-    pendingReviewCount,
-    pendingInviteCount,
-    recruiterNeedsActionCount,
-    unassignedClientCount,
-    jobsWithoutRecruitersCount,
-  ] = await Promise.all([
-    payload.count({
+  const [jobs, applications, candidatesCount, newCandidatesWeekCount] = await Promise.all([
+    payload.find({
       collection: 'jobs',
+      depth: 1,
+      limit: 80,
+      pagination: false,
       overrideAccess: false,
+      select: {
+        client: true,
+        id: true,
+        openings: true,
+        priority: true,
+        status: true,
+        targetClosureDate: true,
+        title: true,
+        updatedAt: true,
+      },
+      sort: '-updatedAt',
       user,
-      where: { status: { equals: 'active' } },
+      where: {
+        status: {
+          in: ['active', 'onHold'],
+        },
+      },
     }),
-    payload.count({
-      collection: 'jobs',
+    payload.find({
+      collection: 'applications',
+      depth: 1,
+      limit: 220,
+      pagination: false,
       overrideAccess: false,
+      select: {
+        candidate: true,
+        id: true,
+        job: true,
+        latestComment: true,
+        recruiter: true,
+        stage: true,
+        updatedAt: true,
+      },
+      sort: '-updatedAt',
       user,
-      where: { status: { equals: 'onHold' } },
     }),
     payload.count({
       collection: 'candidates',
@@ -203,262 +129,249 @@ export default async function InternalDashboardPage() {
       user,
     }),
     payload.count({
-      collection: 'applications',
-      overrideAccess: false,
-      user,
-    }),
-    payload.count({
-      collection: 'applications',
+      collection: 'candidates',
       overrideAccess: false,
       user,
       where: {
-        stage: {
-          equals: 'internalReviewPending',
+        createdAt: {
+          greater_than_equal: weekStart.toISOString(),
         },
       },
     }),
-    canManageRecruiterAssignments
-      ? payload.count({
-          collection: 'candidate-invites',
-          overrideAccess: false,
-          user,
-          where: {
-            status: {
-              equals: 'pending',
-            },
-          },
-        })
-      : Promise.resolve({ totalDocs: 0 }),
-    user.role === 'recruiter'
-      ? payload.count({
-          collection: 'applications',
-          overrideAccess: false,
-          user,
-          where: {
-            and: [
-              {
-                recruiter: {
-                  equals: user.id,
-                },
-              },
-              {
-                stage: {
-                  in: ['sourcedByRecruiter', 'sentBackForCorrection'],
-                },
-              },
-            ],
-          },
-        })
-      : Promise.resolve({ totalDocs: 0 }),
-    canManageLeadAssignments
-      ? (async () => {
-          const [activeClients, activeClientAssignments] = await Promise.all([
-            payload.find({
-              collection: 'clients',
-              depth: 0,
-              limit: 1000,
-              pagination: false,
-              overrideAccess: false,
-              select: {
-                name: true,
-              },
-              user,
-              where: {
-                status: {
-                  equals: 'active',
-                },
-              },
-            }),
-            payload.find({
-              collection: 'client-lead-assignments',
-              depth: 0,
-              limit: 1000,
-              pagination: false,
-              overrideAccess: false,
-              select: {
-                client: true,
-              },
-              user,
-              where: {
-                status: {
-                  equals: 'active',
-                },
-              },
-            }),
-          ])
-
-          const assignedClientIDs = new Set(
-            activeClientAssignments.docs
-              .map((assignment) => extractRelationshipID(assignment.client))
-              .filter(Boolean)
-              .map((value) => String(value)),
-          )
-
-          return activeClients.docs.filter((client) => !assignedClientIDs.has(String(client.id))).length
-        })()
-      : Promise.resolve(0),
-    canManageRecruiterAssignments
-      ? (async () => {
-          const [activeOrOnHoldJobs, activeRecruiterAssignments] = await Promise.all([
-            payload.find({
-              collection: 'jobs',
-              depth: 0,
-              limit: 1000,
-              pagination: false,
-              overrideAccess: false,
-              select: {
-                title: true,
-              },
-              user,
-              where: {
-                status: {
-                  in: ['active', 'onHold'],
-                },
-              },
-            }),
-            payload.find({
-              collection: 'recruiter-job-assignments',
-              depth: 0,
-              limit: 1000,
-              pagination: false,
-              overrideAccess: false,
-              select: {
-                job: true,
-              },
-              user,
-              where: {
-                status: {
-                  equals: 'active',
-                },
-              },
-            }),
-          ])
-
-          const assignedJobIDs = new Set(
-            activeRecruiterAssignments.docs
-              .map((assignment) => extractRelationshipID(assignment.job))
-              .filter(Boolean)
-              .map((value) => String(value)),
-          )
-
-          return activeOrOnHoldJobs.docs.filter((job) => !assignedJobIDs.has(String(job.id))).length
-        })()
-      : Promise.resolve(0),
   ])
 
-  const actionCards: AlertCard[] = [
-    {
-      label: 'Pending Internal Reviews',
-      value: pendingReviewCount.totalDocs,
-      priority: pendingReviewCount.totalDocs > 10 ? 'high' : pendingReviewCount.totalDocs > 0 ? 'medium' : 'normal',
-    },
-    {
-      label: 'Jobs Without Recruiter',
-      value: jobsWithoutRecruitersCount,
-      priority: jobsWithoutRecruitersCount > 0 ? 'high' : 'normal',
-    },
-    {
-      label: 'Active Clients Without Lead',
-      value: unassignedClientCount,
-      priority: unassignedClientCount > 0 ? 'high' : 'normal',
-    },
-    {
-      label: 'Pending Candidate Invites',
-      value: pendingInviteCount.totalDocs,
-      priority: pendingInviteCount.totalDocs > 0 ? 'medium' : 'normal',
-    },
-    {
-      label: 'Recruiter Action Items',
-      value: recruiterNeedsActionCount.totalDocs,
-      priority: recruiterNeedsActionCount.totalDocs > 0 ? 'medium' : 'normal',
-    },
-  ]
+  const pendingReview = applications.docs.filter(
+    (application) => application.stage === 'internalReviewPending',
+  ).length
+  const invitedThisWeek = applications.docs.filter(
+    (application) =>
+      application.stage === 'candidateInvited' &&
+      new Date(application.updatedAt).getTime() >= weekStart.getTime(),
+  ).length
+  const hiredCount = applications.docs.filter((application) => application.stage === 'candidateApplied').length
+  const upcomingInterviewCount = applications.docs.filter((application) =>
+    ['candidateInvited', 'candidateApplied'].includes(application.stage),
+  ).length
 
-  const todayChecklist = [
-    user.role === 'recruiter'
-      ? 'Open Job Pipeline and pick top priority assigned jobs.'
-      : 'Open dashboard alerts and clear high-priority blockers first.',
-    user.role === 'leadRecruiter'
-      ? 'Close pending reviews with clear approve/reject/send-back comments.'
-      : 'Review application pipeline and address bottlenecks.',
-    user.role === 'admin' || user.role === 'headRecruiter'
-      ? 'Ensure there are no ownership and recruiter assignment gaps.'
-      : 'Verify candidate and application quality before handoff.',
-  ]
+  const stageCounts = new Map<string, number>()
+  STAGE_ANALYTICS.forEach((stage) => stageCounts.set(stage.key, 0))
+
+  applications.docs.forEach((application) => {
+    const existing = stageCounts.get(application.stage)
+    if (typeof existing === 'number') {
+      stageCounts.set(application.stage, existing + 1)
+    }
+  })
+
+  const maxStageValue = Math.max(...Array.from(stageCounts.values()), 1)
+
+  const recentItems = applications.docs.slice(0, 8)
+  const scheduleItems = applications.docs
+    .filter((application) =>
+      ['internalReviewPending', 'candidateInvited', 'candidateApplied'].includes(application.stage),
+    )
+    .slice(0, 8)
+
+  const nextWeekDays = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date()
+    day.setDate(day.getDate() + index)
+    day.setHours(0, 0, 0, 0)
+    return day
+  })
+
+  const scheduleByDay = nextWeekDays.map((day) => {
+    const dayKey = day.toDateString()
+    const items = scheduleItems.filter((item) => {
+      const itemDay = new Date(item.updatedAt)
+      itemDay.setHours(0, 0, 0, 0)
+      return itemDay.toDateString() === dayKey
+    })
+
+    return {
+      day,
+      items,
+    }
+  })
+
+  const jobCardData = jobs.docs.slice(0, 4).map((job) => {
+    const jobApplications = applications.docs.filter(
+      (application) => readID(application.job) === String(job.id),
+    )
+    const inReview = jobApplications.filter((application) => application.stage === 'internalReviewPending').length
+    const inInterview = jobApplications.filter((application) => application.stage === 'candidateInvited').length
+    const offered = jobApplications.filter((application) => application.stage === 'candidateApplied').length
+    const sourced = jobApplications.filter((application) => application.stage === 'sourcedByRecruiter').length
+    const total = Math.max(jobApplications.length, 1)
+    const progressPercent = Math.min(Math.round((offered / total) * 100), 100)
+
+    return {
+      id: job.id,
+      inInterview,
+      inReview,
+      offered,
+      openings: job.openings,
+      progressPercent,
+      sourced,
+      title: job.title,
+    }
+  })
 
   return (
     <section className="dashboard-grid">
-      <article className="panel panel-span-2 home-hero">
-        <p className="eyebrow">{INTERNAL_ROLE_LABELS[user.role]}</p>
-        <h1>{roleConfig.title}</h1>
-        <p className="panel-intro">{roleConfig.subtitle}</p>
-      </article>
-
-      <article className="panel panel-span-2">
-        <h2>My Workspaces</h2>
-        <p className="panel-subtitle">Use these modules to manage your day like an HR operations suite.</p>
-        <div className="workspace-grid">
-          {roleConfig.workspaces.map((workspace) => (
-            <article className="workspace-card" key={workspace.key}>
-              <p className="workspace-title">{workspace.title}</p>
-              <p className="workspace-desc">{workspace.description}</p>
-              <div className="public-actions">
-                <Link className="button button-secondary" href={workspace.href}>
-                  {workspace.cta}
-                </Link>
-              </div>
-            </article>
+      <article className="panel panel-span-2 recruiter-hero-panel">
+        <div>
+          <p className="eyebrow">{INTERNAL_ROLE_LABELS[user.role]}</p>
+          <h1>Welcome</h1>
+          <p className="panel-intro">
+            You have <strong>{upcomingInterviewCount}</strong> upcoming interview and follow-up actions this week.
+          </p>
+        </div>
+        <div className="public-actions">
+          {ROLE_ACTIONS[user.role].map((action) => (
+            <Link className="button button-secondary" href={action.href} key={action.href}>
+              {action.label}
+            </Link>
           ))}
         </div>
       </article>
 
-      <article className="panel">
-        <h2>Action Center</h2>
-        <p className="panel-subtitle">Current operational alerts and pending queues.</p>
-        <div className="alert-grid">
-          {actionCards
-            .filter((card) => card.value > 0 || card.label === 'Pending Internal Reviews')
-            .map((card) => (
-              <article className={`alert-card alert-${card.priority}`} key={card.label}>
-                <p className="alert-value">{card.value}</p>
-                <p className="alert-label">{card.label}</p>
+      <article className="panel panel-span-2">
+        <div className="stat-strip">
+          <div className="stat-tile stat-tile-blue">
+            <p className="stat-title">Total Candidates</p>
+            <p className="stat-value">{candidatesCount.totalDocs}</p>
+            <p className="stat-meta">Across visible jobs</p>
+          </div>
+          <div className="stat-tile stat-tile-purple">
+            <p className="stat-title">New Candidates</p>
+            <p className="stat-value">{newCandidatesWeekCount.totalDocs}</p>
+            <p className="stat-meta">Added in last 7 days</p>
+          </div>
+          <div className="stat-tile stat-tile-slate">
+            <p className="stat-title">Review Pending</p>
+            <p className="stat-value">{pendingReview}</p>
+            <p className="stat-meta">Need lead decision</p>
+          </div>
+          <div className="stat-tile stat-tile-green">
+            <p className="stat-title">Candidates Hired</p>
+            <p className="stat-value">{hiredCount}</p>
+            <p className="stat-meta">{invitedThisWeek} invited this week</p>
+          </div>
+        </div>
+      </article>
+
+      <article className="panel panel-span-2 recruiter-dashboard-main">
+        <div className="recruiter-analysis-panel">
+          <div className="recruiter-analysis-heading">
+            <div>
+              <h2>Job Analysis</h2>
+              <p className="panel-subtitle">Live stage movement in your visible application pipeline.</p>
+            </div>
+            <span className="status-chip">Weekly</span>
+          </div>
+          <div className="recruiter-analysis-chart">
+            {STAGE_ANALYTICS.map((item) => {
+              const value = stageCounts.get(item.key) || 0
+              return (
+                <div className="recruiter-analysis-row" key={item.key}>
+                  <p className="recruiter-analysis-label">{item.label}</p>
+                  <div className="recruiter-analysis-track">
+                    <span
+                      className={`recruiter-analysis-fill recruiter-analysis-fill-${item.tone}`}
+                      style={{ width: `${Math.max((value / maxStageValue) * 100, value > 0 ? 10 : 0)}%` }}
+                    />
+                  </div>
+                  <p className="recruiter-analysis-value">{value}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="recruiter-schedule-widget">
+          <div className="recruiter-schedule-heading">
+            <h2>Schedule</h2>
+            <Link className="admin-link" href={APP_ROUTES.internal.schedule}>
+              View All
+            </Link>
+          </div>
+          <div className="recruiter-schedule-days">
+            {scheduleByDay.map((entry) => (
+              <article className="recruiter-schedule-day" key={entry.day.toISOString()}>
+                <p className="recruiter-schedule-day-label">{getDayLabel(entry.day)}</p>
+                {entry.items.length === 0 ? (
+                  <p className="board-empty">No items</p>
+                ) : (
+                  entry.items.slice(0, 2).map((item) => (
+                    <div className="recruiter-schedule-item" key={`dash-cal-${entry.day.toISOString()}-${item.id}`}>
+                      <p className="schedule-title">{readLabel(item.candidate)}</p>
+                      <p className="schedule-meta">{readLabel(item.job)}</p>
+                    </div>
+                  ))
+                )}
               </article>
             ))}
+          </div>
         </div>
       </article>
 
       <article className="panel">
-        <h2>Today Checklist</h2>
-        <ul>
-          {todayChecklist.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+        <div className="recruiter-card-header">
+          <h2>Job Spotlight</h2>
+          <Link className="admin-link" href={APP_ROUTES.internal.jobs.assigned}>
+            View Jobs
+          </Link>
+        </div>
+        <div className="recruiter-job-cards">
+          {jobCardData.length === 0 ? (
+            <p className="board-empty">No active jobs in your visibility scope.</p>
+          ) : (
+            jobCardData.map((item) => (
+              <article className="recruiter-job-card" key={`dash-job-${item.id}`}>
+                <p className="recruiter-job-title">{item.title}</p>
+                <div
+                  className="recruiter-job-ring"
+                  style={
+                    {
+                      '--ring-progress': `${item.progressPercent}%`,
+                    } as CSSProperties
+                  }
+                >
+                  <span>{item.openings} openings</span>
+                </div>
+                <div className="recruiter-job-breakdown">
+                  <p>Review: {item.inReview}</p>
+                  <p>Interview: {item.inInterview}</p>
+                  <p>Hired: {item.offered}</p>
+                  <p>Sourced: {item.sourced}</p>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
       </article>
 
-      <article className="panel panel-span-2">
-        <h2>Snapshot</h2>
-        <div className="kpi-grid">
-          <div className="kpi-card">
-            <p className="kpi-value">{activeJobsCount.totalDocs}</p>
-            <p className="kpi-label">Active Jobs</p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-value">{onHoldJobsCount.totalDocs}</p>
-            <p className="kpi-label">On Hold Jobs</p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-value">{visibleCandidatesCount.totalDocs}</p>
-            <p className="kpi-label">Visible Candidates</p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-value">{visibleApplicationsCount.totalDocs}</p>
-            <p className="kpi-label">Visible Applications</p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-value">{pendingReviewCount.totalDocs}</p>
-            <p className="kpi-label">Pending Internal Reviews</p>
-          </div>
+      <article className="panel">
+        <div className="recruiter-card-header">
+          <h2>Recently Applied</h2>
+          <Link className="admin-link" href={APP_ROUTES.internal.applications.list}>
+            View All
+          </Link>
+        </div>
+        <div className="activity-list">
+          {recentItems.length === 0 ? (
+            <p className="board-empty">No recent application activity.</p>
+          ) : (
+            recentItems.map((item) => (
+              <article className="activity-item" key={`recent-${item.id}`}>
+                <p className="activity-name">{readLabel(item.candidate)}</p>
+                <p className="activity-meta">
+                  Applied for <strong>{readLabel(item.job)}</strong>
+                </p>
+                <p className="activity-time">{new Date(item.updatedAt).toLocaleString('en-IN')}</p>
+              </article>
+            ))
+          )}
         </div>
       </article>
     </section>

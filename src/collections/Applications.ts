@@ -47,10 +47,21 @@ const canRecruiterTransition = (previousStage: ApplicationStage, nextStage: Appl
     return true
   }
 
-  return (
+  if (
     (previousStage === 'sourcedByRecruiter' || previousStage === 'sentBackForCorrection') &&
     nextStage === 'internalReviewPending'
-  )
+  ) {
+    return true
+  }
+
+  if (
+    ['internalReviewApproved', 'candidateInvited', 'candidateApplied'].includes(previousStage) &&
+    ['internalReviewApproved', 'candidateInvited', 'candidateApplied'].includes(nextStage)
+  ) {
+    return true
+  }
+
+  return false
 }
 
 const canLeadTransition = (previousStage: ApplicationStage, nextStage: ApplicationStage): boolean => {
@@ -99,7 +110,10 @@ const validateStageTransition = ({
 
   if (hasInternalRole(user, ['recruiter'])) {
     if (!canRecruiterTransition(previousStage, nextStage)) {
-      throw new APIError('Recruiter can only submit sourced/corrected applications for internal review.', 403)
+      throw new APIError(
+        'Recruiter can submit sourced/corrected applications for review and update post-approval pipeline stages.',
+        403,
+      )
     }
 
     return
@@ -120,7 +134,7 @@ export const Applications: CollectionConfig = {
   slug: 'applications',
   access: {
     admin: ({ req }) =>
-      hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter', 'leadRecruiter', 'recruiter']),
+      hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter']),
     create: applicationsCreateAccess,
     read: applicationsReadAccess,
     update: applicationsUpdateAccess,

@@ -6,14 +6,12 @@ import {
   type CandidateUserLike,
 } from '@/access/candidateRoles'
 import {
-  getHeadOwnedJobIDs,
   getLeadAssignedClientIDs,
   getLeadAssignedJobIDs,
-  getLeadVisibleJobIDs,
   getLeadVisibleClientIDs,
+  getLeadVisibleJobIDs,
   getRecruiterAssignedJobIDs,
 } from '@/lib/assignments/selectors'
-import { APPLICATION_STAGES } from '@/lib/constants/recruitment'
 import { type InternalRole } from '@/lib/constants/roles'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 import { hasInternalRole, type InternalUserLike } from './internalRoles'
@@ -22,12 +20,18 @@ type VisibilityUser = InternalUserLike & {
   role: InternalRole
 }
 
+const EMPTY_SCOPE_WHERE: Where = {
+  id: {
+    in: [],
+  },
+}
+
 const toVisibilityUser = (user: InternalUserLike): VisibilityUser | null => {
   if (!user || !user.role) {
     return null
   }
 
-  if (!hasInternalRole(user, ['admin', 'headRecruiter', 'leadRecruiter', 'recruiter'])) {
+  if (!hasInternalRole(user, ['admin', 'leadRecruiter', 'recruiter'])) {
     return null
   }
 
@@ -57,16 +61,6 @@ export const clientReadAccess: Access = async ({ req }) => {
     return true
   }
 
-  if (user.role === 'headRecruiter') {
-    const where: Where = {
-      owningHeadRecruiter: {
-        equals: user.id,
-      },
-    }
-
-    return where
-  }
-
   if (user.role === 'leadRecruiter') {
     const visibleClientIDs = await getLeadVisibleClientIDs({
       leadRecruiterID: user.id,
@@ -74,7 +68,7 @@ export const clientReadAccess: Access = async ({ req }) => {
     })
 
     if (visibleClientIDs.length === 0) {
-      return false
+      return EMPTY_SCOPE_WHERE
     }
 
     const where: Where = {
@@ -96,25 +90,11 @@ export const clientManageAccess: Access = ({ req }) => {
     return false
   }
 
-  if (user.role === 'admin') {
-    return true
-  }
-
-  if (user.role === 'headRecruiter') {
-    const where: Where = {
-      owningHeadRecruiter: {
-        equals: user.id,
-      },
-    }
-
-    return where
-  }
-
-  return false
+  return user.role === 'admin'
 }
 
 export const clientCreateAccess: Access = ({ req }) =>
-  hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter'])
+  hasInternalRole(req.user as InternalUserLike, ['admin'])
 
 export const jobsReadAccess: Access = async ({ req }) => {
   const user = toVisibilityUser(req.user as InternalUserLike)
@@ -125,16 +105,6 @@ export const jobsReadAccess: Access = async ({ req }) => {
 
   if (user.role === 'admin') {
     return true
-  }
-
-  if (user.role === 'headRecruiter') {
-    const where: Where = {
-      owningHeadRecruiter: {
-        equals: user.id,
-      },
-    }
-
-    return where
   }
 
   if (user.role === 'leadRecruiter') {
@@ -166,7 +136,7 @@ export const jobsReadAccess: Access = async ({ req }) => {
     }
 
     if (clauses.length === 0) {
-      return false
+      return EMPTY_SCOPE_WHERE
     }
 
     const where: Where = {
@@ -183,7 +153,7 @@ export const jobsReadAccess: Access = async ({ req }) => {
     })
 
     if (jobIDs.length === 0) {
-      return false
+      return EMPTY_SCOPE_WHERE
     }
 
     const where: Where = {
@@ -198,7 +168,7 @@ export const jobsReadAccess: Access = async ({ req }) => {
   return false
 }
 
-export const jobsManageAccess: Access = ({ req }) => {
+export const jobsManageAccess: Access = async ({ req }) => {
   const user = toVisibilityUser(req.user as InternalUserLike)
 
   if (!user) {
@@ -209,23 +179,30 @@ export const jobsManageAccess: Access = ({ req }) => {
     return true
   }
 
-  if (user.role === 'headRecruiter') {
-    const where: Where = {
-      owningHeadRecruiter: {
-        equals: user.id,
-      },
+  if (user.role === 'leadRecruiter') {
+    const jobIDs = await getLeadVisibleJobIDs({
+      leadRecruiterID: user.id,
+      req,
+    })
+
+    if (jobIDs.length === 0) {
+      return EMPTY_SCOPE_WHERE
     }
 
-    return where
+    return {
+      id: {
+        in: jobIDs,
+      },
+    } as Where
   }
 
   return false
 }
 
 export const jobsCreateAccess: Access = ({ req }) =>
-  hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter'])
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])
 
-export const extractOwningHeadRecruiterID = (value: unknown): number | string | null =>
+export const extractOwningLeadRecruiterID = (value: unknown): number | string | null =>
   extractRelationshipID(value)
 
 const buildJobScopedAccess = async ({
@@ -241,23 +218,6 @@ const buildJobScopedAccess = async ({
     return true
   }
 
-  if (user.role === 'headRecruiter') {
-    const jobIDs = await getHeadOwnedJobIDs({
-      headRecruiterID: user.id,
-      req,
-    })
-
-    if (jobIDs.length === 0) {
-      return false
-    }
-
-    return {
-      [fieldName]: {
-        in: jobIDs,
-      },
-    } as Where
-  }
-
   if (user.role === 'leadRecruiter') {
     const jobIDs = await getLeadVisibleJobIDs({
       leadRecruiterID: user.id,
@@ -265,7 +225,11 @@ const buildJobScopedAccess = async ({
     })
 
     if (jobIDs.length === 0) {
-      return false
+      return {
+        [fieldName]: {
+          in: [],
+        },
+      } as Where
     }
 
     return {
@@ -282,7 +246,11 @@ const buildJobScopedAccess = async ({
     })
 
     if (jobIDs.length === 0) {
-      return false
+      return {
+        [fieldName]: {
+          in: [],
+        },
+      } as Where
     }
 
     return {
@@ -482,7 +450,13 @@ export const applicationsUpdateAccess: Access = async ({ req }) => {
         },
         {
           stage: {
-            in: [APPLICATION_STAGES[0], APPLICATION_STAGES[4]],
+            in: [
+              'sourcedByRecruiter',
+              'sentBackForCorrection',
+              'internalReviewApproved',
+              'candidateInvited',
+              'candidateApplied',
+            ],
           },
         },
       ],
@@ -537,4 +511,4 @@ export const applicationHistoryReadAccess: Access = async ({ req }) => {
 }
 
 export const applicationHistoryCreateAccess: Access = ({ req }) =>
-  hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter', 'leadRecruiter', 'recruiter'])
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter'])

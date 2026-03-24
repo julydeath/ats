@@ -49,7 +49,7 @@ type CandidateDetailPageProps = {
 }
 
 export default async function CandidateDetailPage({ params, searchParams }: CandidateDetailPageProps) {
-  const user = await requireInternalRole(['admin', 'headRecruiter', 'leadRecruiter', 'recruiter'])
+  const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const { id } = await params
   const resolvedSearchParams = (await searchParams) ?? {}

@@ -167,7 +167,7 @@ export interface CandidateUserAuthOperations {
 export interface User {
   id: number;
   fullName?: string | null;
-  role: 'admin' | 'headRecruiter' | 'leadRecruiter' | 'recruiter';
+  role: 'admin' | 'leadRecruiter' | 'recruiter';
   isActive?: boolean | null;
   updatedAt: string;
   createdAt: string;
@@ -297,6 +297,9 @@ export interface Job {
   status: 'active' | 'onHold' | 'closed' | 'inactive';
   targetClosureDate?: string | null;
   createdBy?: (number | null) | User;
+  /**
+   * Lead recruiter owning execution for this job.
+   */
   owningHeadRecruiter: number | User;
   sourceJobRequest?: (number | null) | JobRequest;
   dedupeKey?: string | null;
@@ -316,7 +319,10 @@ export interface Client {
   address?: string | null;
   billingTerms?: string | null;
   status: 'active' | 'inactive';
-  owningHeadRecruiter: number | User;
+  /**
+   * Optional primary lead owner. Admin can still assign multiple leads separately.
+   */
+  owningHeadRecruiter?: (number | null) | User;
   notes?: string | null;
   normalizedName?: string | null;
   normalizedEmail?: string | null;
@@ -374,6 +380,9 @@ export interface JobRequest {
 export interface ClientLeadAssignment {
   id: number;
   client: number | Client;
+  /**
+   * Admin owner for this assignment row.
+   */
   headRecruiter: number | User;
   leadRecruiter: number | User;
   status: 'active' | 'inactive';
@@ -390,6 +399,9 @@ export interface JobLeadAssignment {
   id: number;
   client: number | Client;
   job: number | Job;
+  /**
+   * Admin owner for this assignment row.
+   */
   headRecruiter: number | User;
   leadRecruiter: number | User;
   status: 'active' | 'inactive';

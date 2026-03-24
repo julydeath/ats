@@ -48,9 +48,15 @@ export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers: request.headers })
   const internalUser = user as InternalUserLike
+  const adminUserID =
+    typeof internalUser?.id === 'number'
+      ? internalUser.id
+      : typeof internalUser?.id === 'string' && /^\d+$/.test(internalUser.id)
+        ? Number(internalUser.id)
+        : null
 
-  if (!hasInternalRole(internalUser, ['admin', 'headRecruiter'])) {
-    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url))
+  if (!hasInternalRole(internalUser, ['admin']) || !adminUserID) {
+    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
   }
 
   try {
@@ -65,10 +71,10 @@ export async function POST(request: Request) {
       if (!leadRecruiterID) {
         const failureURL = buildRedirectURL(request)
         failureURL.searchParams.set('error', 'Lead recruiter is required to update assignment.')
-        return NextResponse.redirect(failureURL)
+        return NextResponse.redirect(failureURL, 303)
       }
 
-      await payload.update({
+      const updatedAssignment = await payload.update({
         collection: 'job-lead-assignments',
         data: {
           leadRecruiter: leadRecruiterID,
@@ -80,15 +86,28 @@ export async function POST(request: Request) {
         user: internalUser,
       })
 
+      const assignmentJobID = extractRelationshipID(updatedAssignment.job)
+      if (status === 'active' && assignmentJobID) {
+        await payload.update({
+          collection: 'jobs',
+          data: {
+            owningHeadRecruiter: leadRecruiterID,
+          },
+        id: assignmentJobID,
+        overrideAccess: false,
+        user: internalUser,
+        })
+      }
+
       const successURL = buildRedirectURL(request)
       successURL.searchParams.set('success', 'jobAssignmentUpdated')
-      return NextResponse.redirect(successURL)
+      return NextResponse.redirect(successURL, 303)
     }
 
     if (!jobID || !leadRecruiterID) {
       const failureURL = buildRedirectURL(request)
       failureURL.searchParams.set('error', 'Missing required assignment inputs.')
-      return NextResponse.redirect(failureURL)
+      return NextResponse.redirect(failureURL, 303)
     }
 
     const job = await payload.findByID({
@@ -100,27 +119,20 @@ export async function POST(request: Request) {
     })
 
     const clientID = extractRelationshipID(job.client)
-    const headRecruiterID = extractRelationshipID(job.owningHeadRecruiter)
     const normalizedClientID =
       typeof clientID === 'number' ? clientID : typeof clientID === 'string' && /^\d+$/.test(clientID) ? Number(clientID) : null
-    const normalizedHeadRecruiterID =
-      typeof headRecruiterID === 'number'
-        ? headRecruiterID
-        : typeof headRecruiterID === 'string' && /^\d+$/.test(headRecruiterID)
-          ? Number(headRecruiterID)
-          : null
 
-    if (!normalizedClientID || !normalizedHeadRecruiterID) {
+    if (!normalizedClientID) {
       const failureURL = buildRedirectURL(request)
-      failureURL.searchParams.set('error', 'Selected job is missing required client or owner metadata.')
-      return NextResponse.redirect(failureURL)
+      failureURL.searchParams.set('error', 'Selected job is missing required client metadata.')
+      return NextResponse.redirect(failureURL, 303)
     }
 
     await payload.create({
       collection: 'job-lead-assignments',
       data: {
         client: normalizedClientID,
-        headRecruiter: normalizedHeadRecruiterID,
+        headRecruiter: adminUserID,
         job: jobID,
         leadRecruiter: leadRecruiterID,
         notes,
@@ -130,12 +142,24 @@ export async function POST(request: Request) {
       user: internalUser,
     })
 
+    if (status === 'active') {
+      await payload.update({
+        collection: 'jobs',
+        data: {
+          owningHeadRecruiter: leadRecruiterID,
+        },
+        id: jobID,
+        overrideAccess: false,
+        user: internalUser,
+      })
+    }
+
     const successURL = buildRedirectURL(request)
     successURL.searchParams.set('success', 'jobAssignmentCreated')
-    return NextResponse.redirect(successURL)
+    return NextResponse.redirect(successURL, 303)
   } catch (error) {
     const failureURL = buildRedirectURL(request)
     failureURL.searchParams.set('error', error instanceof Error ? error.message : 'Unable to assign job.')
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 }

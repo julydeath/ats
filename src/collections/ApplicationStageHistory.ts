@@ -8,7 +8,7 @@ export const ApplicationStageHistory: CollectionConfig = {
   slug: 'application-stage-history',
   access: {
     admin: ({ req }) =>
-      hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter', 'leadRecruiter', 'recruiter']),
+      hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter']),
     create: applicationHistoryCreateAccess,
     read: applicationHistoryReadAccess,
     update: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin']),

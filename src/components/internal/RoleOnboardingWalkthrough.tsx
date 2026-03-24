@@ -29,20 +29,6 @@ const WALKTHROUGH_STEPS: Record<InternalRole, readonly WalkthroughStep[]> = {
       description: 'Keep pending reviews and stale corrections under control.',
     },
   ],
-  headRecruiter: [
-    {
-      title: 'Distribute clients and jobs',
-      description: 'Assign leads using Client/Job Assignment page.',
-    },
-    {
-      title: 'Track recruiter coverage',
-      description: 'Review recruiter allocation and close coverage gaps.',
-    },
-    {
-      title: 'Watch execution flow',
-      description: 'Use jobs, candidates, and applications pages to monitor delivery.',
-    },
-  ],
   leadRecruiter: [
     {
       title: 'Allocate recruiters',

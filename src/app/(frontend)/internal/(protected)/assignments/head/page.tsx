@@ -40,7 +40,7 @@ type HeadAssignmentsPageProps = {
 }
 
 export default async function HeadAssignmentsPage({ searchParams }: HeadAssignmentsPageProps) {
-  const user = await requireInternalRole(['admin', 'headRecruiter'])
+  const user = await requireInternalRole(['admin'])
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
 
@@ -176,7 +176,7 @@ export default async function HeadAssignmentsPage({ searchParams }: HeadAssignme
   return (
     <section className="dashboard-grid">
       <article className="panel panel-span-2">
-        <h1>Client and Job Ownership Desk</h1>
+        <h1>Client and Job Lead Assignment Desk</h1>
         <p className="muted">
           This is your control surface for assigning and reassigning leads. Update assignee, status, and
           notes inline without leaving this screen.

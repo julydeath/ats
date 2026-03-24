@@ -20,7 +20,7 @@ export const Clients: CollectionConfig = {
   slug: 'clients',
   access: {
     admin: ({ req }) =>
-      hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter', 'leadRecruiter']),
+      hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter']),
     create: clientCreateAccess,
     read: clientReadAccess,
     update: clientManageAccess,
@@ -76,11 +76,13 @@ export const Clients: CollectionConfig = {
       name: 'owningHeadRecruiter',
       type: 'relationship',
       relationTo: 'users',
-      required: true,
       index: true,
+      admin: {
+        description: 'Optional primary lead owner. Admin can still assign multiple leads separately.',
+      },
       filterOptions: {
         role: {
-          equals: 'headRecruiter',
+          equals: 'leadRecruiter',
         },
       },
     },
@@ -121,26 +123,11 @@ export const Clients: CollectionConfig = {
   ],
   hooks: {
     beforeValidate: [
-      async ({ data, operation, originalDoc, req }) => {
+      async ({ data, originalDoc }) => {
         const typedData = (data as Record<string, unknown> | undefined) || {}
         const typedOriginalDoc = originalDoc as Record<string, unknown> | undefined
 
         const signals = getCandidateClientSignals(typedData, typedOriginalDoc)
-        const user = req.user as InternalUserLike
-        const currentUserID = user?.id ?? null
-        const owningHeadRecruiterID = extractRelationshipID(
-          typedData.owningHeadRecruiter ?? typedOriginalDoc?.owningHeadRecruiter,
-        )
-
-        if (
-          operation === 'create' &&
-          hasInternalRole(user, ['headRecruiter']) &&
-          !owningHeadRecruiterID &&
-          currentUserID !== null
-        ) {
-          typedData.owningHeadRecruiter = currentUserID
-        }
-
         return {
           ...typedData,
           normalizedEmail: signals.normalizedEmail,
@@ -154,22 +141,12 @@ export const Clients: CollectionConfig = {
         const typedData = data as Record<string, unknown>
         const typedOriginalDoc = originalDoc as Record<string, unknown> | undefined
         const signals = getCandidateClientSignals(typedData, typedOriginalDoc)
-        const user = req.user as InternalUserLike
-        const currentUserID = user?.id ?? null
         const owningHeadRecruiterID = extractRelationshipID(
           typedData.owningHeadRecruiter ?? typedOriginalDoc?.owningHeadRecruiter,
         )
 
         if (!signals.normalizedNameKey) {
           throw new APIError('Client name is required for duplicate checks.', 400)
-        }
-
-        if (!owningHeadRecruiterID) {
-          throw new APIError('Owning head recruiter is required.', 400)
-        }
-
-        if (hasInternalRole(user, ['headRecruiter']) && String(owningHeadRecruiterID) !== String(currentUserID)) {
-          throw new APIError('Head Recruiter can only manage clients under their own ownership.', 403)
         }
 
         const duplicateChecks: Where[] = [
@@ -229,7 +206,7 @@ export const Clients: CollectionConfig = {
           normalizedEmail: signals.normalizedEmail,
           normalizedName: signals.normalizedNameKey,
           normalizedPhone: signals.normalizedPhone,
-          owningHeadRecruiter: owningHeadRecruiterID,
+          owningHeadRecruiter: owningHeadRecruiterID ?? undefined,
         }
       },
     ],

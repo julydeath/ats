@@ -15,16 +15,6 @@ const jobLeadAssignmentsReadAccess: Access = ({ req }) => {
     return true
   }
 
-  if (hasInternalRole(user, ['headRecruiter'])) {
-    const where: Where = {
-      headRecruiter: {
-        equals: user.id,
-      },
-    }
-
-    return where
-  }
-
   if (hasInternalRole(user, ['leadRecruiter'])) {
     const where: Where = {
       leadRecruiter: {
@@ -45,34 +35,20 @@ const jobLeadAssignmentsManageAccess: Access = ({ req }) => {
     return false
   }
 
-  if (hasInternalRole(user, ['admin'])) {
-    return true
-  }
-
-  if (hasInternalRole(user, ['headRecruiter'])) {
-    const where: Where = {
-      headRecruiter: {
-        equals: user.id,
-      },
-    }
-
-    return where
-  }
-
-  return false
+  return hasInternalRole(user, ['admin'])
 }
 
 export const JobLeadAssignments: CollectionConfig = {
   slug: 'job-lead-assignments',
   access: {
-    admin: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter', 'leadRecruiter']),
-    create: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter']),
+    admin: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter']),
+    create: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin']),
     read: jobLeadAssignmentsReadAccess,
     update: jobLeadAssignmentsManageAccess,
     delete: jobLeadAssignmentsManageAccess,
   },
   admin: {
-    defaultColumns: ['job', 'client', 'headRecruiter', 'leadRecruiter', 'status', 'updatedAt'],
+    defaultColumns: ['job', 'client', 'leadRecruiter', 'status', 'assignedBy', 'updatedAt'],
     group: 'Assignments',
     useAsTitle: 'job',
   },
@@ -100,9 +76,13 @@ export const JobLeadAssignments: CollectionConfig = {
       relationTo: 'users',
       required: true,
       index: true,
+      admin: {
+        description: 'Admin owner for this assignment row.',
+        readOnly: true,
+      },
       filterOptions: {
         role: {
-          equals: 'headRecruiter',
+          equals: 'admin',
         },
       },
     },
@@ -150,6 +130,7 @@ export const JobLeadAssignments: CollectionConfig = {
         const currentUserID = (req.user as InternalUserLike | null | undefined)?.id ?? null
 
         if (currentUserID !== null) {
+          typedData.headRecruiter = currentUserID
           typedData.assignedBy = currentUserID
         }
 
@@ -162,8 +143,7 @@ export const JobLeadAssignments: CollectionConfig = {
         const jobID = extractRelationshipID(typedData.job ?? originalDoc?.job)
         const leadRecruiterID = extractRelationshipID(typedData.leadRecruiter ?? originalDoc?.leadRecruiter)
         const status = String(typedData.status ?? originalDoc?.status ?? 'active')
-        const user = req.user as InternalUserLike
-        const currentUserID = user?.id ?? null
+        const currentUserID = (req.user as InternalUserLike | null | undefined)?.id ?? null
 
         if (!jobID || !leadRecruiterID) {
           throw new APIError('Job and lead recruiter are required.', 400)
@@ -177,17 +157,11 @@ export const JobLeadAssignments: CollectionConfig = {
           req,
         })
 
-        const headRecruiterID = extractRelationshipID(
-          typedData.headRecruiter ?? originalDoc?.headRecruiter ?? jobDoc.owningHeadRecruiter,
-        )
+        const headRecruiterID = extractRelationshipID(typedData.headRecruiter ?? originalDoc?.headRecruiter ?? currentUserID)
         const clientID = extractRelationshipID(typedData.client ?? originalDoc?.client ?? jobDoc.client)
 
         if (!headRecruiterID || !clientID) {
           throw new APIError('Job owner and client are required for this assignment.', 400)
-        }
-
-        if (hasInternalRole(user, ['headRecruiter']) && String(headRecruiterID) !== String(currentUserID)) {
-          throw new APIError('Head Recruiter can only assign jobs owned by them.', 403)
         }
 
         if (status === 'active') {

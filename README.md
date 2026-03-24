@@ -21,7 +21,6 @@ Implemented through Phase 6:
 Internal:
 
 - `admin`
-- `headRecruiter`
 - `leadRecruiter`
 - `recruiter`
 

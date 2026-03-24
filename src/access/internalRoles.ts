@@ -25,7 +25,7 @@ export const isInternalAuthenticated = (user: InternalUserLike): boolean =>
   hasInternalRole(user, INTERNAL_ROLES)
 
 export const canManageInternalUsers = (user: InternalUserLike): boolean =>
-  hasInternalRole(user, ['admin', 'headRecruiter'])
+  hasInternalRole(user, ['admin'])
 
 export const internalUserAccess: Access = ({ req: { user } }) =>
   isInternalAuthenticated(user as InternalUserLike)
@@ -36,14 +36,14 @@ export const internalAdminAccess = ({ req: { user } }: { req: { user: InternalUs
 export const adminOnlyAccess: Access = ({ req: { user } }) =>
   hasInternalRole(user as InternalUserLike, ['admin'])
 
-export const adminOrHeadRecruiterAccess: Access = ({ req: { user } }) =>
-  hasInternalRole(user as InternalUserLike, ['admin', 'headRecruiter'])
+export const adminLeadershipAccess: Access = ({ req: { user } }) =>
+  hasInternalRole(user as InternalUserLike, ['admin'])
 
-export const adminOrHeadRecruiterAdminAccess = ({
+export const adminLeadershipAdminAccess = ({
   req: { user },
 }: {
   req: { user: InternalUserLike }
-}): boolean => hasInternalRole(user as InternalUserLike, ['admin', 'headRecruiter'])
+}): boolean => hasInternalRole(user as InternalUserLike, ['admin'])
 
 export const selfOrLeadershipAccess: Access = ({ req: { user } }) => {
   const internalUser = user as InternalUserLike
@@ -52,7 +52,7 @@ export const selfOrLeadershipAccess: Access = ({ req: { user } }) => {
     return false
   }
 
-  if (hasInternalRole(internalUser, ['admin', 'headRecruiter', 'leadRecruiter'])) {
+  if (hasInternalRole(internalUser, ['admin', 'leadRecruiter'])) {
     return true
   }
 
@@ -63,14 +63,14 @@ export const selfOrLeadershipAccess: Access = ({ req: { user } }) => {
   }
 }
 
-export const selfOrHeadRecruiterAccess: Access = ({ req: { user } }) => {
+export const selfOrAdminAccess: Access = ({ req: { user } }) => {
   const internalUser = user as InternalUserLike
 
   if (!internalUser) {
     return false
   }
 
-  if (hasInternalRole(internalUser, ['admin', 'headRecruiter'])) {
+  if (hasInternalRole(internalUser, ['admin'])) {
     return true
   }
 
@@ -80,3 +80,8 @@ export const selfOrHeadRecruiterAccess: Access = ({ req: { user } }) => {
     },
   }
 }
+
+// Backward compatibility aliases for older imports.
+export const adminOrHeadRecruiterAccess = adminLeadershipAccess
+export const adminOrHeadRecruiterAdminAccess = adminLeadershipAdminAccess
+export const selfOrHeadRecruiterAccess = selfOrAdminAccess

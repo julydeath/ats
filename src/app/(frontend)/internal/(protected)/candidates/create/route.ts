@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   const internalUser = user as InternalUserLike
 
   if (!hasInternalRole(internalUser, ['admin', 'recruiter'])) {
-    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url))
+    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
   }
 
   const formData = await request.formData()
@@ -88,13 +88,13 @@ export async function POST(request: Request) {
   if (!fullName || !sourceJobID) {
     const failureURL = buildCreateRedirectURL(request)
     failureURL.searchParams.set('error', 'Candidate name and source job are required.')
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 
   if (!email && !phone) {
     const failureURL = buildCreateRedirectURL(request)
     failureURL.searchParams.set('error', 'Provide at least one contact method: email or phone.')
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 
   const resumeInput = formData.get('resume')
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       if (!RESUME_MIME_TYPES.has(resumeInput.type)) {
         const failureURL = buildCreateRedirectURL(request)
         failureURL.searchParams.set('error', 'Resume must be a PDF, DOC, or DOCX file.')
-        return NextResponse.redirect(failureURL)
+        return NextResponse.redirect(failureURL, 303)
       }
 
       const buffer = Buffer.from(await resumeInput.arrayBuffer())
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
 
     const successURL = new URL(`${APP_ROUTES.internal.candidates.detailBase}/${candidate.id}`, request.url)
     successURL.searchParams.set('success', 'candidateCreated')
-    return NextResponse.redirect(successURL)
+    return NextResponse.redirect(successURL, 303)
   } catch (error) {
     if (uploadedResumeID !== null) {
       try {
@@ -176,6 +176,6 @@ export async function POST(request: Request) {
       'error',
       error instanceof Error ? error.message : 'Unable to save candidate. Please retry.',
     )
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 }

@@ -11,7 +11,7 @@ export const CandidateResumes: CollectionConfig = {
   slug: 'candidate-resumes',
   access: {
     admin: ({ req }) =>
-      hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter', 'leadRecruiter', 'recruiter']),
+      hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter']),
     create: candidateResumeCreateAccess,
     read: candidateResumeReadAccess,
     update: candidateResumeDeleteAccess,

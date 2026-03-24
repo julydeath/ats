@@ -2,10 +2,10 @@ import type { CollectionConfig } from 'payload'
 
 import {
   adminOnlyAccess,
-  adminOrHeadRecruiterAccess,
+  adminLeadershipAccess,
   canManageInternalUsers,
   internalAdminAccess,
-  selfOrHeadRecruiterAccess,
+  selfOrAdminAccess,
   selfOrLeadershipAccess,
   type InternalUserLike,
 } from '@/access/internalRoles'
@@ -15,9 +15,9 @@ export const Users: CollectionConfig = {
   slug: 'users',
   access: {
     admin: internalAdminAccess,
-    create: adminOrHeadRecruiterAccess,
+    create: adminLeadershipAccess,
     read: selfOrLeadershipAccess,
-    update: selfOrHeadRecruiterAccess,
+    update: selfOrAdminAccess,
     delete: adminOnlyAccess,
   },
   admin: {

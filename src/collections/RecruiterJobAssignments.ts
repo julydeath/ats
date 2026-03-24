@@ -1,7 +1,7 @@
 import { APIError, type Access, type CollectionConfig, type Where } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
-import { getHeadOwnedJobIDs, getLeadAssignedClientIDs, getLeadAssignedJobIDs } from '@/lib/assignments/selectors'
+import { getLeadAssignedClientIDs, getLeadAssignedJobIDs } from '@/lib/assignments/selectors'
 import { ASSIGNMENT_STATUS_OPTIONS } from '@/lib/constants/recruitment'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
@@ -14,25 +14,6 @@ const recruiterJobAssignmentsReadAccess: Access = async ({ req }) => {
 
   if (hasInternalRole(user, ['admin'])) {
     return true
-  }
-
-  if (hasInternalRole(user, ['headRecruiter'])) {
-    const ownedJobIDs = await getHeadOwnedJobIDs({
-      headRecruiterID: user.id,
-      req,
-    })
-
-    if (ownedJobIDs.length === 0) {
-      return false
-    }
-
-    const where: Where = {
-      job: {
-        in: ownedJobIDs,
-      },
-    }
-
-    return where
   }
 
   if (hasInternalRole(user, ['leadRecruiter'])) {
@@ -88,7 +69,6 @@ export const RecruiterJobAssignments: CollectionConfig = {
     admin: ({ req }) =>
       hasInternalRole(req.user as InternalUserLike, [
         'admin',
-        'headRecruiter',
         'leadRecruiter',
         'recruiter',
       ]),

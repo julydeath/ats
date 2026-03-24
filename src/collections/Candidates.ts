@@ -19,7 +19,7 @@ export const Candidates: CollectionConfig = {
   slug: 'candidates',
   access: {
     admin: ({ req }) =>
-      hasInternalRole(req.user as InternalUserLike, ['admin', 'headRecruiter', 'leadRecruiter', 'recruiter']),
+      hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter']),
     create: candidatesCreateAccess,
     read: candidatesReadAccess,
     update: candidatesManageAccess,

@@ -12,12 +12,18 @@ export default async function InternalLoginPage() {
   }
 
   return (
-    <section className="auth-page">
-      <div className="auth-card">
-        <p className="eyebrow">Realizing Dreams Inspirix HR Services</p>
-        <h1>Internal Recruitment Workflow</h1>
-        <p className="muted">Sign in with your employee account to open your role-based workflow dashboard.</p>
-        <InternalLoginForm />
+    <section className="internal-login-page">
+      <div className="internal-login-shell">
+        <div className="internal-login-panel">
+          <div className="internal-login-center">
+            <header className="internal-login-brand">
+              <h1>Inspirix HR</h1>
+              <p>Internal Talent Operations Portal</p>
+            </header>
+
+            <InternalLoginForm />
+          </div>
+        </div>
       </div>
     </section>
   )

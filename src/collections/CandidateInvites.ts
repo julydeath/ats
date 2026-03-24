@@ -6,10 +6,10 @@ import { CANDIDATE_INVITE_STATUS_OPTIONS } from '@/lib/constants/recruitment'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const candidateInviteAccess: Access = ({ req: { user } }) =>
-  hasInternalRole(user as InternalUserLike, ['admin', 'headRecruiter', 'leadRecruiter'])
+  hasInternalRole(user as InternalUserLike, ['admin', 'leadRecruiter'])
 
 const candidateInviteAdminAccess = ({ req: { user } }: { req: { user: InternalUserLike } }): boolean =>
-  hasInternalRole(user as InternalUserLike, ['admin', 'headRecruiter', 'leadRecruiter'])
+  hasInternalRole(user as InternalUserLike, ['admin', 'leadRecruiter'])
 
 export const CandidateInvites: CollectionConfig = {
   slug: 'candidate-invites',

@@ -1,4 +1,4 @@
-export const INTERNAL_ROLES = ['admin', 'headRecruiter', 'leadRecruiter', 'recruiter'] as const
+export const INTERNAL_ROLES = ['admin', 'leadRecruiter', 'recruiter'] as const
 
 export type InternalRole = (typeof INTERNAL_ROLES)[number]
 
@@ -7,7 +7,6 @@ export type ExternalCandidateRole = typeof EXTERNAL_CANDIDATE_ROLE
 
 export const INTERNAL_ROLE_LABELS: Readonly<Record<InternalRole, string>> = {
   admin: 'Admin',
-  headRecruiter: 'Head Recruiter',
   leadRecruiter: 'Lead Recruiter',
   recruiter: 'Recruiter',
 }

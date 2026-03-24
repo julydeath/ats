@@ -40,7 +40,7 @@ type LeadAssignmentsPageProps = {
 }
 
 export default async function LeadAssignmentsPage({ searchParams }: LeadAssignmentsPageProps) {
-  const user = await requireInternalRole(['admin', 'headRecruiter', 'leadRecruiter'])
+  const user = await requireInternalRole(['admin', 'leadRecruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
 

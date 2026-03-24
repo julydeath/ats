@@ -48,9 +48,15 @@ export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers: request.headers })
   const internalUser = user as InternalUserLike
+  const adminUserID =
+    typeof internalUser?.id === 'number'
+      ? internalUser.id
+      : typeof internalUser?.id === 'string' && /^\d+$/.test(internalUser.id)
+        ? Number(internalUser.id)
+        : null
 
-  if (!hasInternalRole(internalUser, ['admin', 'headRecruiter'])) {
-    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url))
+  if (!hasInternalRole(internalUser, ['admin']) || !adminUserID) {
+    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
   }
 
   try {
@@ -65,10 +71,10 @@ export async function POST(request: Request) {
       if (!leadRecruiterID) {
         const failureURL = buildRedirectURL(request)
         failureURL.searchParams.set('error', 'Lead recruiter is required to update assignment.')
-        return NextResponse.redirect(failureURL)
+        return NextResponse.redirect(failureURL, 303)
       }
 
-      await payload.update({
+      const updatedAssignment = await payload.update({
         collection: 'client-lead-assignments',
         data: {
           leadRecruiter: leadRecruiterID,
@@ -80,44 +86,35 @@ export async function POST(request: Request) {
         user: internalUser,
       })
 
+      const assignmentClientID = extractRelationshipID(updatedAssignment.client)
+      if (status === 'active' && assignmentClientID) {
+        await payload.update({
+          collection: 'clients',
+          data: {
+            owningHeadRecruiter: leadRecruiterID,
+          },
+        id: assignmentClientID,
+        overrideAccess: false,
+        user: internalUser,
+      })
+      }
+
       const successURL = buildRedirectURL(request)
       successURL.searchParams.set('success', 'clientAssignmentUpdated')
-      return NextResponse.redirect(successURL)
+      return NextResponse.redirect(successURL, 303)
     }
 
     if (!clientID || !leadRecruiterID) {
       const failureURL = buildRedirectURL(request)
       failureURL.searchParams.set('error', 'Missing required assignment inputs.')
-      return NextResponse.redirect(failureURL)
-    }
-
-    const client = await payload.findByID({
-      collection: 'clients',
-      depth: 0,
-      id: clientID,
-      overrideAccess: false,
-      user: internalUser,
-    })
-
-    const owningHeadRecruiterID = extractRelationshipID(client.owningHeadRecruiter)
-    const normalizedOwningHeadRecruiterID =
-      typeof owningHeadRecruiterID === 'number'
-        ? owningHeadRecruiterID
-        : typeof owningHeadRecruiterID === 'string' && /^\d+$/.test(owningHeadRecruiterID)
-          ? Number(owningHeadRecruiterID)
-          : null
-
-    if (!normalizedOwningHeadRecruiterID) {
-      const failureURL = buildRedirectURL(request)
-      failureURL.searchParams.set('error', 'Selected client is missing owning head recruiter.')
-      return NextResponse.redirect(failureURL)
+      return NextResponse.redirect(failureURL, 303)
     }
 
     await payload.create({
       collection: 'client-lead-assignments',
       data: {
         client: clientID,
-        headRecruiter: normalizedOwningHeadRecruiterID,
+        headRecruiter: adminUserID,
         leadRecruiter: leadRecruiterID,
         notes,
         status,
@@ -126,12 +123,24 @@ export async function POST(request: Request) {
       user: internalUser,
     })
 
+    if (status === 'active') {
+      await payload.update({
+        collection: 'clients',
+        data: {
+          owningHeadRecruiter: leadRecruiterID,
+        },
+        id: clientID,
+        overrideAccess: false,
+        user: internalUser,
+      })
+    }
+
     const successURL = buildRedirectURL(request)
     successURL.searchParams.set('success', 'clientAssignmentCreated')
-    return NextResponse.redirect(successURL)
+    return NextResponse.redirect(successURL, 303)
   } catch (error) {
     const failureURL = buildRedirectURL(request)
     failureURL.searchParams.set('error', error instanceof Error ? error.message : 'Unable to assign client.')
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 }

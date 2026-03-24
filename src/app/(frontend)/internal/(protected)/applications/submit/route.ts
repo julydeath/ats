@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const internalUser = user as InternalUserLike
 
   if (!hasInternalRole(internalUser, ['admin', 'recruiter'])) {
-    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url))
+    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
   }
 
   const formData = await request.formData()
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   if (!applicationID) {
     const failureURL = buildListRedirectURL(request)
     failureURL.searchParams.set('error', 'Application ID is required.')
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 
   try {
@@ -58,13 +58,13 @@ export async function POST(request: Request) {
 
     const successURL = buildListRedirectURL(request)
     successURL.searchParams.set('success', 'submittedForReview')
-    return NextResponse.redirect(successURL)
+    return NextResponse.redirect(successURL, 303)
   } catch (error) {
     const failureURL = buildListRedirectURL(request)
     failureURL.searchParams.set(
       'error',
       error instanceof Error ? error.message : 'Unable to submit application for review.',
     )
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 }

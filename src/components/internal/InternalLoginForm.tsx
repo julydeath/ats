@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { FormEvent, useMemo, useState } from 'react'
 
 import { APP_ROUTES } from '@/lib/constants/routes'
@@ -34,7 +35,9 @@ export const InternalLoginForm = () => {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberDevice, setRememberDevice] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showSuccessToast, setShowSuccessToast] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const nextRoute = useMemo(
@@ -85,8 +88,12 @@ export const InternalLoginForm = () => {
         return
       }
 
-      router.replace(nextRoute || APP_ROUTES.internal.dashboard)
-      router.refresh()
+      setShowSuccessToast(true)
+
+      window.setTimeout(() => {
+        router.replace(nextRoute || APP_ROUTES.internal.dashboard)
+        router.refresh()
+      }, 850)
     } catch {
       setError('Unable to sign in right now. Please try again shortly.')
     } finally {
@@ -95,41 +102,91 @@ export const InternalLoginForm = () => {
   }
 
   return (
-    <form className="auth-form" onSubmit={handleSubmit}>
-      <label className="form-field" htmlFor="email">
-        Work email
-      </label>
-      <input
-        autoComplete="email"
-        className="input"
-        id="email"
-        name="email"
-        onChange={(event) => setEmail(event.target.value)}
-        placeholder="name@company.com"
-        required
-        type="email"
-        value={email}
-      />
+    <>
+      <div className="internal-login-card">
+        <div className="internal-login-card-main">
+          <div className="internal-login-copy">
+            <h2>Welcome back</h2>
+            <p>Enter your credentials to access the dashboard</p>
+          </div>
 
-      <label className="form-field" htmlFor="password">
-        Password
-      </label>
-      <input
-        autoComplete="current-password"
-        className="input"
-        id="password"
-        name="password"
-        onChange={(event) => setPassword(event.target.value)}
-        required
-        type="password"
-        value={password}
-      />
+          <form className="internal-login-form" onSubmit={handleSubmit}>
+            <label className="internal-login-field-label" htmlFor="email">
+              Email Address
+            </label>
+            <input
+              autoComplete="email"
+              className="internal-login-input"
+              id="email"
+              name="email"
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="name@inspirix.com"
+              required
+              type="email"
+              value={email}
+            />
 
-      {error ? <p className="error-text">{error}</p> : null}
+            <div className="internal-login-password-row">
+              <label className="internal-login-field-label" htmlFor="password">
+                Password
+              </label>
+              <Link className="internal-login-forgot-link" href={APP_ROUTES.root}>
+                Forgot Password?
+              </Link>
+            </div>
+            <input
+              autoComplete="current-password"
+              className="internal-login-input"
+              id="password"
+              name="password"
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="........"
+              required
+              type="password"
+              value={password}
+            />
 
-      <button className="button" disabled={isSubmitting} type="submit">
-        {isSubmitting ? 'Signing in...' : 'Open My Workspace'}
-      </button>
-    </form>
+            <label className="internal-login-remember-row" htmlFor="remember-device">
+              <input
+                checked={rememberDevice}
+                id="remember-device"
+                onChange={(event) => setRememberDevice(event.target.checked)}
+                type="checkbox"
+              />
+              <span>Remember this device</span>
+            </label>
+
+            {error ? <p className="internal-login-error">{error}</p> : null}
+
+            <button className="internal-login-submit" disabled={isSubmitting} type="submit">
+              {isSubmitting ? 'Logging in...' : 'Login ->'}
+            </button>
+          </form>
+        </div>
+
+        <div className="internal-login-card-footer">Secured by Inspirix Identity Services</div>
+      </div>
+
+      <div className="internal-login-footer-links">
+        <Link href={APP_ROUTES.root}>Support Center</Link>
+        <Link href={APP_ROUTES.root}>Privacy Policy</Link>
+        <Link href={APP_ROUTES.root}>System Status</Link>
+      </div>
+
+      {showSuccessToast ? (
+        <div className="internal-login-toast">
+          <span className="internal-login-toast-icon" aria-hidden>
+            ✓
+          </span>
+          <div>
+            <p>Login Successful</p>
+            <span>Redirecting to your dashboard...</span>
+          </div>
+          <button aria-label="Close notification" type="button" onClick={() => setShowSuccessToast(false)}>
+            x
+          </button>
+        </div>
+      ) : null}
+    </>
   )
 }

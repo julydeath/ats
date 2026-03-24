@@ -1,7 +1,6 @@
 import { APIError, type CollectionConfig, type Endpoint, type PayloadRequest, type Where } from 'payload'
 
 import {
-  canManageInternalUsers,
   hasInternalRole,
   type InternalUserLike,
 } from '@/access/internalRoles'
@@ -14,6 +13,7 @@ import {
   REACTIVATABLE_JOB_STATUSES,
 } from '@/lib/constants/recruitment'
 import { buildJobDedupeKey } from '@/lib/jobs/dedupe'
+import { getLeadAssignedClientIDs } from '@/lib/assignments/selectors'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const activeJobStatusSet = new Set<string>(ACTIVE_JOB_STATUSES)
@@ -106,7 +106,7 @@ const reactivateJobEndpoint: Endpoint = {
   path: '/reactivate/:id',
   method: 'post',
   handler: async (req) => {
-    if (!canManageInternalUsers(req.user as InternalUserLike)) {
+    if (!hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])) {
       throw new APIError('Forbidden', 403)
     }
 
@@ -195,7 +195,6 @@ export const Jobs: CollectionConfig = {
     admin: ({ req }) =>
       hasInternalRole(req.user as InternalUserLike, [
         'admin',
-        'headRecruiter',
         'leadRecruiter',
         'recruiter',
       ]),
@@ -316,9 +315,12 @@ export const Jobs: CollectionConfig = {
       type: 'relationship',
       relationTo: 'users',
       required: true,
+      admin: {
+        description: 'Lead recruiter owning execution for this job.',
+      },
       filterOptions: {
         role: {
-          equals: 'headRecruiter',
+          equals: 'leadRecruiter',
         },
       },
     },
@@ -371,6 +373,10 @@ export const Jobs: CollectionConfig = {
           typedData.owningHeadRecruiter ?? typedOriginalDoc?.owningHeadRecruiter,
         )
 
+        if (hasInternalRole(user, ['leadRecruiter']) && !owningHeadRecruiterID) {
+          owningHeadRecruiterID = currentUserID
+        }
+
         if (clientID && !owningHeadRecruiterID) {
           const clientDoc = await req.payload.findByID({
             collection: 'clients',
@@ -384,15 +390,34 @@ export const Jobs: CollectionConfig = {
         }
 
         if (!owningHeadRecruiterID) {
-          throw new APIError('Owning head recruiter is required for each job.', 400)
+          throw new APIError('Owning lead recruiter is required for each job.', 400)
         }
 
-        if (hasInternalRole(user, ['headRecruiter']) && String(owningHeadRecruiterID) !== String(currentUserID)) {
-          throw new APIError('Head Recruiter can only manage jobs under their own ownership.', 403)
+        if (hasInternalRole(user, ['leadRecruiter']) && String(owningHeadRecruiterID) !== String(currentUserID)) {
+          throw new APIError('Lead Recruiter can only manage jobs under their ownership.', 403)
         }
 
         if (operation === 'create' && req.user?.id) {
           typedData.createdBy = req.user.id
+        }
+
+        if (hasInternalRole(user, ['leadRecruiter'])) {
+          const leadID = user?.id
+
+          if (!leadID || !clientID) {
+            throw new APIError('Lead Recruiter context and client are required for job ownership.', 400)
+          }
+
+          const assignedClientIDs = await getLeadAssignedClientIDs({
+            leadRecruiterID: leadID,
+            req,
+          })
+
+          const canUseClient = assignedClientIDs.some((assignedClientID) => String(assignedClientID) === String(clientID))
+
+          if (!canUseClient) {
+            throw new APIError('Lead Recruiter can create or manage jobs only for clients assigned to them.', 403)
+          }
         }
 
         if (!clientID || !dedupeKey) {

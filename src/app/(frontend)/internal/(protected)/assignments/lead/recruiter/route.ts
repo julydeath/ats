@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   const internalUser = user as InternalUserLike
 
   if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter'])) {
-    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url))
+    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
   }
 
   try {
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       if (!recruiterID) {
         const failureURL = buildRedirectURL(request)
         failureURL.searchParams.set('error', 'Recruiter is required to update assignment.')
-        return NextResponse.redirect(failureURL)
+        return NextResponse.redirect(failureURL, 303)
       }
 
       await payload.update({
@@ -91,13 +91,13 @@ export async function POST(request: Request) {
 
       const successURL = buildRedirectURL(request)
       successURL.searchParams.set('success', 'recruiterAssignmentUpdated')
-      return NextResponse.redirect(successURL)
+      return NextResponse.redirect(successURL, 303)
     }
 
     if (!jobID || !recruiterID || !leadRecruiterID) {
       const failureURL = buildRedirectURL(request)
       failureURL.searchParams.set('error', 'Missing required assignment inputs.')
-      return NextResponse.redirect(failureURL)
+      return NextResponse.redirect(failureURL, 303)
     }
 
     await payload.create({
@@ -115,10 +115,10 @@ export async function POST(request: Request) {
 
     const successURL = buildRedirectURL(request)
     successURL.searchParams.set('success', 'recruiterAssignmentCreated')
-    return NextResponse.redirect(successURL)
+    return NextResponse.redirect(successURL, 303)
   } catch (error) {
     const failureURL = buildRedirectURL(request)
     failureURL.searchParams.set('error', error instanceof Error ? error.message : 'Unable to assign recruiter.')
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 }

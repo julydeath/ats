@@ -7,12 +7,14 @@ import { APP_ROUTES } from '@/lib/constants/routes'
 
 type ReviewAction = 'approve' | 'reject' | 'sendBack'
 
-const STAGE_BY_ACTION: Record<ReviewAction, 'internalReviewApproved' | 'internalReviewRejected' | 'sentBackForCorrection'> =
-  {
-    approve: 'internalReviewApproved',
-    reject: 'internalReviewRejected',
-    sendBack: 'sentBackForCorrection',
-  }
+const STAGE_BY_ACTION: Record<
+  ReviewAction,
+  'internalReviewApproved' | 'internalReviewRejected' | 'sentBackForCorrection'
+> = {
+  approve: 'internalReviewApproved',
+  reject: 'internalReviewRejected',
+  sendBack: 'sentBackForCorrection',
+}
 
 const readString = (value: FormDataEntryValue | null): string => {
   if (typeof value !== 'string') {
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
   const internalUser = user as InternalUserLike
 
   if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter'])) {
-    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url))
+    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
   }
 
   const formData = await request.formData()
@@ -55,7 +57,7 @@ export async function POST(request: Request) {
   if (!applicationID || !isReviewAction(action)) {
     const failureURL = buildQueueRedirectURL(request)
     failureURL.searchParams.set('error', 'Valid review action and application ID are required.')
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 
   try {
@@ -72,10 +74,10 @@ export async function POST(request: Request) {
 
     const successURL = buildQueueRedirectURL(request)
     successURL.searchParams.set('success', action)
-    return NextResponse.redirect(successURL)
+    return NextResponse.redirect(successURL, 303)
   } catch (error) {
     const failureURL = buildQueueRedirectURL(request)
     failureURL.searchParams.set('error', error instanceof Error ? error.message : 'Unable to review application.')
-    return NextResponse.redirect(failureURL)
+    return NextResponse.redirect(failureURL, 303)
   }
 }

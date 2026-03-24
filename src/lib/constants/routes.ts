@@ -5,12 +5,20 @@ export const APP_ROUTES = {
     base: '/internal',
     login: '/internal/login',
     dashboard: '/internal/dashboard',
+    schedule: '/internal/schedule',
+    settings: '/internal/settings',
     assignments: {
       head: '/internal/assignments/head',
       lead: '/internal/assignments/lead',
     },
     jobs: {
       assigned: '/internal/jobs/assigned',
+      create: '/internal/jobs/create',
+      detailBase: '/internal/jobs/assigned',
+    },
+    clients: {
+      create: '/internal/clients/create',
+      list: '/internal/clients',
     },
     candidates: {
       create: '/internal/candidates/create',

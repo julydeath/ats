@@ -16,7 +16,7 @@ type InternalUserDoc = {
   email: string
   fullName?: string
   isActive?: boolean
-  role: 'admin' | 'headRecruiter' | 'leadRecruiter' | 'recruiter'
+  role: 'admin' | 'leadRecruiter' | 'recruiter'
 }
 
 type SeedStats = {
@@ -145,27 +145,6 @@ const main = async () => {
     return created
   }
 
-  const head = await upsert<InternalUserDoc>({
-    collection: 'users',
-    createData: {
-      email: 'head.recruiter.seed@inspirixhr.local',
-      fullName: 'Seed Head Recruiter',
-      isActive: true,
-      password: 'SeedPass@123',
-      role: 'headRecruiter',
-    },
-    updateData: {
-      fullName: 'Seed Head Recruiter',
-      isActive: true,
-      role: 'headRecruiter',
-    },
-    where: {
-      email: {
-        equals: 'head.recruiter.seed@inspirixhr.local',
-      },
-    },
-  })
-
   const lead = await upsert<InternalUserDoc>({
     collection: 'users',
     createData: {
@@ -238,7 +217,7 @@ const main = async () => {
       email: 'hiring@acme-seed.com',
       name: 'Acme Seed Technologies',
       notes: 'Primary seeded enterprise client.',
-      owningHeadRecruiter: head.id,
+      owningHeadRecruiter: lead.id,
       phone: '+91-9876500001',
       status: 'active',
     },
@@ -249,7 +228,7 @@ const main = async () => {
       email: 'hiring@acme-seed.com',
       name: 'Acme Seed Technologies',
       notes: 'Primary seeded enterprise client.',
-      owningHeadRecruiter: head.id,
+      owningHeadRecruiter: lead.id,
       phone: '+91-9876500001',
       status: 'active',
     },
@@ -269,7 +248,7 @@ const main = async () => {
       email: 'recruitment@nova-seed.com',
       name: 'Nova Seed Systems',
       notes: 'Secondary seeded client.',
-      owningHeadRecruiter: head.id,
+      owningHeadRecruiter: lead.id,
       phone: '+91-9876500002',
       status: 'active',
     },
@@ -280,7 +259,7 @@ const main = async () => {
       email: 'recruitment@nova-seed.com',
       name: 'Nova Seed Systems',
       notes: 'Secondary seeded client.',
-      owningHeadRecruiter: head.id,
+      owningHeadRecruiter: lead.id,
       phone: '+91-9876500002',
       status: 'active',
     },
@@ -303,7 +282,7 @@ const main = async () => {
       experienceMin: 4,
       location: 'Bangalore',
       openings: 2,
-      owningHeadRecruiter: head.id,
+      owningHeadRecruiter: lead.id,
       priority: 'high',
       requiredSkills: [{ skill: 'React' }, { skill: 'TypeScript' }, { skill: 'Next.js' }],
       salaryMax: 2600000,
@@ -321,7 +300,7 @@ const main = async () => {
       experienceMin: 4,
       location: 'Bangalore',
       openings: 2,
-      owningHeadRecruiter: head.id,
+      owningHeadRecruiter: lead.id,
       priority: 'high',
       requiredSkills: [{ skill: 'React' }, { skill: 'TypeScript' }, { skill: 'Next.js' }],
       salaryMax: 2600000,
@@ -358,7 +337,7 @@ const main = async () => {
       experienceMin: 5,
       location: 'Hyderabad',
       openings: 1,
-      owningHeadRecruiter: head.id,
+      owningHeadRecruiter: lead.id,
       priority: 'medium',
       requiredSkills: [{ skill: 'Node.js' }, { skill: 'PostgreSQL' }, { skill: 'Docker' }],
       salaryMax: 2800000,
@@ -376,7 +355,7 @@ const main = async () => {
       experienceMin: 5,
       location: 'Hyderabad',
       openings: 1,
-      owningHeadRecruiter: head.id,
+      owningHeadRecruiter: lead.id,
       priority: 'medium',
       requiredSkills: [{ skill: 'Node.js' }, { skill: 'PostgreSQL' }, { skill: 'Docker' }],
       salaryMax: 2800000,
@@ -413,7 +392,7 @@ const main = async () => {
       linkedJob: jobA.id,
       message: 'Need urgent frontend hiring for product launch.',
       notes: 'Seed intake request.',
-      owningHeadRecruiter: head.id,
+      owningHeadRecruiter: lead.id,
       priority: 'high',
       proposedDepartment: 'Engineering',
       proposedDescription: 'Need React + TS profile for platform rewrite.',
@@ -440,7 +419,7 @@ const main = async () => {
       linkedJob: jobA.id,
       message: 'Need urgent frontend hiring for product launch.',
       notes: 'Seed intake request.',
-      owningHeadRecruiter: head.id,
+      owningHeadRecruiter: lead.id,
       priority: 'high',
       proposedDepartment: 'Engineering',
       proposedDescription: 'Need React + TS profile for platform rewrite.',
@@ -467,17 +446,17 @@ const main = async () => {
   await upsert({
     collection: 'client-lead-assignments',
     createData: {
-      assignedBy: head.id,
+      assignedBy: admin.id,
       client: clientA.id,
-      headRecruiter: head.id,
+      headRecruiter: admin.id,
       leadRecruiter: lead.id,
       notes: 'Seed assignment for lead visibility.',
       status: 'active',
     },
     updateData: {
-      assignedBy: head.id,
+      assignedBy: admin.id,
       client: clientA.id,
-      headRecruiter: head.id,
+      headRecruiter: admin.id,
       leadRecruiter: lead.id,
       notes: 'Seed assignment for lead visibility.',
       status: 'active',
@@ -501,18 +480,18 @@ const main = async () => {
   await upsert({
     collection: 'job-lead-assignments',
     createData: {
-      assignedBy: head.id,
+      assignedBy: admin.id,
       client: clientA.id,
-      headRecruiter: head.id,
+      headRecruiter: admin.id,
       job: jobA.id,
       leadRecruiter: lead.id,
       notes: 'Seed job to lead assignment.',
       status: 'active',
     },
     updateData: {
-      assignedBy: head.id,
+      assignedBy: admin.id,
       client: clientA.id,
-      headRecruiter: head.id,
+      headRecruiter: admin.id,
       job: jobA.id,
       leadRecruiter: lead.id,
       notes: 'Seed job to lead assignment.',
@@ -537,18 +516,18 @@ const main = async () => {
   await upsert({
     collection: 'job-lead-assignments',
     createData: {
-      assignedBy: head.id,
+      assignedBy: admin.id,
       client: clientB.id,
-      headRecruiter: head.id,
+      headRecruiter: admin.id,
       job: jobB.id,
       leadRecruiter: lead.id,
       notes: 'Seed second job to lead assignment.',
       status: 'active',
     },
     updateData: {
-      assignedBy: head.id,
+      assignedBy: admin.id,
       client: clientB.id,
-      headRecruiter: head.id,
+      headRecruiter: admin.id,
       job: jobB.id,
       leadRecruiter: lead.id,
       notes: 'Seed second job to lead assignment.',
