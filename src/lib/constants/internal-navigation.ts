@@ -115,44 +115,21 @@ const RECRUITER_NAV: readonly InternalNavGroup[] = [
         icon: 'dashboard',
       },
       {
+        label: 'My Jobs',
+        href: APP_ROUTES.internal.jobs.assigned,
+        description: 'Open assigned jobs and move applicants.',
+        icon: 'jobs',
+      },
+      {
         label: 'Candidates',
         href: APP_ROUTES.internal.candidates.list,
         description: 'Verify candidate details before submission.',
         icon: 'candidates',
       },
       {
-        label: 'Jobs',
-        href: APP_ROUTES.internal.jobs.assigned,
-        description: 'Open assigned jobs and move applicants.',
-        icon: 'jobs',
-      },
-      {
-        label: 'Schedule',
-        href: APP_ROUTES.internal.schedule,
-        description: 'Track upcoming interviews and reminders.',
-        icon: 'schedule',
-      },
-      {
-        label: 'Applications',
+        label: 'My Applications',
         href: APP_ROUTES.internal.applications.list,
         description: 'Submit and track lead recruiter review.',
-        icon: 'applications',
-      },
-    ],
-  },
-  {
-    title: 'Quick Create',
-    items: [
-      {
-        label: 'Add Candidate',
-        href: APP_ROUTES.internal.candidates.new,
-        description: 'Create a new candidate master profile.',
-        icon: 'candidates',
-      },
-      {
-        label: 'Create Application',
-        href: APP_ROUTES.internal.applications.new,
-        description: 'Map candidate to job and submit for review.',
         icon: 'applications',
       },
     ],

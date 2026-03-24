@@ -40,6 +40,7 @@ export async function POST(request: Request) {
   const contactPerson = readString(formData.get('contactPerson'))
   const email = readString(formData.get('email'))
   const phone = readString(formData.get('phone'))
+  const industry = readString(formData.get('industry'))
   const leadRecruiterID = parseNumericID(formData.get('leadRecruiterId'))
   const statusInput = readString(formData.get('status'))
   const address = readString(formData.get('address')) || undefined
@@ -72,6 +73,8 @@ export async function POST(request: Request) {
       return NextResponse.redirect(failureURL, 303)
     }
 
+    const mergedNotes = [industry ? `Industry: ${industry}` : '', notes || ''].filter(Boolean).join('\n')
+
     await payload.create({
       collection: 'clients',
       data: {
@@ -80,7 +83,7 @@ export async function POST(request: Request) {
         contactPerson,
         email,
         name,
-        notes,
+        notes: mergedNotes || undefined,
         owningHeadRecruiter: leadRecruiterID ?? undefined,
         phone,
         status,

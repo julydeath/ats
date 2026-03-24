@@ -71,6 +71,34 @@ const toWeekdayShort = (value: Date): string =>
     weekday: 'short',
   })
 
+const toMonthDay = (value: string): { day: string; month: string } => {
+  const date = new Date(value)
+
+  return {
+    day: date.toLocaleDateString('en-US', { day: '2-digit' }),
+    month: date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+  }
+}
+
+const toDueText = (value?: string | null): string => {
+  if (!value) {
+    return 'No deadline'
+  }
+
+  const dueAt = new Date(value).getTime()
+  const diffDays = Math.ceil((dueAt - Date.now()) / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) {
+    return `Overdue by ${Math.abs(diffDays)} days`
+  }
+
+  if (diffDays === 0) {
+    return 'Due today'
+  }
+
+  return `Due in ${diffDays} days`
+}
+
 const toInitials = (value: string): string =>
   value
     .split(' ')
@@ -405,6 +433,272 @@ export default async function InternalDashboardPage() {
                       </div>
                     </article>
                   ))}
+                </div>
+              )}
+            </article>
+          </div>
+        </section>
+      </section>
+    )
+  }
+
+  if (user.role === 'recruiter') {
+    const [sourcedCandidatesCount, assignedJobs, recruiterApplications] = await Promise.all([
+      payload.count({
+        collection: 'candidates',
+        overrideAccess: false,
+        user,
+        where: {
+          sourcedBy: {
+            equals: user.id,
+          },
+        },
+      }),
+      payload.find({
+        collection: 'jobs',
+        depth: 1,
+        limit: 24,
+        pagination: false,
+        overrideAccess: false,
+        select: {
+          employmentType: true,
+          id: true,
+          location: true,
+          openings: true,
+          priority: true,
+          status: true,
+          targetClosureDate: true,
+          title: true,
+        },
+        sort: '-updatedAt',
+        user,
+        where: {
+          status: {
+            in: ['active', 'onHold'],
+          },
+        },
+      }),
+      payload.find({
+        collection: 'applications',
+        depth: 1,
+        limit: 300,
+        pagination: false,
+        overrideAccess: false,
+        select: {
+          candidate: true,
+          candidateInvitedAt: true,
+          id: true,
+          job: true,
+          latestComment: true,
+          stage: true,
+          updatedAt: true,
+        },
+        sort: '-updatedAt',
+        user,
+      }),
+    ])
+
+    const typedJobs = assignedJobs.docs
+    const typedApplications = recruiterApplications.docs as Pick<
+      Application,
+      'candidate' | 'candidateInvitedAt' | 'id' | 'job' | 'latestComment' | 'stage' | 'updatedAt'
+    >[]
+
+    const activeApplicationsCount = typedApplications.filter(
+      (app) => app.stage !== 'internalReviewRejected',
+    ).length
+    const placementsCount = typedApplications.filter((app) => app.stage === 'candidateApplied').length
+    const sentBackItems = typedApplications
+      .filter((app) => app.stage === 'sentBackForCorrection')
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 2)
+    const invitedCandidates = typedApplications
+      .filter((app) => app.stage === 'candidateInvited')
+      .sort((a, b) => {
+        const aTime = new Date(a.candidateInvitedAt || a.updatedAt).getTime()
+        const bTime = new Date(b.candidateInvitedAt || b.updatedAt).getTime()
+        return aTime - bTime
+      })
+      .slice(0, 4)
+
+    const applicationsByJob = new Map<string, typeof typedApplications>()
+    typedApplications.forEach((application) => {
+      const key =
+        application.job && typeof application.job === 'object' && 'id' in application.job
+          ? String((application.job as { id: number | string }).id)
+          : String(application.job)
+      const bucket = applicationsByJob.get(key) || []
+      bucket.push(application)
+      applicationsByJob.set(key, bucket)
+    })
+
+    const topJobCards = typedJobs.slice(0, 3).map((job) => {
+      const jobID = String(job.id)
+      const jobApplications = applicationsByJob.get(jobID) || []
+      const inReviewCount = jobApplications.filter((app) =>
+        ['internalReviewPending', 'internalReviewApproved', 'candidateInvited', 'candidateApplied'].includes(app.stage),
+      ).length
+      const placedCount = jobApplications.filter((app) => app.stage === 'candidateApplied').length
+      const progressPercent =
+        job.openings > 0 ? Math.min(Math.round((placedCount / job.openings) * 100), 100) : 0
+      const candidatePreview = jobApplications.slice(0, 4).map((app) => readLabel(app.candidate, 'CD'))
+
+      return {
+        candidatePreview,
+        dueText: toDueText(job.targetClosureDate),
+        inReviewCount,
+        job,
+        progressPercent,
+      }
+    })
+
+    return (
+      <section className="recruiter-overview-page">
+        <div className="recruiter-header-row">
+          <div>
+            <h1>Recruiter Overview</h1>
+            <p>Monitoring your active talent pipelines.</p>
+          </div>
+          <div className="recruiter-header-actions">
+            <button className="recruiter-chip-button" type="button">
+              This Month
+            </button>
+            <Link className="recruiter-chip-button" href={APP_ROUTES.internal.applications.list}>
+              Export Data
+            </Link>
+          </div>
+        </div>
+
+        <section className="recruiter-kpi-grid">
+          <article className="recruiter-kpi-card">
+            <p className="recruiter-kpi-label">Sourced candidates</p>
+            <p className="recruiter-kpi-value">{sourcedCandidatesCount.totalDocs.toLocaleString('en-US')}</p>
+            <span className="recruiter-kpi-trend recruiter-kpi-trend-positive">+12%</span>
+          </article>
+          <article className="recruiter-kpi-card">
+            <p className="recruiter-kpi-label">Active applications</p>
+            <p className="recruiter-kpi-value">{activeApplicationsCount}</p>
+            <span className="recruiter-kpi-trend recruiter-kpi-trend-neutral">0%</span>
+          </article>
+          <article className="recruiter-kpi-card">
+            <p className="recruiter-kpi-label">Placements</p>
+            <p className="recruiter-kpi-value">{placementsCount}</p>
+            <span className="recruiter-kpi-trend recruiter-kpi-trend-positive">+5%</span>
+          </article>
+        </section>
+
+        <section className="recruiter-main-grid">
+          <article className="ops-card recruiter-jobs-card">
+            <div className="recruiter-card-head">
+              <h2>My Assigned Jobs</h2>
+              <Link href={APP_ROUTES.internal.jobs.assigned}>View All Pipeline</Link>
+            </div>
+            {topJobCards.length === 0 ? (
+              <p className="ops-empty-text">No assigned active jobs yet.</p>
+            ) : (
+              <div className="recruiter-job-list">
+                {topJobCards.map((item) => (
+                  <article className="recruiter-job-item" key={item.job.id}>
+                    <div className="recruiter-job-top-row">
+                      <div>
+                        <p className="recruiter-job-title">{item.job.title}</p>
+                        <p className="recruiter-job-meta">
+                          {item.job.location || 'Location TBD'} • {item.job.employmentType}
+                        </p>
+                      </div>
+                      <div className="recruiter-job-priority">
+                        <span>{item.job.priority.toUpperCase()}</span>
+                        <p>{item.dueText}</p>
+                      </div>
+                    </div>
+
+                    <p className="recruiter-progress-label">Pipeline Progress</p>
+                    <div className="recruiter-progress-track">
+                      <span style={{ width: `${Math.max(item.progressPercent, 4)}%` }} />
+                    </div>
+                    <div className="recruiter-progress-meta">
+                      <div className="recruiter-candidate-stack">
+                        {item.candidatePreview.length === 0 ? (
+                          <span className="recruiter-candidate-count">No candidates yet</span>
+                        ) : (
+                          <>
+                            {item.candidatePreview.map((candidateName, index) => (
+                              <span
+                                className="recruiter-candidate-avatar"
+                                key={`${item.job.id}-${candidateName}-${index}`}
+                                style={{ zIndex: 5 - index }}
+                              >
+                                {toInitials(candidateName)}
+                              </span>
+                            ))}
+                            <span className="recruiter-candidate-count">{item.inReviewCount} in review</span>
+                          </>
+                        )}
+                      </div>
+                      <p>{item.progressPercent}% filled</p>
+                    </div>
+
+                    <Link className="recruiter-job-link" href={`${APP_ROUTES.internal.jobs.detailBase}/${item.job.id}`}>
+                      Open Job Board
+                    </Link>
+                  </article>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <div className="recruiter-right-stack">
+            <article className="ops-card recruiter-action-card">
+              <h2>Action Required</h2>
+              {sentBackItems.length === 0 ? (
+                <p className="ops-empty-text">No returned candidates right now.</p>
+              ) : (
+                <div className="recruiter-returned-list">
+                  {sentBackItems.map((application) => (
+                    <article className="recruiter-returned-item" key={application.id}>
+                      <div className="recruiter-returned-head">
+                        <span>Returned</span>
+                        <p>{toRelativeTime(application.updatedAt)}</p>
+                      </div>
+                      <p className="recruiter-returned-name">Candidate: {readLabel(application.candidate)}</p>
+                      <p className="recruiter-returned-note">
+                        {application.latestComment || 'Lead recruiter requested profile corrections.'}
+                      </p>
+                      <div className="recruiter-returned-actions">
+                        <button className="recruiter-action-button" type="button">
+                          Dismiss
+                        </button>
+                        <Link className="recruiter-action-button recruiter-action-button-primary" href={`${APP_ROUTES.internal.applications.detailBase}/${application.id}`}>
+                          Fix Detail
+                        </Link>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </article>
+
+            <article className="ops-card recruiter-interviews-card">
+              <h2>Upcoming Interviews</h2>
+              {invitedCandidates.length === 0 ? (
+                <p className="ops-empty-text">No interviews scheduled yet.</p>
+              ) : (
+                <div className="recruiter-interview-list">
+                  {invitedCandidates.map((application) => {
+                    const interviewDate = toMonthDay(application.candidateInvitedAt || application.updatedAt)
+                    return (
+                      <article className="recruiter-interview-item" key={`interview-${application.id}`}>
+                        <div className="recruiter-interview-date">
+                          <span>{interviewDate.month}</span>
+                          <strong>{interviewDate.day}</strong>
+                        </div>
+                        <div>
+                          <p className="recruiter-interview-candidate">{readLabel(application.candidate)}</p>
+                          <p className="recruiter-interview-meta">{readLabel(application.job)}</p>
+                        </div>
+                      </article>
+                    )
+                  })}
                 </div>
               )}
             </article>
