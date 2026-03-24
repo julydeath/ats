@@ -73,6 +73,8 @@ export async function POST(request: Request) {
   const currentLocation = readString(formData.get('currentLocation')) || undefined
   const currentCompany = readString(formData.get('currentCompany')) || undefined
   const currentRole = readString(formData.get('currentRole')) || undefined
+  const linkedInURL = readString(formData.get('linkedInURL')) || undefined
+  const portfolioURL = readString(formData.get('portfolioURL')) || undefined
   const sourceInput = readString(formData.get('source'))
   const source: CandidateSource = CANDIDATE_SOURCES.includes(sourceInput as CandidateSource)
     ? (sourceInput as CandidateSource)
@@ -140,9 +142,11 @@ export async function POST(request: Request) {
         email,
         expectedSalary,
         fullName,
+        linkedInURL,
         noticePeriodDays,
         notes,
         phone,
+        portfolioURL,
         resume: uploadedResumeID ?? undefined,
         source,
         sourceDetails,

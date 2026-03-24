@@ -25,6 +25,7 @@ export const APP_ROUTES = {
       detailBase: '/internal/candidates',
       list: '/internal/candidates',
       new: '/internal/candidates/new',
+      parseResume: '/internal/candidates/parse-resume',
     },
     applications: {
       create: '/internal/applications/create',

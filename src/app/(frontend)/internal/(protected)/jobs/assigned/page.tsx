@@ -30,6 +30,16 @@ const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   return fallback
 }
 
+const toRelationshipKey = (value: unknown): string | null => {
+  const id = extractRelationshipID(value)
+
+  if (typeof id === 'number' || typeof id === 'string') {
+    return String(id)
+  }
+
+  return null
+}
+
 const toInitials = (value: string): string =>
   value
     .split(' ')
@@ -194,143 +204,154 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
   const whereQuery: Where =
     whereConditions.length === 1 ? whereConditions[0] : { and: whereConditions }
 
-  const [jobsResult, clientsResult, leadsResult, recruiterAssignmentsResult, applicationsResult, stageHistory, weeklyCandidates] =
-    await Promise.all([
-      payload.find({
-        collection: 'jobs',
-        depth: 1,
-        limit: 160,
-        overrideAccess: false,
-        pagination: false,
-        select: {
-          client: true,
-          createdAt: true,
-          employmentType: true,
-          id: true,
-          location: true,
-          openings: true,
-          owningHeadRecruiter: true,
-          priority: true,
-          status: true,
-          targetClosureDate: true,
-          title: true,
-          updatedAt: true,
-        },
-        sort: '-updatedAt',
-        user,
-        where: whereQuery,
-      }),
-      payload.find({
-        collection: 'clients',
-        depth: 0,
-        limit: 200,
-        overrideAccess: false,
-        pagination: false,
-        select: {
-          id: true,
-          name: true,
-        },
-        sort: 'name',
-        user,
-        where: {
-          status: {
-            equals: 'active',
+  const [
+    jobsResult,
+    clientsResult,
+    leadsResult,
+    recruiterAssignmentsResult,
+    applicationsResult,
+    stageHistory,
+    weeklyCandidates,
+  ] = await Promise.all([
+    payload.find({
+      collection: 'jobs',
+      depth: 1,
+      limit: 160,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        client: true,
+        createdAt: true,
+        employmentType: true,
+        id: true,
+        location: true,
+        openings: true,
+        owningHeadRecruiter: true,
+        priority: true,
+        status: true,
+        targetClosureDate: true,
+        title: true,
+        updatedAt: true,
+      },
+      sort: '-updatedAt',
+      user,
+      where: whereQuery,
+    }),
+    user.role === 'recruiter'
+      ? Promise.resolve({
+          docs: [] as Array<{ id: number | string; name: string }>,
+        })
+      : payload.find({
+          collection: 'clients',
+          depth: 0,
+          limit: 200,
+          overrideAccess: false,
+          pagination: false,
+          select: {
+            id: true,
+            name: true,
           },
-        },
-      }),
-      user.role === 'admin'
-        ? payload.find({
-            collection: 'users',
-            depth: 0,
-            limit: 150,
-            overrideAccess: false,
-            pagination: false,
-            select: {
-              email: true,
-              fullName: true,
-              id: true,
+          sort: 'name',
+          user,
+          where: {
+            status: {
+              equals: 'active',
             },
-            sort: 'fullName',
-            user,
-            where: {
-              and: [
-                {
-                  role: {
-                    equals: 'leadRecruiter',
-                  },
-                },
-                {
-                  isActive: {
-                    equals: true,
-                  },
-                },
-              ],
-            },
-          })
-        : Promise.resolve(null),
-      payload.find({
-        collection: 'recruiter-job-assignments',
-        depth: 1,
-        limit: 500,
-        overrideAccess: false,
-        pagination: false,
-        select: {
-          job: true,
-          recruiter: true,
-          status: true,
-        },
-        sort: '-updatedAt',
-        user,
-        where: {
-          status: {
-            equals: 'active',
           },
-        },
-      }),
-      payload.find({
-        collection: 'applications',
-        depth: 0,
-        limit: 1500,
-        overrideAccess: false,
-        pagination: false,
-        select: {
-          id: true,
-          job: true,
-          stage: true,
-        },
-        user,
-      }),
-      payload.find({
-        collection: 'application-stage-history',
-        depth: 1,
-        limit: 6,
-        overrideAccess: false,
-        pagination: false,
-        select: {
-          candidate: true,
-          changedAt: true,
-          job: true,
-          toStage: true,
-        },
-        sort: '-changedAt',
-        user,
-      }),
-      payload.count({
-        collection: 'candidates',
-        overrideAccess: false,
-        user,
-        where: {
-          createdAt: {
-            greater_than_equal: (() => {
-              const value = new Date()
-              value.setDate(value.getDate() - 7)
-              value.setHours(0, 0, 0, 0)
-              return value.toISOString()
-            })(),
+        }),
+    user.role === 'admin'
+      ? payload.find({
+          collection: 'users',
+          depth: 0,
+          limit: 150,
+          overrideAccess: false,
+          pagination: false,
+          select: {
+            email: true,
+            fullName: true,
+            id: true,
           },
+          sort: 'fullName',
+          user,
+          where: {
+            and: [
+              {
+                role: {
+                  equals: 'leadRecruiter',
+                },
+              },
+              {
+                isActive: {
+                  equals: true,
+                },
+              },
+            ],
+          },
+        })
+      : Promise.resolve(null),
+    payload.find({
+      collection: 'recruiter-job-assignments',
+      depth: 1,
+      limit: 500,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        job: true,
+        recruiter: true,
+        status: true,
+      },
+      sort: '-updatedAt',
+      user,
+      where: {
+        status: {
+          equals: 'active',
         },
-      }),
-    ])
+      },
+    }),
+    payload.find({
+      collection: 'applications',
+      depth: 0,
+      limit: 1500,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        id: true,
+        job: true,
+        stage: true,
+      },
+      user,
+    }),
+    payload.find({
+      collection: 'application-stage-history',
+      depth: 1,
+      limit: 6,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        candidate: true,
+        changedAt: true,
+        job: true,
+        toStage: true,
+      },
+      sort: '-changedAt',
+      user,
+    }),
+    payload.count({
+      collection: 'candidates',
+      overrideAccess: false,
+      user,
+      where: {
+        createdAt: {
+          greater_than_equal: (() => {
+            const value = new Date()
+            value.setDate(value.getDate() - 7)
+            value.setHours(0, 0, 0, 0)
+            return value.toISOString()
+          })(),
+        },
+      },
+    }),
+  ])
 
   const jobs = jobsResult.docs as Array<
     Pick<
@@ -349,6 +370,92 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       | 'targetClosureDate'
     >
   >
+  const unresolvedClientIDs = Array.from(
+    new Set(
+      jobs
+        .filter((job) => typeof job.client === 'number' || typeof job.client === 'string')
+        .map((job) => toRelationshipKey(job.client))
+        .filter((id): id is string => Boolean(id)),
+    ),
+  )
+  const unresolvedLeadIDs = Array.from(
+    new Set(
+      jobs
+        .filter(
+          (job) =>
+            typeof job.owningHeadRecruiter === 'number' || typeof job.owningHeadRecruiter === 'string',
+        )
+        .map((job) => toRelationshipKey(job.owningHeadRecruiter))
+        .filter((id): id is string => Boolean(id)),
+    ),
+  )
+  const [fallbackClientsResult, fallbackLeadsResult] = await Promise.all([
+    unresolvedClientIDs.length === 0
+      ? Promise.resolve({ docs: [] as Array<{ id: number | string; name?: string }> })
+      : payload.find({
+          collection: 'clients',
+          depth: 0,
+          limit: unresolvedClientIDs.length,
+          overrideAccess: true,
+          pagination: false,
+          select: {
+            id: true,
+            name: true,
+          },
+          where: {
+            id: {
+              in: unresolvedClientIDs,
+            },
+          },
+        }),
+    unresolvedLeadIDs.length === 0
+      ? Promise.resolve({ docs: [] as Array<{ email?: string; fullName?: string; id: number | string }> })
+      : payload.find({
+          collection: 'users',
+          depth: 0,
+          limit: unresolvedLeadIDs.length,
+          overrideAccess: true,
+          pagination: false,
+          select: {
+            email: true,
+            fullName: true,
+            id: true,
+          },
+          where: {
+            id: {
+              in: unresolvedLeadIDs,
+            },
+          },
+        }),
+  ])
+  const fallbackClientNameByID = new Map(
+    fallbackClientsResult.docs.map((client) => [String(client.id), client.name || String(client.id)]),
+  )
+  const fallbackLeadNameByID = new Map(
+    fallbackLeadsResult.docs.map((lead) => [String(lead.id), lead.fullName || lead.email || String(lead.id)]),
+  )
+  const readRelationshipLabel = ({
+    fallbackMap,
+    value,
+  }: {
+    fallbackMap: Map<string, string>
+    value: unknown
+  }): string => {
+    if (!value) {
+      return 'Unknown'
+    }
+
+    if (typeof value === 'object') {
+      return readLabel(value)
+    }
+
+    const key = toRelationshipKey(value)
+    if (!key) {
+      return readLabel(value)
+    }
+
+    return fallbackMap.get(key) || readLabel(value)
+  }
   const recruiterAssignments = recruiterAssignmentsResult.docs as Array<
     Pick<RecruiterJobAssignment, 'job' | 'recruiter' | 'status'>
   >
@@ -392,7 +499,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
 
   const leadsOptions =
     user.role === 'admin'
-      ? leadsResult?.docs ?? []
+      ? (leadsResult?.docs ?? [])
       : [
           {
             email: user.email,
@@ -421,18 +528,27 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
             Export Data
           </Link>
           {canCreateJobs ? (
-            <Link className="jobs-header-button jobs-header-button-primary" href={`${APP_ROUTES.internal.jobs.assigned}?create=1`}>
+            <Link
+              className="jobs-header-button jobs-header-button-primary"
+              href={`${APP_ROUTES.internal.jobs.assigned}?create=1`}
+            >
               + Post New Job
             </Link>
           ) : null}
         </div>
       </header>
 
-      {successMessage ? <p className="jobs-feedback jobs-feedback-success">{successMessage}</p> : null}
-      {resolvedSearchParams.warning ? (
-        <p className="jobs-feedback jobs-feedback-warning">Job created, but lead assignment row is still pending.</p>
+      {successMessage ? (
+        <p className="jobs-feedback jobs-feedback-success">{successMessage}</p>
       ) : null}
-      {resolvedSearchParams.error ? <p className="jobs-feedback jobs-feedback-error">{resolvedSearchParams.error}</p> : null}
+      {resolvedSearchParams.warning ? (
+        <p className="jobs-feedback jobs-feedback-warning">
+          Job created, but lead assignment row is still pending.
+        </p>
+      ) : null}
+      {resolvedSearchParams.error ? (
+        <p className="jobs-feedback jobs-feedback-error">{resolvedSearchParams.error}</p>
+      ) : null}
 
       <section className="jobs-kpi-grid">
         <article className="jobs-kpi-card">
@@ -504,7 +620,10 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           <button className="jobs-toolbar-button" type="submit">
             Apply
           </button>
-          <Link className="jobs-toolbar-button jobs-toolbar-button-secondary" href={APP_ROUTES.internal.jobs.assigned}>
+          <Link
+            className="jobs-toolbar-button jobs-toolbar-button-secondary"
+            href={APP_ROUTES.internal.jobs.assigned}
+          >
             Reset
           </Link>
         </form>
@@ -543,20 +662,35 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                           ID: JOB-{job.id} • {job.location || 'Remote'} • {job.employmentType}
                         </p>
                       </td>
-                      <td className="jobs-table-subtitle">{readLabel(job.client)}</td>
-                      <td className="jobs-table-subtitle">{readLabel(job.owningHeadRecruiter, 'Unassigned')}</td>
+                      <td className="jobs-table-subtitle">
+                        {readRelationshipLabel({
+                          fallbackMap: fallbackClientNameByID,
+                          value: job.client,
+                        })}
+                      </td>
+                      <td className="jobs-table-subtitle">
+                        {readRelationshipLabel({
+                          fallbackMap: fallbackLeadNameByID,
+                          value: job.owningHeadRecruiter,
+                        })}
+                      </td>
                       <td>
                         <div className="jobs-team-stack">
                           {recruiters.length === 0 ? (
                             <span className="jobs-team-empty">--</span>
                           ) : (
                             recruiters.slice(0, 3).map((name, index) => (
-                              <span className="jobs-team-avatar" key={`job-${job.id}-team-${name}-${index}`}>
+                              <span
+                                className="jobs-team-avatar"
+                                key={`job-${job.id}-team-${name}-${index}`}
+                              >
                                 {toInitials(name)}
                               </span>
                             ))
                           )}
-                          {recruiters.length > 3 ? <span className="jobs-team-more">+{recruiters.length - 3}</span> : null}
+                          {recruiters.length > 3 ? (
+                            <span className="jobs-team-more">+{recruiters.length - 3}</span>
+                          ) : null}
                         </div>
                       </td>
                       <td>
@@ -567,17 +701,27 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                       <td className="jobs-table-candidate-count">{candidatesCount}</td>
                       <td>
                         <div className="jobs-table-actions">
-                          <Link className="jobs-row-action" href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}`}>
+                          <Link
+                            className="jobs-row-action"
+                            href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}`}
+                          >
                             Open Board
                           </Link>
                           {canSourceCandidates ? (
-                            <Link className="jobs-row-action jobs-row-action-secondary" href={`${APP_ROUTES.internal.candidates.new}?jobId=${job.id}`}>
+                            <Link
+                              className="jobs-row-action jobs-row-action-secondary"
+                              href={`${APP_ROUTES.internal.candidates.new}?jobId=${job.id}`}
+                            >
                               Add Candidate
                             </Link>
                           ) : null}
                           <Link
                             className="jobs-row-action jobs-row-action-secondary"
-                            href={user.role === 'admin' ? APP_ROUTES.internal.assignments.head : APP_ROUTES.internal.assignments.lead}
+                            href={
+                              user.role === 'admin'
+                                ? APP_ROUTES.internal.assignments.head
+                                : APP_ROUTES.internal.assignments.lead
+                            }
                           >
                             Reassign
                           </Link>
@@ -616,7 +760,13 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
         <article className="jobs-foot-card jobs-foot-card-tip">
           <h2>Recruitment Tip</h2>
           <p>
-            You have {jobs.filter((job) => job.status === 'active' && (candidatesCountByJobID.get(String(job.id)) || 0) < 3).length}{' '}
+            You have{' '}
+            {
+              jobs.filter(
+                (job) =>
+                  job.status === 'active' && (candidatesCountByJobID.get(String(job.id)) || 0) < 3,
+              ).length
+            }{' '}
             active jobs with fewer than 3 applications. Prioritize sourcing for those roles.
           </p>
           <Link href={APP_ROUTES.internal.applications.reviewQueue}>Open Priority Queue</Link>
@@ -624,7 +774,12 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       </section>
 
       {isCreateModalOpen && canCreateJobs ? (
-        <section className="jobs-modal-layer" role="dialog" aria-label="Create Job" aria-modal="true">
+        <section
+          className="jobs-modal-layer"
+          role="dialog"
+          aria-label="Create Job"
+          aria-modal="true"
+        >
           <div className="jobs-modal-backdrop" />
           <article className="jobs-modal">
             <div className="jobs-modal-head">
@@ -643,147 +798,197 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                 <Link href={APP_ROUTES.internal.clients.list}>Create Client First</Link>
               </div>
             ) : (
-            <form action={APP_ROUTES.internal.jobs.create} className="jobs-modal-form" method="post">
-              <div className="jobs-modal-grid">
-                <label className="jobs-modal-field" htmlFor="create-job-client">
-                  <span>Client</span>
-                  <select defaultValue="" id="create-job-client" name="clientId" required>
-                    <option value="">Select client</option>
-                    {clientsResult.docs.map((client) => (
-                      <option key={`create-job-client-${client.id}`} value={String(client.id)}>
-                        {client.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="jobs-modal-field" htmlFor="create-job-title">
-                  <span>Job Title</span>
-                  <input id="create-job-title" name="title" placeholder="e.g. Senior UX Designer" required type="text" />
-                </label>
-              </div>
-
-              <div className="jobs-modal-grid">
-                <label className="jobs-modal-field" htmlFor="create-job-department">
-                  <span>Department</span>
-                  <input id="create-job-department" name="department" placeholder="e.g. Product Design" type="text" />
-                </label>
-                <label className="jobs-modal-field" htmlFor="create-job-employment-type">
-                  <span>Employment Type</span>
-                  <select defaultValue="fullTime" id="create-job-employment-type" name="employmentType" required>
-                    {JOB_EMPLOYMENT_TYPE_OPTIONS.map((option) => (
-                      <option key={`create-job-employment-${option.value}`} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div className="jobs-modal-grid">
-                <label className="jobs-modal-field" htmlFor="create-job-location">
-                  <span>Location</span>
-                  <input id="create-job-location" name="location" placeholder="e.g. Bengaluru / Remote" type="text" />
-                </label>
-                <label className="jobs-modal-field" htmlFor="create-job-openings">
-                  <span>Openings</span>
-                  <input defaultValue={1} id="create-job-openings" min={1} name="openings" type="number" />
-                </label>
-              </div>
-
-              <div className="jobs-modal-grid">
-                {user.role === 'admin' ? (
-                  <label className="jobs-modal-field" htmlFor="create-job-lead">
-                    <span>Lead Recruiter</span>
-                    <select defaultValue="" id="create-job-lead" name="leadRecruiterId" required>
-                      <option value="">Select lead</option>
-                      {leadsOptions.map((lead) => (
-                        <option key={`create-job-lead-${lead.id}`} value={String(lead.id)}>
-                          {lead.fullName || lead.email}
+              <form
+                action={APP_ROUTES.internal.jobs.create}
+                className="jobs-modal-form"
+                method="post"
+              >
+                <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-client">
+                    <span>Client</span>
+                    <select defaultValue="" id="create-job-client" name="clientId" required>
+                      <option value="">Select client</option>
+                      {clientsResult.docs.map((client) => (
+                        <option key={`create-job-client-${client.id}`} value={String(client.id)}>
+                          {client.name}
                         </option>
                       ))}
                     </select>
                   </label>
-                ) : (
-                  <input name="leadRecruiterId" type="hidden" value={String(user.id)} />
-                )}
 
-                <label className="jobs-modal-field" htmlFor="create-job-priority">
-                  <span>Priority</span>
-                  <select defaultValue="medium" id="create-job-priority" name="priority">
-                    {JOB_PRIORITY_OPTIONS.map((option) => (
-                      <option key={`create-job-priority-${option.value}`} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="jobs-modal-field" htmlFor="create-job-title">
+                    <span>Job Title</span>
+                    <input
+                      id="create-job-title"
+                      name="title"
+                      placeholder="e.g. Senior UX Designer"
+                      required
+                      type="text"
+                    />
+                  </label>
+                </div>
+
+                <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-department">
+                    <span>Department</span>
+                    <input
+                      id="create-job-department"
+                      name="department"
+                      placeholder="e.g. Product Design"
+                      type="text"
+                    />
+                  </label>
+                  <label className="jobs-modal-field" htmlFor="create-job-employment-type">
+                    <span>Employment Type</span>
+                    <select
+                      defaultValue="fullTime"
+                      id="create-job-employment-type"
+                      name="employmentType"
+                      required
+                    >
+                      {JOB_EMPLOYMENT_TYPE_OPTIONS.map((option) => (
+                        <option key={`create-job-employment-${option.value}`} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-location">
+                    <span>Location</span>
+                    <input
+                      id="create-job-location"
+                      name="location"
+                      placeholder="e.g. Bengaluru / Remote"
+                      type="text"
+                    />
+                  </label>
+                  <label className="jobs-modal-field" htmlFor="create-job-openings">
+                    <span>Openings</span>
+                    <input
+                      defaultValue={1}
+                      id="create-job-openings"
+                      min={1}
+                      name="openings"
+                      type="number"
+                    />
+                  </label>
+                </div>
+
+                <div className="jobs-modal-grid">
+                  {user.role === 'admin' ? (
+                    <label className="jobs-modal-field" htmlFor="create-job-lead">
+                      <span>Lead Recruiter</span>
+                      <select defaultValue="" id="create-job-lead" name="leadRecruiterId" required>
+                        <option value="">Select lead</option>
+                        {leadsOptions.map((lead) => (
+                          <option key={`create-job-lead-${lead.id}`} value={String(lead.id)}>
+                            {lead.fullName || lead.email}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <input name="leadRecruiterId" type="hidden" value={String(user.id)} />
+                  )}
+
+                  <label className="jobs-modal-field" htmlFor="create-job-priority">
+                    <span>Priority</span>
+                    <select defaultValue="medium" id="create-job-priority" name="priority">
+                      {JOB_PRIORITY_OPTIONS.map((option) => (
+                        <option key={`create-job-priority-${option.value}`} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-status">
+                    <span>Status</span>
+                    <select defaultValue="active" id="create-job-status" name="status">
+                      {CREATE_JOB_STATUS_OPTIONS.map((option) => (
+                        <option key={`create-job-status-${option.value}`} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="jobs-modal-field" htmlFor="create-job-target">
+                    <span>Target Closure Date</span>
+                    <input
+                      defaultValue={toISODate(new Date())}
+                      id="create-job-target"
+                      name="targetClosureDate"
+                      type="date"
+                    />
+                  </label>
+                </div>
+
+                <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-experience-min">
+                    <span>Experience Min (Years)</span>
+                    <input
+                      id="create-job-experience-min"
+                      min={0}
+                      name="experienceMin"
+                      type="number"
+                    />
+                  </label>
+                  <label className="jobs-modal-field" htmlFor="create-job-experience-max">
+                    <span>Experience Max (Years)</span>
+                    <input
+                      id="create-job-experience-max"
+                      min={0}
+                      name="experienceMax"
+                      type="number"
+                    />
+                  </label>
+                </div>
+
+                <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-salary-min">
+                    <span>Salary Min</span>
+                    <input id="create-job-salary-min" min={0} name="salaryMin" type="number" />
+                  </label>
+                  <label className="jobs-modal-field" htmlFor="create-job-salary-max">
+                    <span>Salary Max</span>
+                    <input id="create-job-salary-max" min={0} name="salaryMax" type="number" />
+                  </label>
+                </div>
+
+                <label className="jobs-modal-field" htmlFor="create-job-description">
+                  <span>Description</span>
+                  <textarea id="create-job-description" name="description" required rows={4} />
                 </label>
-              </div>
 
-              <div className="jobs-modal-grid">
-                <label className="jobs-modal-field" htmlFor="create-job-status">
-                  <span>Status</span>
-                  <select defaultValue="active" id="create-job-status" name="status">
-                    {CREATE_JOB_STATUS_OPTIONS.map((option) => (
-                      <option key={`create-job-status-${option.value}`} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                <label className="jobs-modal-field" htmlFor="create-job-skills">
+                  <span>Required Skills</span>
+                  <textarea
+                    id="create-job-skills"
+                    name="requiredSkills"
+                    placeholder="React, TypeScript, PostgreSQL"
+                    rows={3}
+                  />
                 </label>
 
-                <label className="jobs-modal-field" htmlFor="create-job-target">
-                  <span>Target Closure Date</span>
-                  <input defaultValue={toISODate(new Date())} id="create-job-target" name="targetClosureDate" type="date" />
-                </label>
-              </div>
-
-              <div className="jobs-modal-grid">
-                <label className="jobs-modal-field" htmlFor="create-job-experience-min">
-                  <span>Experience Min (Years)</span>
-                  <input id="create-job-experience-min" min={0} name="experienceMin" type="number" />
-                </label>
-                <label className="jobs-modal-field" htmlFor="create-job-experience-max">
-                  <span>Experience Max (Years)</span>
-                  <input id="create-job-experience-max" min={0} name="experienceMax" type="number" />
-                </label>
-              </div>
-
-              <div className="jobs-modal-grid">
-                <label className="jobs-modal-field" htmlFor="create-job-salary-min">
-                  <span>Salary Min</span>
-                  <input id="create-job-salary-min" min={0} name="salaryMin" type="number" />
-                </label>
-                <label className="jobs-modal-field" htmlFor="create-job-salary-max">
-                  <span>Salary Max</span>
-                  <input id="create-job-salary-max" min={0} name="salaryMax" type="number" />
-                </label>
-              </div>
-
-              <label className="jobs-modal-field" htmlFor="create-job-description">
-                <span>Description</span>
-                <textarea id="create-job-description" name="description" required rows={4} />
-              </label>
-
-              <label className="jobs-modal-field" htmlFor="create-job-skills">
-                <span>Required Skills</span>
-                <textarea
-                  id="create-job-skills"
-                  name="requiredSkills"
-                  placeholder="React, TypeScript, PostgreSQL"
-                  rows={3}
-                />
-              </label>
-
-              <div className="jobs-modal-footer">
-                <Link className="jobs-modal-cancel" href={APP_ROUTES.internal.jobs.assigned}>
-                  Cancel
-                </Link>
-                <button className="jobs-modal-submit" data-pending-label="Creating..." type="submit">
-                  Create Job
-                </button>
-              </div>
-            </form>
+                <div className="jobs-modal-footer">
+                  <Link className="jobs-modal-cancel" href={APP_ROUTES.internal.jobs.assigned}>
+                    Cancel
+                  </Link>
+                  <button
+                    className="jobs-modal-submit"
+                    data-pending-label="Creating..."
+                    type="submit"
+                  >
+                    Create Job
+                  </button>
+                </div>
+              </form>
             )}
           </article>
         </section>

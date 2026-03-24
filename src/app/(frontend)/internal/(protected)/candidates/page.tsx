@@ -1,46 +1,114 @@
 import configPromise from '@payload-config'
 import Link from 'next/link'
-import { getPayload, type Where } from 'payload'
+import { getPayload } from 'payload'
 
-import { BulkTableControls } from '@/components/internal/BulkTableControls'
-import { FilterToolbar } from '@/components/internal/FilterToolbar'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { CANDIDATE_SOURCE_OPTIONS } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
-import { INTERNAL_ROLE_LABELS } from '@/lib/constants/roles'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
-const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
-  if (!value) {
-    return fallback
-  }
-
-  if (typeof value === 'number' || typeof value === 'string') {
-    return String(value)
-  }
-
-  if (typeof value === 'object') {
-    const typed = value as {
-      email?: string
-      fullName?: string
-      name?: string
-      title?: string
-    }
-
-    return typed.fullName || typed.title || typed.name || typed.email || fallback
-  }
-
-  return fallback
-}
+const SOURCE_LABELS = new Map(CANDIDATE_SOURCE_OPTIONS.map((option) => [option.value, option.label]))
+const PAGE_SIZE = 10
 
 type CandidatesListPageProps = {
   searchParams?: Promise<{
-    error?: string
+    exp?: string
+    page?: string
     q?: string
-    readiness?: string
-    resume?: string
+    skill?: string
     source?: string
   }>
+}
+
+const getInitials = (value: string): string =>
+  value
+    .split(' ')
+    .map((item) => item[0] || '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+const getRelativeDate = (value: string): string => {
+  const date = new Date(value)
+  const diffMs = Date.now() - date.getTime()
+
+  if (Number.isNaN(date.getTime()) || diffMs < 0) {
+    return 'Updated recently'
+  }
+
+  const hours = Math.floor(diffMs / (1000 * 60 * 60))
+  if (hours < 1) {
+    return 'Updated just now'
+  }
+
+  if (hours < 24) {
+    return `Updated ${hours}h ago`
+  }
+
+  const days = Math.floor(hours / 24)
+  if (days < 30) {
+    return `Updated ${days}d ago`
+  }
+
+  const months = Math.floor(days / 30)
+  return `Updated ${months}mo ago`
+}
+
+const normalize = (value: string) => value.trim().toLowerCase()
+
+const getExperienceBucket = (years: number | null): 'junior' | 'mid' | 'senior' | 'unspecified' => {
+  if (years === null) {
+    return 'unspecified'
+  }
+
+  if (years >= 8) {
+    return 'senior'
+  }
+
+  if (years >= 4) {
+    return 'mid'
+  }
+
+  return 'junior'
+}
+
+const buildQuery = ({
+  exp,
+  page,
+  q,
+  skill,
+  source,
+}: {
+  exp: string
+  page: number
+  q: string
+  skill: string
+  source: string
+}): string => {
+  const params = new URLSearchParams()
+
+  if (q) {
+    params.set('q', q)
+  }
+
+  if (skill) {
+    params.set('skill', skill)
+  }
+
+  if (exp) {
+    params.set('exp', exp)
+  }
+
+  if (source) {
+    params.set('source', source)
+  }
+
+  if (page > 1) {
+    params.set('page', String(page))
+  }
+
+  const queryString = params.toString()
+  return queryString ? `?${queryString}` : ''
 }
 
 export default async function CandidatesListPage({ searchParams }: CandidatesListPageProps) {
@@ -48,438 +116,312 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
   const searchTerm = (resolvedSearchParams.q || '').trim()
-  const sourceFilter = resolvedSearchParams.source || ''
-  const readinessFilter = resolvedSearchParams.readiness || ''
-  const resumeFilter = resolvedSearchParams.resume || ''
+  const sourceFilter = (resolvedSearchParams.source || '').trim()
+  const skillFilter = (resolvedSearchParams.skill || '').trim()
+  const expFilter = (resolvedSearchParams.exp || '').trim()
+  const requestedPage = Number.parseInt(String(resolvedSearchParams.page || '1'), 10)
   const canCreateCandidate = user.role === 'admin' || user.role === 'recruiter'
   const canCreateApplication = user.role === 'admin' || user.role === 'recruiter'
 
-  const whereConditions: Where[] = []
-
-  if (sourceFilter) {
-    whereConditions.push({
-      source: {
-        equals: sourceFilter,
-      },
-    })
-  }
-
-  if (searchTerm) {
-    whereConditions.push({
-      or: [
-        {
-          fullName: {
-            contains: searchTerm,
-          },
-        },
-        {
-          email: {
-            contains: searchTerm,
-          },
-        },
-        {
-          phone: {
-            contains: searchTerm,
-          },
-        },
-        {
-          currentCompany: {
-            contains: searchTerm,
-          },
-        },
-      ],
-    })
-  }
-
-  const candidates = await payload.find({
+  const candidatesResult = await payload.find({
     collection: 'candidates',
     depth: 1,
-    limit: 120,
+    limit: 240,
     pagination: false,
     overrideAccess: false,
     select: {
+      currentCompany: true,
+      currentRole: true,
       email: true,
       fullName: true,
       id: true,
       phone: true,
-      resume: true,
       source: true,
       sourceJob: true,
-      sourcedBy: true,
+      totalExperienceYears: true,
       updatedAt: true,
     },
     sort: '-updatedAt',
     user,
-    where: whereConditions.length === 0 ? undefined : ({ and: whereConditions } as Where),
   })
 
-  const candidateIDs = candidates.docs
-    .map((candidate) => (typeof candidate.id === 'number' ? candidate.id : null))
-    .filter((id): id is number => id !== null)
-
-  const applications =
-    candidateIDs.length === 0
-      ? { docs: [] as Array<{ candidate?: unknown }> }
-      : await payload.find({
-          collection: 'applications',
-          depth: 0,
-          limit: candidateIDs.length * 3,
-          pagination: false,
-          overrideAccess: false,
-          select: {
-            candidate: true,
-          },
-          user,
-          where: {
-            candidate: {
-              in: candidateIDs,
-            },
-          },
-        })
-
-  const candidateWithApplicationIDs = new Set(
-    applications.docs
-      .map((application) => extractRelationshipID(application.candidate))
-      .filter(Boolean)
-      .map((candidateID) => String(candidateID)),
+  const roleOptions = Array.from(
+    new Set(
+      candidatesResult.docs
+        .map((candidate) => (candidate.currentRole || '').trim())
+        .filter((value) => value.length > 0),
+    ),
   )
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, 30)
 
-  const candidateMeta = candidates.docs.map((candidate) => {
-    const hasContact = Boolean(candidate.email || candidate.phone)
-    const hasSourceJob = Boolean(extractRelationshipID(candidate.sourceJob))
-    const hasApplication = candidateWithApplicationIDs.has(String(candidate.id))
-    const hasResume = Boolean(extractRelationshipID(candidate.resume))
-    const readiness =
-      hasContact && hasSourceJob && !hasApplication
-        ? 'ready'
-        : !hasContact
-          ? 'needsFix'
-          : hasApplication
-            ? 'mapped'
-            : 'inProgress'
+  const filteredCandidates = candidatesResult.docs.filter((candidate) => {
+    const searchable = [
+      candidate.fullName,
+      candidate.currentRole || '',
+      candidate.currentCompany || '',
+      candidate.email || '',
+      candidate.phone || '',
+    ]
+      .join(' ')
+      .toLowerCase()
 
-    return {
-      candidate,
-      hasApplication,
-      hasResume,
-      readiness,
-    }
-  })
+    const role = (candidate.currentRole || '').trim()
+    const source = String(candidate.source || '')
+    const bucket = getExperienceBucket(
+      typeof candidate.totalExperienceYears === 'number' ? candidate.totalExperienceYears : null,
+    )
 
-  const filteredMeta = candidateMeta.filter((entry) => {
-    if (readinessFilter && entry.readiness !== readinessFilter) {
+    if (searchTerm && !searchable.includes(normalize(searchTerm))) {
       return false
     }
 
-    if (resumeFilter === 'withResume' && !entry.hasResume) {
+    if (sourceFilter && source !== sourceFilter) {
       return false
     }
 
-    if (resumeFilter === 'withoutResume' && entry.hasResume) {
+    if (skillFilter && normalize(role) !== normalize(skillFilter)) {
+      return false
+    }
+
+    if (expFilter && bucket !== expFilter) {
       return false
     }
 
     return true
   })
 
-  const filteredCandidates = filteredMeta.map((entry) => entry.candidate)
+  const totalRows = filteredCandidates.length
+  const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE))
+  const currentPage = Number.isFinite(requestedPage) ? Math.min(Math.max(requestedPage, 1), totalPages) : 1
+  const start = (currentPage - 1) * PAGE_SIZE
+  const pagedRows = filteredCandidates.slice(start, start + PAGE_SIZE)
+  const showingFrom = totalRows === 0 ? 0 : start + 1
+  const showingTo = Math.min(start + PAGE_SIZE, totalRows)
 
-  const candidatesMissingContact = filteredCandidates.filter((candidate) => !candidate.email && !candidate.phone)
-  const candidatesReadyForApplication = filteredCandidates.filter((candidate) => {
-    const hasContact = Boolean(candidate.email || candidate.phone)
-    const hasSourceJob = Boolean(extractRelationshipID(candidate.sourceJob))
-    const alreadyMapped = candidateWithApplicationIDs.has(String(candidate.id))
-
-    return hasContact && hasSourceJob && !alreadyMapped
-  })
-  const candidatesAlreadyMapped = filteredCandidates.filter((candidate) =>
-    candidateWithApplicationIDs.has(String(candidate.id)),
-  )
-  const candidatesWithoutResume = filteredCandidates.filter((candidate) => !extractRelationshipID(candidate.resume))
+  const leftPage = Math.max(1, currentPage - 1)
+  const rightPage = Math.min(totalPages, currentPage + 1)
 
   return (
-    <section className="dashboard-grid">
-      <article className="panel panel-span-2">
-        <p className="eyebrow">Candidate Bank</p>
-        <h1>Candidate Sourcing Workspace</h1>
-        <p className="panel-intro">
-          Signed in as <strong>{INTERNAL_ROLE_LABELS[user.role]}</strong>. This page is the master record
-          for external candidates before and during application mapping.
-        </p>
-        {resolvedSearchParams.error ? <p className="error-text">{resolvedSearchParams.error}</p> : null}
-        <div className="public-actions">
+    <section className="candidate-mgmt-page">
+      <header className="candidate-mgmt-header">
+        <div className="candidate-mgmt-header-copy">
+          <h1>Candidates</h1>
+          <p>
+            Manage your talent pool with clean sourcing data, searchable records, and quick access to profile actions.
+          </p>
+        </div>
+
+        <div className="candidate-mgmt-header-actions">
           {canCreateCandidate ? (
-            <Link className="button" href={APP_ROUTES.internal.candidates.new}>
-              Add New Candidate
+            <Link className="candidate-mgmt-upload-card" href={APP_ROUTES.internal.candidates.new}>
+              <span className="candidate-mgmt-upload-icon">↑</span>
+              <span>
+                <strong>Resume Upload</strong>
+                <small>Drag & drop or browse files</small>
+              </span>
             </Link>
           ) : null}
-          <Link className="button button-secondary" href={APP_ROUTES.internal.applications.list}>
-            Open Applications
+
+          {canCreateCandidate ? (
+            <Link className="candidate-mgmt-add-button" href={APP_ROUTES.internal.candidates.new}>
+              Add Candidate
+            </Link>
+          ) : null}
+        </div>
+      </header>
+
+      <section className="candidate-mgmt-filter-card">
+        <form className="candidate-mgmt-filters" method="get">
+          <input
+            className="candidate-mgmt-search"
+            defaultValue={searchTerm}
+            name="q"
+            placeholder="Search by name, skill, company, phone..."
+            type="search"
+          />
+
+          <select className="candidate-mgmt-select" defaultValue={skillFilter} name="skill">
+            <option value="">Primary Skill</option>
+            {roleOptions.map((role) => (
+              <option key={`role-${role}`} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
+
+          <select className="candidate-mgmt-select" defaultValue={expFilter} name="exp">
+            <option value="">Experience Level</option>
+            <option value="senior">Senior (8+ years)</option>
+            <option value="mid">Mid (4-7 years)</option>
+            <option value="junior">Junior (0-3 years)</option>
+            <option value="unspecified">Unspecified</option>
+          </select>
+
+          <select className="candidate-mgmt-select" defaultValue={sourceFilter} name="source">
+            <option value="">Source</option>
+            {CANDIDATE_SOURCE_OPTIONS.map((sourceOption) => (
+              <option key={`source-${sourceOption.value}`} value={sourceOption.value}>
+                {sourceOption.label}
+              </option>
+            ))}
+          </select>
+
+          <button className="candidate-mgmt-filter-button" type="submit">
+            Filter
+          </button>
+
+          <Link className="candidate-mgmt-reset-button" href={APP_ROUTES.internal.candidates.list}>
+            Reset
           </Link>
-        </div>
-      </article>
+        </form>
+      </section>
 
-      <article className="panel">
-        <h2>How To Use This Page</h2>
-        <div className="workflow-steps">
-          <div className="workflow-step">
-            <span className="workflow-step-number">1</span>
-            <div>
-              <p className="workflow-step-title">Create complete master profile</p>
-              <p className="workflow-step-desc">Capture source, contact details, and resume.</p>
-            </div>
-          </div>
-          <div className="workflow-step">
-            <span className="workflow-step-number">2</span>
-            <div>
-              <p className="workflow-step-title">Check readiness for submission</p>
-              <p className="workflow-step-desc">Ensure source job and contact fields are available.</p>
-            </div>
-          </div>
-          <div className="workflow-step">
-            <span className="workflow-step-number">3</span>
-            <div>
-              <p className="workflow-step-title">Create job application</p>
-              <p className="workflow-step-desc">Map candidate to job for internal review workflow.</p>
-            </div>
-          </div>
-        </div>
-      </article>
-
-      <article className="panel">
-        <h2>Quality Snapshot</h2>
-        <div className="kpi-grid">
-          <div className="kpi-card">
-            <p className="kpi-value">{filteredCandidates.length}</p>
-            <p className="kpi-label">Candidates In Current View</p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-value">{candidatesReadyForApplication.length}</p>
-            <p className="kpi-label">Ready For Application</p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-value">{candidatesAlreadyMapped.length}</p>
-            <p className="kpi-label">Already Mapped To Jobs</p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-value">{candidatesMissingContact.length}</p>
-            <p className="kpi-label">Missing Contact Information</p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-value">{candidatesWithoutResume.length}</p>
-            <p className="kpi-label">Missing Resume Upload</p>
-          </div>
-        </div>
-      </article>
-
-      <FilterToolbar
-        fields={[
-          {
-            key: 'q',
-            label: 'Search',
-            type: 'search',
-            placeholder: 'Name, email, phone, company',
-          },
-          {
-            key: 'source',
-            label: 'Source',
-            type: 'select',
-            options: CANDIDATE_SOURCE_OPTIONS,
-          },
-          {
-            key: 'readiness',
-            label: 'Readiness',
-            type: 'select',
-            options: [
-              { label: 'Ready for application', value: 'ready' },
-              { label: 'Needs data fix', value: 'needsFix' },
-              { label: 'Already mapped', value: 'mapped' },
-              { label: 'In progress', value: 'inProgress' },
-            ],
-          },
-          {
-            key: 'resume',
-            label: 'Resume',
-            type: 'select',
-            options: [
-              { label: 'With resume', value: 'withResume' },
-              { label: 'Without resume', value: 'withoutResume' },
-            ],
-          },
-        ]}
-        storageKey="candidates-list"
-        title="Filter Candidate Bank"
-      />
-
-      <article className="panel panel-span-2">
-        <h2>Candidate Action Board</h2>
-        <div className="kanban-board">
-          <section className="kanban-column">
-            <div className="kanban-column-header">
-              <h3>Needs Data Fix</h3>
-              <span className="kanban-count">{candidatesMissingContact.length}</span>
-            </div>
-            <div className="kanban-cards">
-              {candidatesMissingContact.length === 0 ? (
-                <p className="board-empty">No candidates are missing contact data.</p>
-              ) : (
-                candidatesMissingContact.slice(0, 8).map((candidate) => (
-                  <article className="kanban-card" key={`candidate-missing-${candidate.id}`}>
-                    <p className="kanban-title">{candidate.fullName}</p>
-                    <p className="kanban-meta">Source Job: {readLabel(candidate.sourceJob)}</p>
-                    <p className="kanban-meta">Sourced By: {readLabel(candidate.sourcedBy, 'System')}</p>
-                    <div className="public-actions">
-                      <Link
-                        className="button button-secondary"
-                        href={`${APP_ROUTES.internal.candidates.detailBase}/${candidate.id}`}
-                      >
-                        Open Detail
-                      </Link>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section className="kanban-column">
-            <div className="kanban-column-header">
-              <h3>Ready For Application</h3>
-              <span className="kanban-count">{candidatesReadyForApplication.length}</span>
-            </div>
-            <div className="kanban-cards">
-              {candidatesReadyForApplication.length === 0 ? (
-                <p className="board-empty">No ready candidates right now.</p>
-              ) : (
-                candidatesReadyForApplication.slice(0, 8).map((candidate) => (
-                  <article className="kanban-card" key={`candidate-ready-${candidate.id}`}>
-                    <p className="kanban-title">{candidate.fullName}</p>
-                    <p className="kanban-meta">Email: {candidate.email || 'Not provided'}</p>
-                    <p className="kanban-meta">Phone: {candidate.phone || 'Not provided'}</p>
-                    <p className="kanban-meta">Source Job: {readLabel(candidate.sourceJob)}</p>
-                    <div className="public-actions">
-                      <Link
-                        className="button button-secondary"
-                        href={`${APP_ROUTES.internal.candidates.detailBase}/${candidate.id}`}
-                      >
-                        Open Detail
-                      </Link>
-                      {canCreateApplication ? (
-                        <Link
-                          className="button"
-                          href={`${APP_ROUTES.internal.applications.new}?candidateId=${candidate.id}&jobId=${
-                            extractRelationshipID(candidate.sourceJob) || ''
-                          }`}
-                        >
-                          Create Application
-                        </Link>
-                      ) : null}
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section className="kanban-column">
-            <div className="kanban-column-header">
-              <h3>Already In Applications</h3>
-              <span className="kanban-count">{candidatesAlreadyMapped.length}</span>
-            </div>
-            <div className="kanban-cards">
-              {candidatesAlreadyMapped.length === 0 ? (
-                <p className="board-empty">No mapped candidates yet.</p>
-              ) : (
-                candidatesAlreadyMapped.slice(0, 8).map((candidate) => (
-                  <article className="kanban-card" key={`candidate-mapped-${candidate.id}`}>
-                    <p className="kanban-title">{candidate.fullName}</p>
-                    <p className="kanban-meta">Source: {candidate.source}</p>
-                    <p className="kanban-meta">
-                      Resume: {extractRelationshipID(candidate.resume) ? 'Uploaded' : 'Missing'}
-                    </p>
-                    <div className="public-actions">
-                      <Link
-                        className="button button-secondary"
-                        href={`${APP_ROUTES.internal.candidates.detailBase}/${candidate.id}`}
-                      >
-                        Open Detail
-                      </Link>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
-        </div>
-      </article>
-
-      <article className="panel panel-span-2">
-        <h2>Candidate Directory</h2>
-        <BulkTableControls exportFilename="candidates-selection.csv" itemLabel="candidate" tableId="candidates-table" />
-        {filteredCandidates.length === 0 ? (
-          <p className="board-empty">No candidates available in your hierarchy scope.</p>
-        ) : (
-          <div className="table-wrap">
-            <table className="data-table" data-bulk-table="candidates-table">
-              <thead>
+      <section className="candidate-mgmt-table-card">
+        <div className="candidate-mgmt-table-wrap">
+          <table className="candidate-mgmt-table">
+            <thead>
+              <tr>
+                <th>Candidate Name</th>
+                <th>Skill &amp; Exp</th>
+                <th>Current Company</th>
+                <th>Contact Info</th>
+                <th>Source</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pagedRows.length === 0 ? (
                 <tr>
-                  <th className="table-select-cell">Select</th>
-                  <th>Candidate</th>
-                  <th>Contact</th>
-                  <th>Source</th>
-                  <th>Source Job</th>
-                  <th>Resume</th>
-                  <th>Actions</th>
+                  <td className="candidate-mgmt-empty" colSpan={6}>
+                    No candidates found in this view.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredCandidates.map((candidate) => (
-                  <tr key={`candidate-row-${candidate.id}`}>
-                    <td className="table-select-cell">
-                      <input
-                        data-bulk-item="true"
-                        data-row={JSON.stringify({
-                          id: String(candidate.id),
-                          candidate: candidate.fullName,
-                          source: candidate.source,
-                          sourceJob: readLabel(candidate.sourceJob),
-                          contact: candidate.email || candidate.phone || 'Missing',
-                        })}
-                        type="checkbox"
-                      />
-                    </td>
-                    <td>{candidate.fullName}</td>
-                    <td>{candidate.email || candidate.phone || 'Missing'}</td>
-                    <td>{candidate.source}</td>
-                    <td>{readLabel(candidate.sourceJob)}</td>
-                    <td>{extractRelationshipID(candidate.resume) ? 'Uploaded' : 'Missing'}</td>
-                    <td>
-                      <div className="public-actions">
-                        <Link
-                          className="button button-secondary"
-                          href={`${APP_ROUTES.internal.candidates.detailBase}/${candidate.id}`}
-                        >
-                          Open
-                        </Link>
-                        {canCreateApplication ? (
-                          <Link
-                            className="button button-secondary"
-                            href={`${APP_ROUTES.internal.applications.new}?candidateId=${candidate.id}&jobId=${
-                              extractRelationshipID(candidate.sourceJob) || ''
-                            }`}
-                          >
-                            Application
+              ) : (
+                pagedRows.map((candidate) => {
+                  const sourceJobID = extractRelationshipID(candidate.sourceJob)
+                  const years = typeof candidate.totalExperienceYears === 'number' ? candidate.totalExperienceYears : null
+                  const skillTag = (candidate.currentRole || 'Generalist').toUpperCase()
+                  const sourceLabel = SOURCE_LABELS.get(String(candidate.source || '')) || String(candidate.source || 'Unknown')
+
+                  return (
+                    <tr key={`candidate-row-${candidate.id}`}>
+                      <td>
+                        <div className="candidate-mgmt-name-cell">
+                          <span className="candidate-mgmt-avatar">{getInitials(candidate.fullName)}</span>
+                          <div>
+                            <p className="candidate-mgmt-name">{candidate.fullName}</p>
+                            <p className="candidate-mgmt-sub">{getRelativeDate(candidate.updatedAt)}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td>
+                        <div className="candidate-mgmt-skill-cell">
+                          <span className="candidate-mgmt-skill-pill">{skillTag}</span>
+                          <p>{years === null ? 'Experience not specified' : `${years} Years Experience`}</p>
+                        </div>
+                      </td>
+
+                      <td className="candidate-mgmt-company">{candidate.currentCompany || 'Not provided'}</td>
+
+                      <td>
+                        <div className="candidate-mgmt-contact">
+                          <span>{candidate.email || 'No email'}</span>
+                          <span>{candidate.phone || 'No phone'}</span>
+                        </div>
+                      </td>
+
+                      <td>
+                        <span className="candidate-mgmt-source-pill">{sourceLabel}</span>
+                      </td>
+
+                      <td>
+                        <div className="candidate-mgmt-row-actions">
+                          <Link className="candidate-mgmt-action-link" href={`${APP_ROUTES.internal.candidates.detailBase}/${candidate.id}`}>
+                            Open
                           </Link>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                          {canCreateApplication ? (
+                            <Link
+                              className="candidate-mgmt-action-link candidate-mgmt-action-link-secondary"
+                              href={`${APP_ROUTES.internal.applications.new}?candidateId=${candidate.id}&jobId=${sourceJobID || ''}`}
+                            >
+                              Application
+                            </Link>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <footer className="candidate-mgmt-pagination">
+          <p>
+            Showing {showingFrom} to {showingTo} of {totalRows} candidates
+          </p>
+          <div className="candidate-mgmt-page-controls">
+            <Link
+              aria-disabled={currentPage <= 1}
+              className={`candidate-mgmt-page-btn ${currentPage <= 1 ? 'candidate-mgmt-page-btn-disabled' : ''}`}
+              href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
+                exp: expFilter,
+                page: Math.max(currentPage - 1, 1),
+                q: searchTerm,
+                skill: skillFilter,
+                source: sourceFilter,
+              })}`}
+            >
+              ‹
+            </Link>
+
+            <Link
+              className={`candidate-mgmt-page-btn ${leftPage === currentPage ? 'candidate-mgmt-page-btn-active' : ''}`}
+              href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
+                exp: expFilter,
+                page: leftPage,
+                q: searchTerm,
+                skill: skillFilter,
+                source: sourceFilter,
+              })}`}
+            >
+              {leftPage}
+            </Link>
+
+            {rightPage !== leftPage ? (
+              <Link
+                className={`candidate-mgmt-page-btn ${rightPage === currentPage ? 'candidate-mgmt-page-btn-active' : ''}`}
+                href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
+                  exp: expFilter,
+                  page: rightPage,
+                  q: searchTerm,
+                  skill: skillFilter,
+                  source: sourceFilter,
+                })}`}
+              >
+                {rightPage}
+              </Link>
+            ) : null}
+
+            <Link
+              aria-disabled={currentPage >= totalPages}
+              className={`candidate-mgmt-page-btn ${currentPage >= totalPages ? 'candidate-mgmt-page-btn-disabled' : ''}`}
+              href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
+                exp: expFilter,
+                page: Math.min(currentPage + 1, totalPages),
+                q: searchTerm,
+                skill: skillFilter,
+                source: sourceFilter,
+              })}`}
+            >
+              ›
+            </Link>
           </div>
-        )}
-      </article>
+        </footer>
+      </section>
     </section>
   )
 }

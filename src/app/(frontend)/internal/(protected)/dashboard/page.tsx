@@ -310,101 +310,99 @@ export default async function InternalDashboardPage() {
     const maxVelocityCount = Math.max(...velocitySeries.map((point) => point.count), 1)
 
     return (
-      <section className="lead-overview-page">
-        <div className="lead-overview-header-row">
+      <section className="role-dashboard-page role-dashboard-page-lead">
+        <header className="role-dashboard-header">
           <div>
-            <h1>Recruitment Intelligence</h1>
+            <p className="role-dashboard-kicker">Recruitment Intelligence</p>
+            <h1>Lead Recruiter Overview</h1>
             <p>Strategic oversight for the current hiring cycle.</p>
           </div>
-          <div className="lead-cycle-chip">Cycle Ends: {toCycleDate(cycleEnds)}</div>
-        </div>
+          <div className="role-dashboard-date-chip">Cycle Ends: {toCycleDate(cycleEnds)}</div>
+        </header>
 
-        <section className="lead-top-grid">
-          <article className="ops-card lead-mandates-card">
-            <p className="lead-card-kicker">Active Mandates</p>
-            <p className="lead-mandates-value">{activeMandatesCount.totalDocs}</p>
-            <p className="lead-mandates-meta">
-              <span className="lead-positive-pill">
-                +{Math.max(Math.round(typedPendingReviews.length / 2), 1)} this week
-              </span>
-              <span>{Math.round(averagePendingReviewHours * 10) / 10}h avg review wait</span>
-            </p>
+        <section className="role-dashboard-kpi-grid role-dashboard-kpi-grid-3">
+          <article className="role-dashboard-kpi-card">
+            <p>Active Mandates</p>
+            <strong>{activeMandatesCount.totalDocs}</strong>
+            <span>+{Math.max(Math.round(typedPendingReviews.length / 2), 1)} this week</span>
           </article>
-
-          <article className="ops-card lead-velocity-card">
-            <div className="lead-card-head">
-              <div>
-                <p className="lead-card-kicker">Review Queue Summary</p>
-                <h2>Operational Velocity</h2>
-              </div>
-              <div className="lead-velocity-legend">
-                <span />
-                <p>Reviews Pending ({typedPendingReviews.length})</p>
-              </div>
-            </div>
-            <div className="lead-velocity-bars">
-              {velocitySeries.map((point) => {
-                const heightPercent = Math.max(Math.round((point.count / maxVelocityCount) * 100), 8)
-                return (
-                  <div className="lead-velocity-point" key={point.dayLabel}>
-                    <div className="lead-velocity-track">
-                      <span
-                        className={point.isHighlighted ? 'lead-velocity-bar lead-velocity-bar-highlight' : 'lead-velocity-bar'}
-                        style={{ height: `${heightPercent}%` }}
-                      />
-                    </div>
-                    <p>{point.dayLabel}</p>
-                  </div>
-                )
-              })}
-            </div>
+          <article className="role-dashboard-kpi-card">
+            <p>Pending Reviews</p>
+            <strong>{typedPendingReviews.length}</strong>
+            <span>{Math.round(averagePendingReviewHours * 10) / 10}h avg wait</span>
+          </article>
+          <article className="role-dashboard-kpi-card">
+            <p>Approval Rate</p>
+            <strong>{approvalRate}%</strong>
+            <span>Last 30 days</span>
           </article>
         </section>
 
-        <section className="lead-bottom-grid">
-          <article className="ops-card lead-pending-card">
-            <div className="lead-card-head">
+        <section className="role-dashboard-main-grid">
+          <article className="role-dashboard-card role-dashboard-card-main">
+            <div className="role-dashboard-card-head">
               <h2>Pending Candidate Reviews</h2>
-              <Link href={APP_ROUTES.internal.applications.reviewQueue}>View All Queue</Link>
+              <Link href={APP_ROUTES.internal.applications.reviewQueue}>View Queue</Link>
             </div>
             {typedPendingReviews.length === 0 ? (
-              <p className="ops-empty-text">No pending submissions. Review queue is clear.</p>
+              <p className="role-dashboard-empty">No pending submissions. Queue is clear.</p>
             ) : (
-              <div className="lead-pending-list">
-                {typedPendingReviews.slice(0, 4).map((application) => (
-                  <article className="lead-pending-item" key={application.id}>
-                    <div className="lead-pending-avatar">{toInitials(readLabel(application.candidate, 'CD'))}</div>
-                    <div className="lead-pending-copy">
-                      <p className="lead-pending-name">{readLabel(application.candidate)}</p>
-                      <p className="lead-pending-meta">
-                        {readLabel(application.job)} | Recruiter: {readLabel(application.recruiter)}
-                      </p>
+              <div className="role-dashboard-list">
+                {typedPendingReviews.slice(0, 5).map((application) => (
+                  <article className="role-dashboard-list-row" key={application.id}>
+                    <span className="role-dashboard-avatar">{toInitials(readLabel(application.candidate, 'CD'))}</span>
+                    <div>
+                      <p>{readLabel(application.candidate)}</p>
+                      <small>
+                        {readLabel(application.job)} · Recruiter: {readLabel(application.recruiter)}
+                      </small>
                     </div>
-                    <span className="lead-pending-time">{toRelativeTime(application.updatedAt)}</span>
+                    <span className="role-dashboard-row-meta">{toRelativeTime(application.updatedAt)}</span>
                   </article>
                 ))}
               </div>
             )}
           </article>
 
-          <div className="lead-right-stack">
-            <article className="ops-card lead-performance-card">
-              <div className="lead-card-head">
+          <div className="role-dashboard-side-grid">
+            <article className="role-dashboard-card">
+              <div className="role-dashboard-card-head">
+                <h2>Operational Velocity</h2>
+                <span>{typedPendingReviews.length} pending</span>
+              </div>
+              <div className="role-dashboard-velocity">
+                {velocitySeries.map((point) => {
+                  const heightPercent = Math.max(Math.round((point.count / maxVelocityCount) * 100), 8)
+                  return (
+                    <div className="role-dashboard-velocity-col" key={point.dayLabel}>
+                      <span
+                        className={`role-dashboard-velocity-bar ${point.isHighlighted ? 'role-dashboard-velocity-bar-active' : ''}`}
+                        style={{ height: `${heightPercent}%` }}
+                      />
+                      <p>{point.dayLabel}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </article>
+
+            <article className="role-dashboard-card">
+              <div className="role-dashboard-card-head">
                 <h2>Recruiter Performance</h2>
-                <span>{approvalRate}% Approval</span>
+                <span>{approvalRate}% approval</span>
               </div>
               {recruiterPerformance.length === 0 ? (
-                <p className="ops-empty-text">No recent review decisions yet.</p>
+                <p className="role-dashboard-empty">No recent review decisions yet.</p>
               ) : (
-                <div className="lead-performance-list">
+                <div className="role-dashboard-performance-list">
                   {recruiterPerformance.map((row) => (
-                    <article className="lead-performance-item" key={row.name}>
-                      <span className="lead-performance-avatar">{toInitials(row.name)}</span>
+                    <article className="role-dashboard-performance-row" key={row.name}>
+                      <span className="role-dashboard-avatar">{toInitials(row.name)}</span>
                       <div>
-                        <p className="lead-performance-name">{row.name}</p>
-                        <p className="lead-performance-meta">{row.acceptance}% acceptance</p>
+                        <p>{row.name}</p>
+                        <small>{row.acceptance}% acceptance</small>
                       </div>
-                      <div className="lead-performance-track">
+                      <div className="role-dashboard-progress">
                         <span style={{ width: `${Math.max(row.acceptance, 8)}%` }} />
                       </div>
                     </article>
@@ -413,23 +411,22 @@ export default async function InternalDashboardPage() {
               )}
             </article>
 
-            <article className="ops-card lead-actions-card">
+            <article className="role-dashboard-card">
               <h2>Recent Review Actions</h2>
               {typedReviewHistory.length === 0 ? (
-                <p className="ops-empty-text">No recent actions available.</p>
+                <p className="role-dashboard-empty">No recent actions available.</p>
               ) : (
-                <div className="lead-action-list">
+                <div className="role-dashboard-action-list">
                   {typedReviewHistory.slice(0, 4).map((entry) => (
-                    <article className="lead-action-item" key={entry.id}>
-                      <span className={`lead-action-dot lead-action-dot-${REVIEW_STAGE_TONE_CLASS[entry.toStage] || 'blue'}`} />
+                    <article className="role-dashboard-action-row" key={entry.id}>
+                      <span className={`role-dashboard-action-dot role-dashboard-action-dot-${REVIEW_STAGE_TONE_CLASS[entry.toStage] || 'blue'}`} />
                       <div>
-                        <p className="lead-action-title">
+                        <p>
                           {APPLICATION_STAGE_LABELS[entry.toStage]}: {readLabel(entry.candidate)}
                         </p>
-                        <p className="lead-action-meta">
-                          Recruiter: {readLabel(entry.recruiter)} • {toRelativeTime(entry.changedAt)}
-                        </p>
-                        {entry.comment ? <p className="lead-action-comment">{entry.comment}</p> : null}
+                        <small>
+                          Recruiter: {readLabel(entry.recruiter)} · {toRelativeTime(entry.changedAt)}
+                        </small>
                       </div>
                     </article>
                   ))}
@@ -553,124 +550,92 @@ export default async function InternalDashboardPage() {
     })
 
     return (
-      <section className="recruiter-overview-page">
-        <div className="recruiter-header-row">
+      <section className="role-dashboard-page role-dashboard-page-recruiter">
+        <header className="role-dashboard-header">
           <div>
+            <p className="role-dashboard-kicker">Recruiter Workspace</p>
             <h1>Recruiter Overview</h1>
             <p>Monitoring your active talent pipelines.</p>
           </div>
-          <div className="recruiter-header-actions">
-            <button className="recruiter-chip-button" type="button">
+          <div className="role-dashboard-header-actions">
+            <button className="role-dashboard-chip-btn" type="button">
               This Month
             </button>
-            <Link className="recruiter-chip-button" href={APP_ROUTES.internal.applications.list}>
+            <Link className="role-dashboard-chip-btn" href={APP_ROUTES.internal.applications.list}>
               Export Data
             </Link>
           </div>
-        </div>
+        </header>
 
-        <section className="recruiter-kpi-grid">
-          <article className="recruiter-kpi-card">
-            <p className="recruiter-kpi-label">Sourced candidates</p>
-            <p className="recruiter-kpi-value">{sourcedCandidatesCount.totalDocs.toLocaleString('en-US')}</p>
-            <span className="recruiter-kpi-trend recruiter-kpi-trend-positive">+12%</span>
+        <section className="role-dashboard-kpi-grid role-dashboard-kpi-grid-3">
+          <article className="role-dashboard-kpi-card">
+            <p>Sourced Candidates</p>
+            <strong>{sourcedCandidatesCount.totalDocs.toLocaleString('en-US')}</strong>
+            <span>+12%</span>
           </article>
-          <article className="recruiter-kpi-card">
-            <p className="recruiter-kpi-label">Active applications</p>
-            <p className="recruiter-kpi-value">{activeApplicationsCount}</p>
-            <span className="recruiter-kpi-trend recruiter-kpi-trend-neutral">0%</span>
+          <article className="role-dashboard-kpi-card">
+            <p>Active Applications</p>
+            <strong>{activeApplicationsCount}</strong>
+            <span>0% change</span>
           </article>
-          <article className="recruiter-kpi-card">
-            <p className="recruiter-kpi-label">Placements</p>
-            <p className="recruiter-kpi-value">{placementsCount}</p>
-            <span className="recruiter-kpi-trend recruiter-kpi-trend-positive">+5%</span>
+          <article className="role-dashboard-kpi-card">
+            <p>Placements</p>
+            <strong>{placementsCount}</strong>
+            <span>+5%</span>
           </article>
         </section>
 
-        <section className="recruiter-main-grid">
-          <article className="ops-card recruiter-jobs-card">
-            <div className="recruiter-card-head">
+        <section className="role-dashboard-main-grid">
+          <article className="role-dashboard-card role-dashboard-card-main">
+            <div className="role-dashboard-card-head">
               <h2>My Assigned Jobs</h2>
-              <Link href={APP_ROUTES.internal.jobs.assigned}>View All Pipeline</Link>
+              <Link href={APP_ROUTES.internal.jobs.assigned}>View Pipeline</Link>
             </div>
             {topJobCards.length === 0 ? (
-              <p className="ops-empty-text">No assigned active jobs yet.</p>
+              <p className="role-dashboard-empty">No assigned active jobs yet.</p>
             ) : (
-              <div className="recruiter-job-list">
+              <div className="role-dashboard-job-list">
                 {topJobCards.map((item) => (
-                  <article className="recruiter-job-item" key={item.job.id}>
-                    <div className="recruiter-job-top-row">
+                  <article className="role-dashboard-job-item" key={item.job.id}>
+                    <div className="role-dashboard-job-top">
                       <div>
-                        <p className="recruiter-job-title">{item.job.title}</p>
-                        <p className="recruiter-job-meta">
-                          {item.job.location || 'Location TBD'} • {item.job.employmentType}
-                        </p>
+                        <p>{item.job.title}</p>
+                        <small>
+                          {item.job.location || 'Location TBD'} · {item.job.employmentType}
+                        </small>
                       </div>
-                      <div className="recruiter-job-priority">
-                        <span>{item.job.priority.toUpperCase()}</span>
-                        <p>{item.dueText}</p>
-                      </div>
+                      <span>{item.job.priority.toUpperCase()}</span>
                     </div>
-
-                    <p className="recruiter-progress-label">Pipeline Progress</p>
-                    <div className="recruiter-progress-track">
+                    <p className="role-dashboard-job-due">{item.dueText}</p>
+                    <div className="role-dashboard-progress">
                       <span style={{ width: `${Math.max(item.progressPercent, 4)}%` }} />
                     </div>
-                    <div className="recruiter-progress-meta">
-                      <div className="recruiter-candidate-stack">
-                        {item.candidatePreview.length === 0 ? (
-                          <span className="recruiter-candidate-count">No candidates yet</span>
-                        ) : (
-                          <>
-                            {item.candidatePreview.map((candidateName, index) => (
-                              <span
-                                className="recruiter-candidate-avatar"
-                                key={`${item.job.id}-${candidateName}-${index}`}
-                                style={{ zIndex: 5 - index }}
-                              >
-                                {toInitials(candidateName)}
-                              </span>
-                            ))}
-                            <span className="recruiter-candidate-count">{item.inReviewCount} in review</span>
-                          </>
-                        )}
-                      </div>
+                    <div className="role-dashboard-job-meta">
+                      <p>{item.inReviewCount} in review</p>
                       <p>{item.progressPercent}% filled</p>
                     </div>
-
-                    <Link className="recruiter-job-link" href={`${APP_ROUTES.internal.jobs.detailBase}/${item.job.id}`}>
-                      Open Job Board
-                    </Link>
+                    <Link href={`${APP_ROUTES.internal.jobs.detailBase}/${item.job.id}`}>Open Job Board</Link>
                   </article>
                 ))}
               </div>
             )}
           </article>
 
-          <div className="recruiter-right-stack">
-            <article className="ops-card recruiter-action-card">
+          <div className="role-dashboard-side-grid">
+            <article className="role-dashboard-card">
               <h2>Action Required</h2>
               {sentBackItems.length === 0 ? (
-                <p className="ops-empty-text">No returned candidates right now.</p>
+                <p className="role-dashboard-empty">No returned candidates right now.</p>
               ) : (
-                <div className="recruiter-returned-list">
+                <div className="role-dashboard-action-list">
                   {sentBackItems.map((application) => (
-                    <article className="recruiter-returned-item" key={application.id}>
-                      <div className="recruiter-returned-head">
-                        <span>Returned</span>
-                        <p>{toRelativeTime(application.updatedAt)}</p>
-                      </div>
-                      <p className="recruiter-returned-name">Candidate: {readLabel(application.candidate)}</p>
-                      <p className="recruiter-returned-note">
-                        {application.latestComment || 'Lead recruiter requested profile corrections.'}
-                      </p>
-                      <div className="recruiter-returned-actions">
-                        <button className="recruiter-action-button" type="button">
-                          Dismiss
-                        </button>
-                        <Link className="recruiter-action-button recruiter-action-button-primary" href={`${APP_ROUTES.internal.applications.detailBase}/${application.id}`}>
-                          Fix Detail
-                        </Link>
+                    <article className="role-dashboard-action-row" key={application.id}>
+                      <span className="role-dashboard-action-pill">Returned</span>
+                      <p>Candidate: {readLabel(application.candidate)}</p>
+                      <small>{application.latestComment || 'Lead requested profile corrections.'}</small>
+                      <div className="role-dashboard-inline-actions">
+                        <button type="button">Dismiss</button>
+                        <Link href={`${APP_ROUTES.internal.applications.detailBase}/${application.id}`}>Fix Detail</Link>
                       </div>
                     </article>
                   ))}
@@ -678,23 +643,23 @@ export default async function InternalDashboardPage() {
               )}
             </article>
 
-            <article className="ops-card recruiter-interviews-card">
+            <article className="role-dashboard-card">
               <h2>Upcoming Interviews</h2>
               {invitedCandidates.length === 0 ? (
-                <p className="ops-empty-text">No interviews scheduled yet.</p>
+                <p className="role-dashboard-empty">No interviews scheduled yet.</p>
               ) : (
-                <div className="recruiter-interview-list">
+                <div className="role-dashboard-interview-list">
                   {invitedCandidates.map((application) => {
                     const interviewDate = toMonthDay(application.candidateInvitedAt || application.updatedAt)
                     return (
-                      <article className="recruiter-interview-item" key={`interview-${application.id}`}>
-                        <div className="recruiter-interview-date">
-                          <span>{interviewDate.month}</span>
+                      <article className="role-dashboard-interview-row" key={`interview-${application.id}`}>
+                        <span>
+                          {interviewDate.month}
                           <strong>{interviewDate.day}</strong>
-                        </div>
+                        </span>
                         <div>
-                          <p className="recruiter-interview-candidate">{readLabel(application.candidate)}</p>
-                          <p className="recruiter-interview-meta">{readLabel(application.job)}</p>
+                          <p>{readLabel(application.candidate)}</p>
+                          <small>{readLabel(application.job)}</small>
                         </div>
                       </article>
                     )
@@ -884,127 +849,109 @@ export default async function InternalDashboardPage() {
   const maxRecruiterLoad = Math.max(...recruiterLoad.map((item) => item.count), 1)
 
   return (
-    <section className="admin-overview-page">
-      <div className="admin-overview-header-row">
+    <section className="role-dashboard-page role-dashboard-page-admin">
+      <header className="role-dashboard-header">
         <div>
-          <p className="admin-overview-kicker">HR Operational Intelligence</p>
+          <p className="role-dashboard-kicker">HR Operational Intelligence</p>
           <h1>Admin Overview</h1>
+          <p>Central operations summary across clients, jobs, recruiters, and candidates.</p>
         </div>
-        <div className="admin-date-chip">{dateRangeLabel}</div>
-      </div>
+        <div className="role-dashboard-date-chip">{dateRangeLabel}</div>
+      </header>
 
-      <section className="admin-kpi-grid">
-        <article className="admin-kpi-card admin-kpi-card-blue">
-          <p className="admin-kpi-label">Active Clients</p>
-          <p className="admin-kpi-value">{activeClientsCount.totalDocs}</p>
-          <span className="admin-kpi-trend admin-kpi-trend-positive">+12%</span>
+      <section className="role-dashboard-kpi-grid role-dashboard-kpi-grid-4">
+        <article className="role-dashboard-kpi-card">
+          <p>Active Clients</p>
+          <strong>{activeClientsCount.totalDocs}</strong>
+          <span>+12%</span>
         </article>
-        <article className="admin-kpi-card admin-kpi-card-light">
-          <p className="admin-kpi-label">Open Jobs</p>
-          <p className="admin-kpi-value">{openJobsCount.totalDocs}</p>
-          <span className="admin-kpi-trend admin-kpi-trend-positive">+4%</span>
+        <article className="role-dashboard-kpi-card">
+          <p>Open Jobs</p>
+          <strong>{openJobsCount.totalDocs}</strong>
+          <span>+4%</span>
         </article>
-        <article className="admin-kpi-card admin-kpi-card-dark">
-          <p className="admin-kpi-label">Leads Assigned</p>
-          <p className="admin-kpi-value">{clientLeadAssignments.totalDocs + jobLeadAssignments.totalDocs}</p>
-          <span className="admin-kpi-trend admin-kpi-trend-negative">-2%</span>
+        <article className="role-dashboard-kpi-card">
+          <p>Leads Assigned</p>
+          <strong>{clientLeadAssignments.totalDocs + jobLeadAssignments.totalDocs}</strong>
+          <span>-2%</span>
         </article>
-        <article className="admin-kpi-card admin-kpi-card-light">
-          <p className="admin-kpi-label">Total Candidates</p>
-          <p className="admin-kpi-value">{candidateCount.totalDocs.toLocaleString('en-US')}</p>
-          <span className="admin-kpi-trend admin-kpi-trend-positive">+18%</span>
+        <article className="role-dashboard-kpi-card">
+          <p>Total Candidates</p>
+          <strong>{candidateCount.totalDocs.toLocaleString('en-US')}</strong>
+          <span>+18%</span>
         </article>
       </section>
 
-      <section className="admin-overview-grid">
-        <article className="ops-card admin-activity-card">
-          <div className="admin-card-head">
+      <section className="role-dashboard-main-grid">
+        <article className="role-dashboard-card role-dashboard-card-main">
+          <div className="role-dashboard-card-head">
             <h2>Recent Activity</h2>
-            <Link href={APP_ROUTES.internal.applications.list}>View All Logs</Link>
+            <Link href={APP_ROUTES.internal.applications.list}>View Logs</Link>
           </div>
-
-          <div className="admin-activity-list">
-            {recentActivity.length === 0 ? (
-              <p className="ops-empty-text">No recent activity.</p>
-            ) : (
-              recentActivity.map((activity) => (
-                <article className="admin-activity-item" key={activity.id}>
-                  <span className={`admin-activity-dot admin-activity-dot-${activity.tone}`} />
-                  <div className="admin-activity-copy">
-                    <p className="admin-activity-title">{activity.title}</p>
-                    <p className="admin-activity-subtitle">{activity.subtitle}</p>
+          {recentActivity.length === 0 ? (
+            <p className="role-dashboard-empty">No recent activity.</p>
+          ) : (
+            <div className="role-dashboard-action-list">
+              {recentActivity.map((activity) => (
+                <article className="role-dashboard-action-row" key={activity.id}>
+                  <span className={`role-dashboard-action-dot role-dashboard-action-dot-${activity.tone}`} />
+                  <div>
+                    <p>{activity.title}</p>
+                    <small>{activity.subtitle}</small>
                   </div>
-                  <span className="admin-activity-time">{activity.time}</span>
+                  <span className="role-dashboard-row-meta">{activity.time}</span>
                 </article>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
 
-          <div className="admin-reports-empty">
-            <p className="admin-reports-title">No Reports Generated</p>
-            <p className="admin-reports-subtitle">
-              You have not generated any recruitment performance reports for this period yet.
-            </p>
-            <button className="ops-btn ops-btn-secondary" type="button">
-              Create First Report
-            </button>
+          <div className="role-dashboard-report-box">
+            <p>No reports generated for this period.</p>
+            <button type="button">Create First Report</button>
           </div>
         </article>
 
-        <div className="admin-right-stack">
-          <article className="ops-card">
+        <div className="role-dashboard-side-grid">
+          <article className="role-dashboard-card">
             <h2>Quick Actions</h2>
-            <div className="admin-quick-grid">
-              <Link className="admin-quick-action" href={APP_ROUTES.internal.clients.list}>
-                Add Client
-              </Link>
-              <Link className="admin-quick-action" href={APP_ROUTES.internal.assignments.head}>
-                Assign Leads
-              </Link>
-              <Link className="admin-quick-action" href={`${APP_ROUTES.internal.jobs.assigned}#create-job`}>
-                Post Job
-              </Link>
-              <Link className="admin-quick-action" href={APP_ROUTES.internal.candidates.new}>
-                Bulk Upload
-              </Link>
+            <div className="role-dashboard-quick-grid">
+              <Link href={APP_ROUTES.internal.clients.list}>Add Client</Link>
+              <Link href={APP_ROUTES.internal.assignments.head}>Assign Leads</Link>
+              <Link href={`${APP_ROUTES.internal.jobs.assigned}#create-job`}>Post Job</Link>
+              <Link href={APP_ROUTES.internal.candidates.new}>Bulk Upload</Link>
             </div>
-
-            <div className="admin-pending-block">
-              <p className="admin-pending-heading">Pending Tasks</p>
-              <div className="admin-task admin-task-critical">
-                Verify {Math.max(newCandidatesCount.totalDocs, pendingReviews)} New Candidates
-              </div>
-              <div className="admin-task">Client Meeting in 2h</div>
+            <div className="role-dashboard-task-list">
+              <p>Pending Tasks</p>
+              <div>Verify {Math.max(newCandidatesCount.totalDocs, pendingReviews)} New Candidates</div>
+              <div>Client Meeting in 2h</div>
             </div>
           </article>
 
-          <article className="ops-card admin-load-card">
-            <div className="admin-card-head">
+          <article className="role-dashboard-card">
+            <div className="role-dashboard-card-head">
               <h2>Recruiter Load</h2>
-              <span>Live</span>
+              <Link href={APP_ROUTES.internal.assignments.lead}>Manage</Link>
             </div>
-
-            <div className="admin-load-list">
-              {recruiterLoad.length === 0 ? (
-                <p className="ops-empty-text">No recruiter assignments yet.</p>
-              ) : (
-                recruiterLoad.map((item) => {
+            {recruiterLoad.length === 0 ? (
+              <p className="role-dashboard-empty">No recruiter assignments yet.</p>
+            ) : (
+              <div className="role-dashboard-performance-list">
+                {recruiterLoad.map((item) => {
                   const percent = Math.max(Math.round((item.count / maxRecruiterLoad) * 100), 10)
                   return (
-                    <article className="admin-load-item" key={item.name}>
-                      <p>{item.name}</p>
-                      <span>{percent}%</span>
-                      <div className="admin-load-track">
+                    <article className="role-dashboard-performance-row" key={item.name}>
+                      <div>
+                        <p>{item.name}</p>
+                        <small>{percent}% capacity</small>
+                      </div>
+                      <div className="role-dashboard-progress">
                         <span style={{ width: `${percent}%` }} />
                       </div>
                     </article>
                   )
-                })
-              )}
-            </div>
-            <Link className="admin-load-plus" href={APP_ROUTES.internal.assignments.lead}>
-              +
-            </Link>
+                })}
+              </div>
+            )}
           </article>
         </div>
       </section>
