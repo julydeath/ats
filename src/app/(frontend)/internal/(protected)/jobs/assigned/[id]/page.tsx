@@ -8,6 +8,7 @@ import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import type { InternalRole } from '@/lib/constants/roles'
+import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   if (!value) {
@@ -40,14 +41,51 @@ const toNumericID = (value: string): number | null => {
   return Number(value)
 }
 
+const relationshipToNumericID = (value: unknown): number | null => {
+  const id = extractRelationshipID(value)
+
+  if (typeof id === 'number') {
+    return id
+  }
+
+  if (typeof id === 'string' && /^\d+$/.test(id)) {
+    return Number(id)
+  }
+
+  return null
+}
+
 const formatDate = (value: string | Date | null | undefined): string => {
   if (!value) {
     return 'Not set'
   }
 
   const date = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(date.getTime())) {
+    return 'Not set'
+  }
+
   return date.toLocaleDateString('en-IN', {
     day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+const formatDateTime = (value: string | Date | null | undefined): string => {
+  if (!value) {
+    return 'Not set'
+  }
+
+  const date = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(date.getTime())) {
+    return 'Not set'
+  }
+
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
     month: 'short',
     year: 'numeric',
   })
@@ -176,17 +214,22 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
         | {
             currentCompany?: string
             currentRole?: string
+            email?: string
             fullName?: string
+            phone?: string
           }
         | number
         | string
         | null
+
       const haystack = [
         readLabel(application.candidate),
         readLabel(application.recruiter),
         readLabel(application.job),
         typeof candidate === 'object' ? candidate?.currentCompany || '' : '',
         typeof candidate === 'object' ? candidate?.currentRole || '' : '',
+        typeof candidate === 'object' ? candidate?.email || '' : '',
+        typeof candidate === 'object' ? candidate?.phone || '' : '',
         application.latestComment || '',
       ]
         .join(' ')
@@ -199,24 +242,38 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
       const candidate = application.candidate as
         | {
             currentCompany?: string
+            currentLocation?: string
             currentRole?: string
+            email?: string
             fullName?: string
+            linkedInURL?: string
+            phone?: string
+            portfolioURL?: string
             totalExperienceYears?: number
           }
         | number
         | string
         | null
 
+      const normalizedCandidateID = relationshipToNumericID(application.candidate)
+
       return {
+        applicationNotes: application.notes || '',
         candidateCompany:
           typeof candidate === 'object' && candidate?.currentCompany
             ? `Ex: ${candidate.currentCompany}`
             : 'Ex: Not provided',
+        candidateEmail: (typeof candidate === 'object' && candidate?.email) || '',
         candidateExperience:
           typeof candidate === 'object' && typeof candidate?.totalExperienceYears === 'number'
             ? `${candidate.totalExperienceYears} years experience`
             : 'Experience not provided',
+        candidateId: normalizedCandidateID,
+        candidateLinkedIn: (typeof candidate === 'object' && candidate?.linkedInURL) || '',
+        candidateLocation: (typeof candidate === 'object' && candidate?.currentLocation) || '',
         candidateName: readLabel(application.candidate, 'Candidate'),
+        candidatePhone: (typeof candidate === 'object' && candidate?.phone) || '',
+        candidatePortfolio: (typeof candidate === 'object' && candidate?.portfolioURL) || '',
         candidateRole:
           typeof candidate === 'object' && candidate?.currentRole ? candidate.currentRole : 'Role not provided',
         id: application.id,
@@ -225,12 +282,6 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
         stage: application.stage as ApplicationStage,
         updatedAt: application.updatedAt,
       }
-    })
-
-    const stageCountMap = new Map<string, number>()
-    STAGE_FILTER_OPTIONS.forEach((option) => stageCountMap.set(option.value, 0))
-    applications.docs.forEach((application) => {
-      stageCountMap.set(application.stage, (stageCountMap.get(application.stage) || 0) + 1)
     })
 
     const teamMembers = Array.from(
@@ -248,26 +299,19 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
       .slice(0, 24)
 
     return (
-      <section className="dashboard-grid">
-        <article className="panel panel-span-2">
-          <div className="job-detail-header">
-            <div>
-              <h1>{job.title}</h1>
-              <p className="panel-subtitle">
-                Published on {formatDate(job.createdAt)} | End on {formatDate(job.targetClosureDate)}
-              </p>
-            </div>
-            <div className="job-detail-top-actions">
-              <span className={`status-chip ${job.status === 'active' ? 'status-chip-active' : ''}`}>
-                {job.status === 'active' ? 'Actively hiring' : job.status}
-              </span>
-              <Link className="button button-secondary" href={APP_ROUTES.internal.jobs.assigned}>
-                Back to Jobs
-              </Link>
-            </div>
+      <section className="job-detail-page">
+        <header className="job-detail-hero">
+          <div className="job-detail-hero-copy">
+            <p className="job-detail-kicker">Jobs / {job.title}</p>
+            <h1>{job.title}</h1>
+            <p className="job-detail-meta-line">
+              <span>{job.location || 'Location not set'}</span>
+              <span>Posted {formatDate(job.createdAt)}</span>
+              <span>{applications.totalDocs} Applicants</span>
+            </p>
           </div>
 
-          <div className="job-detail-subheader">
+          <div className="job-detail-hero-actions">
             <div className="job-detail-avatars">
               {teamMembers.length === 0 ? (
                 <span className="muted tiny">No assigned recruiters</span>
@@ -284,88 +328,74 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
                 ))
               )}
             </div>
-            <div className="public-actions">
+
+            <div className="job-detail-action-row">
               {canAddApplicant ? (
-                <Link className="button" href={`${APP_ROUTES.internal.applications.new}?jobId=${job.id}`}>
+                <Link className="job-detail-button job-detail-button-primary" href={`${APP_ROUTES.internal.applications.new}?jobId=${job.id}`}>
                   Add Applicant
                 </Link>
               ) : null}
-              <Link className="button button-secondary" href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}?tab=schedule`}>
-                Open Schedule
+              <Link className="job-detail-button" href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}?tab=schedule`}>
+                Schedule
+              </Link>
+              <Link className="job-detail-button job-detail-button-ghost" href={APP_ROUTES.internal.jobs.assigned}>
+                Back to Jobs
               </Link>
             </div>
           </div>
-        </article>
+        </header>
 
-        <article className="panel panel-span-2">
-          <div className="job-tab-nav">
-            {TAB_OPTIONS.map((tab) => (
-              <Link
-                className={`job-tab-link ${activeTab === tab ? 'job-tab-link-active' : ''}`}
-                href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}?tab=${tab}`}
-                key={tab}
-              >
-                {TAB_LABELS[tab]}
-              </Link>
-            ))}
-          </div>
-        </article>
+        <nav className="job-detail-tabbar">
+          {TAB_OPTIONS.map((tab) => (
+            <Link
+              className={`job-detail-tab ${activeTab === tab ? 'job-detail-tab-active' : ''}`}
+              href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}?tab=${tab}`}
+              key={tab}
+            >
+              {TAB_LABELS[tab]}
+            </Link>
+          ))}
+        </nav>
 
         {activeTab === 'applicants' ? (
           <>
-            <article className="panel panel-span-2">
-              <form className="job-board-toolbar" method="get">
+            <section className="job-detail-toolbar-card">
+              <form className="job-detail-toolbar" method="get">
                 <input name="tab" type="hidden" value="applicants" />
                 <input
-                  className="input"
+                  className="job-detail-search"
                   defaultValue={resolvedSearchParams.q || ''}
                   name="q"
-                  placeholder="Search candidate, recruiter, company"
+                  placeholder="Search by candidate, recruiter, job, skill..."
                   type="search"
                 />
-                <select className="input" defaultValue={stageFilter} name="stage">
-                  <option value="">All stages</option>
+                <select className="job-detail-select" defaultValue={stageFilter} name="stage">
+                  <option value="">Filter by stage</option>
                   {STAGE_FILTER_OPTIONS.map((stage) => (
                     <option key={`board-stage-${stage.value}`} value={stage.value}>
                       {stage.label}
                     </option>
                   ))}
                 </select>
-                <button className="button button-secondary" type="submit">
+                <button className="job-detail-toolbar-button" type="submit">
                   Filter
                 </button>
-                <Link className="button button-secondary" href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}?tab=applicants`}>
+                <Link className="job-detail-toolbar-button job-detail-toolbar-button-secondary" href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}?tab=applicants`}>
                   Reset
                 </Link>
-                <div className="job-board-view-toggle">
-                  <span className="job-board-view-toggle-item job-board-view-toggle-item-active" />
-                  <span className="job-board-view-toggle-item" />
-                  <span className="job-board-view-toggle-item" />
-                </div>
               </form>
-            </article>
+            </section>
 
-            <article className="panel panel-span-2">
-              <div className="job-stage-summary">
-                {STAGE_FILTER_OPTIONS.map((stage) => (
-                  <div className="job-stage-summary-item" key={stage.value}>
-                    <p className="job-stage-summary-label">{stage.label}</p>
-                    <p className="job-stage-summary-value">{stageCountMap.get(stage.value) || 0}</p>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className="panel panel-span-2">
+            <section className="job-detail-board-card">
               <JobApplicantsBoard boardRole={boardRole} cards={boardCards} jobId={job.id} />
-            </article>
+            </section>
           </>
         ) : null}
 
         {activeTab === 'about' ? (
-          <article className="panel panel-span-2">
+          <section className="job-detail-content-card">
             <h2>About Job</h2>
-            <div className="about-job-grid">
+            <div className="job-detail-about-grid">
               <p>
                 <strong>Client:</strong> {readLabel(job.client)}
               </p>
@@ -390,77 +420,88 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
               <p>
                 <strong>Priority:</strong> {job.priority}
               </p>
+              <p>
+                <strong>Status:</strong> {job.status}
+              </p>
+              <p>
+                <strong>Target Closure:</strong> {formatDate(job.targetClosureDate)}
+              </p>
             </div>
-            <p className="panel-subtitle">
-              <strong>Description:</strong> {job.description || 'Not provided'}
-            </p>
+
+            <p className="job-detail-section-title">Description</p>
+            <p className="job-detail-paragraph">{job.description || 'Not provided'}</p>
+
+            <p className="job-detail-section-title">Required Skills</p>
             {job.requiredSkills?.length ? (
-              <div className="skill-tags">
+              <div className="job-detail-skill-tags">
                 {job.requiredSkills.map((item, index) => (
-                  <span className="skill-tag" key={`job-skill-${index + 1}`}>
+                  <span className="job-detail-skill-tag" key={`job-skill-${index + 1}`}>
                     {item.skill}
                   </span>
                 ))}
               </div>
-            ) : null}
-          </article>
+            ) : (
+              <p className="job-detail-paragraph">No required skills added.</p>
+            )}
+          </section>
         ) : null}
 
         {activeTab === 'discussion' ? (
-          <article className="panel panel-span-2">
-            <h2>Discussion</h2>
+          <section className="job-detail-content-card">
+            <div className="job-detail-content-head">
+              <h2>Discussion</h2>
+              <p>{discussionItems.length} conversation entries</p>
+            </div>
             {discussionItems.length === 0 ? (
-              <p className="board-empty">No discussion notes yet for this job.</p>
+              <p className="job-detail-empty">No discussion notes yet for this job.</p>
             ) : (
-              <div className="discussion-list">
+              <div className="job-detail-discussion-list">
                 {discussionItems.map((application) => (
-                  <article className="discussion-item" key={`discussion-${application.id}`}>
-                    <p className="discussion-title">{readLabel(application.candidate)}</p>
-                    <p className="discussion-meta">
-                      {readLabel(application.recruiter)} |{' '}
-                      {APPLICATION_STAGE_LABELS[application.stage as ApplicationStage]}
+                  <article className="job-detail-discussion-item" key={`discussion-${application.id}`}>
+                    <p className="job-detail-discussion-title">{readLabel(application.candidate)}</p>
+                    <p className="job-detail-discussion-meta">
+                      {readLabel(application.recruiter)} · {APPLICATION_STAGE_LABELS[application.stage as ApplicationStage]}
                     </p>
-                    <p className="discussion-text">{application.latestComment}</p>
-                    <div className="public-actions">
-                      <Link
-                        className="button button-secondary"
-                        href={`${APP_ROUTES.internal.applications.detailBase}/${application.id}`}
-                      >
-                        Open Application
-                      </Link>
-                    </div>
+                    <p className="job-detail-discussion-text">{application.latestComment}</p>
+                    <Link
+                      className="job-detail-inline-link"
+                      href={`${APP_ROUTES.internal.applications.detailBase}/${application.id}`}
+                    >
+                      Open Application
+                    </Link>
                   </article>
                 ))}
               </div>
             )}
-          </article>
+          </section>
         ) : null}
 
         {activeTab === 'schedule' ? (
-          <article className="panel panel-span-2">
-            <div className="recruiter-card-header">
+          <section className="job-detail-content-card">
+            <div className="job-detail-content-head">
               <h2>Schedule</h2>
-              <Link className="admin-link" href={APP_ROUTES.internal.schedule}>
+              <Link className="job-detail-inline-link" href={APP_ROUTES.internal.schedule}>
                 Open Full Calendar
               </Link>
             </div>
             {scheduleItems.length === 0 ? (
-              <p className="board-empty">No upcoming schedule items for this job.</p>
+              <p className="job-detail-empty">No upcoming schedule items for this job.</p>
             ) : (
-              <div className="schedule-list">
+              <div className="job-detail-schedule-list">
                 {scheduleItems.map((application) => (
-                  <article className="schedule-item" key={`job-schedule-${application.id}`}>
-                    <p className="schedule-title">{readLabel(application.candidate)}</p>
-                    <p className="schedule-meta">
-                      {APPLICATION_STAGE_LABELS[application.stage as ApplicationStage]} |{' '}
-                      {readLabel(application.recruiter)}
-                    </p>
-                    <p className="schedule-time">{new Date(application.updatedAt).toLocaleString('en-IN')}</p>
+                  <article className="job-detail-schedule-item" key={`job-schedule-${application.id}`}>
+                    <div>
+                      <p className="job-detail-schedule-title">{readLabel(application.candidate)}</p>
+                      <p className="job-detail-schedule-meta">
+                        {APPLICATION_STAGE_LABELS[application.stage as ApplicationStage]} · {readLabel(application.recruiter)}
+                      </p>
+                    </div>
+                    <p className="job-detail-schedule-time">{formatDateTime(application.updatedAt)}</p>
                   </article>
                 ))}
               </div>
             )}
-          </article>
+          </section>
         ) : null}
       </section>
     )

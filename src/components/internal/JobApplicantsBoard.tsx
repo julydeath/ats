@@ -18,9 +18,16 @@ import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants
 import { APP_ROUTES } from '@/lib/constants/routes'
 
 type BoardCard = {
+  applicationNotes: string
+  candidateEmail: string
   candidateCompany: string
   candidateExperience: string
+  candidateId: number | null
+  candidateLinkedIn: string
+  candidateLocation: string
   candidateName: string
+  candidatePhone: string
+  candidatePortfolio: string
   candidateRole: string
   id: number
   latestComment: string
@@ -122,14 +129,62 @@ const canTransition = ({
 
 const getRoleDragHint = (role: JobApplicantsBoardProps['boardRole']) => {
   if (role === 'admin') {
-    return 'Drag or manually update any card to any stage.'
+    return 'You can move any applicant and update stage directly from the detail panel.'
   }
 
   if (role === 'recruiter') {
-    return 'Move sourced/correction cards to screening, and manage post-approval pipeline stages.'
+    return 'Move sourced or returned profiles to review, then continue approved pipeline stages.'
   }
 
-  return 'Review screening cards to approve, reject, or send back for correction.'
+  return 'Review pending submissions and decide approve, reject, or send back for correction.'
+}
+
+const getInitials = (name: string): string =>
+  name
+    .split(' ')
+    .map((part) => part[0] || '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+const getPreferredNextStage = ({
+  boardRole,
+  fromStage,
+}: {
+  boardRole: JobApplicantsBoardProps['boardRole']
+  fromStage: ApplicationStage
+}): ApplicationStage | null => {
+  const allowed = getAllowedTransitionTargets({ boardRole, fromStage }).filter((stage) => stage !== fromStage)
+
+  if (allowed.length === 0) {
+    return null
+  }
+
+  const orderedStages = STAGE_COLUMNS.map((column) => column.key)
+  const currentIndex = orderedStages.indexOf(fromStage)
+
+  for (let index = currentIndex + 1; index < orderedStages.length; index += 1) {
+    const stage = orderedStages[index]
+    if (allowed.includes(stage)) {
+      return stage
+    }
+  }
+
+  return allowed[0] || null
+}
+
+const formatUpdatedAt = (value: string): string => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return 'Updated recently'
+  }
+
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 const DroppableStage = ({
@@ -155,41 +210,16 @@ const DroppableStage = ({
 const BoardCardItem = ({
   canDrag,
   card,
+  isSelected,
   isSaving,
-  onManualMove,
-  transitionTargets,
+  onSelect,
 }: {
   canDrag: boolean
   card: BoardCard
+  isSelected: boolean
   isSaving: boolean
-  onManualMove: (args: MoveArgs) => Promise<void>
-  transitionTargets: ApplicationStage[]
+  onSelect: (applicationId: number) => void
 }) => {
-  const [manualStage, setManualStage] = useState<ApplicationStage>(card.stage)
-  const [manualComment, setManualComment] = useState('')
-
-  useEffect(() => {
-    setManualStage(card.stage)
-  }, [card.stage])
-
-  const stopDragOnInput = (event: React.MouseEvent | React.PointerEvent) => {
-    event.stopPropagation()
-  }
-
-  const handleManualSubmit = async () => {
-    if (manualStage === card.stage || isSaving) {
-      return
-    }
-
-    await onManualMove({
-      applicationId: card.id,
-      fromStage: card.stage,
-      latestComment: manualComment.trim() || undefined,
-      toStage: manualStage,
-    })
-    setManualComment('')
-  }
-
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `app-${card.id}`,
     data: {
@@ -199,89 +229,57 @@ const BoardCardItem = ({
     disabled: !canDrag || isSaving,
   })
 
-  const initials = card.candidateName
-    .split(' ')
-    .map((part) => part[0] || '')
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
+  const initials = getInitials(card.candidateName)
 
   return (
     <article
-      className={`applicant-card ${isDragging ? 'applicant-card-dragging' : ''} ${!canDrag ? 'applicant-card-static' : ''}`}
+      className={[
+        'job-kanban-card',
+        isSelected ? 'job-kanban-card-selected' : '',
+        isDragging ? 'job-kanban-card-dragging' : '',
+        !canDrag ? 'job-kanban-card-static' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      onClick={() => onSelect(card.id)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onSelect(card.id)
+        }
+      }}
       ref={setNodeRef}
+      role="button"
       style={{
         transform: transform ? CSS.Translate.toString(transform) : undefined,
       }}
+      tabIndex={0}
       {...attributes}
       {...listeners}
     >
-      <div className="applicant-card-headline">
-        <div className="applicant-card-avatar">{initials}</div>
+      <div className="job-kanban-card-head">
+        <div className="job-kanban-card-avatar">{initials}</div>
         <div>
-          <p className="applicant-card-name">{card.candidateName}</p>
-          <p className="applicant-card-role">{card.candidateRole}</p>
+          <p className="job-kanban-card-name">{card.candidateName}</p>
+          <p className="job-kanban-card-role">{card.candidateRole}</p>
         </div>
+        <button aria-label="More options" className="job-kanban-card-menu" type="button">
+          •••
+        </button>
       </div>
 
-      <div className="applicant-card-details">
-        <p className="applicant-card-meta">{card.candidateExperience}</p>
-        <p className="applicant-card-meta">{card.candidateCompany}</p>
-        <p className="applicant-card-meta">Sourced by {card.recruiterName}</p>
+      <div className="job-kanban-card-details">
+        <p className="job-kanban-card-meta">{card.candidateExperience}</p>
+        <p className="job-kanban-card-meta">{card.candidateCompany}</p>
+        <p className="job-kanban-card-meta">Recruiter: {card.recruiterName}</p>
       </div>
 
-      <div className="applicant-card-footer">
-        <p className="applicant-card-updated">{new Date(card.updatedAt).toLocaleString('en-IN')}</p>
-        <span className="applicant-card-stage">{APPLICATION_STAGE_LABELS[card.stage]}</span>
+      <div className="job-kanban-card-footer">
+        <p className="job-kanban-card-updated">{formatUpdatedAt(card.updatedAt)}</p>
+        <span className="job-kanban-card-stage">{APPLICATION_STAGE_LABELS[card.stage]}</span>
       </div>
 
-      {card.latestComment ? <p className="applicant-card-comment">{card.latestComment}</p> : null}
-
-      <div className="public-actions">
-        <Link className="button button-secondary" href={`${APP_ROUTES.internal.applications.detailBase}/${card.id}`}>
-          Open
-        </Link>
-      </div>
-
-      {transitionTargets.length > 0 ? (
-        <div
-          className="applicant-manual-controls"
-          onMouseDown={stopDragOnInput}
-          onPointerDown={stopDragOnInput}
-        >
-          <select
-            className="input table-input"
-            disabled={isSaving}
-            onChange={(event) => setManualStage(event.target.value as ApplicationStage)}
-            value={manualStage}
-          >
-            <option value={card.stage}>{APPLICATION_STAGE_LABELS[card.stage]}</option>
-            {transitionTargets
-              .filter((stage) => stage !== card.stage)
-              .map((stage) => (
-                <option key={`${card.id}-${stage}`} value={stage}>
-                  {APPLICATION_STAGE_LABELS[stage]}
-                </option>
-              ))}
-          </select>
-          <input
-            className="input table-input"
-            disabled={isSaving}
-            onChange={(event) => setManualComment(event.target.value)}
-            placeholder="Comment (optional)"
-            type="text"
-            value={manualComment}
-          />
-          <button
-            className="button button-secondary"
-            disabled={manualStage === card.stage || isSaving}
-            onClick={handleManualSubmit}
-            type="button"
-          >
-            {isSaving ? 'Saving...' : 'Update Stage'}
-          </button>
-        </div>
-      ) : null}
+      {card.latestComment ? <p className="job-kanban-card-comment">{card.latestComment}</p> : null}
     </article>
   )
 }
@@ -291,12 +289,70 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
   const [board, setBoard] = useState<Record<ApplicationStage, BoardCard[]>>(() => initializeBoard(cards))
   const [activeApplicationID, setActiveApplicationID] = useState<number | null>(null)
   const [pendingApplicationID, setPendingApplicationID] = useState<number | null>(null)
+  const [selectedApplicationID, setSelectedApplicationID] = useState<number | null>(cards[0]?.id || null)
+  const [drawerStage, setDrawerStage] = useState<ApplicationStage | null>(cards[0]?.stage || null)
+  const [drawerComment, setDrawerComment] = useState('')
+  const [drawerTab, setDrawerTab] = useState<'overview' | 'experience' | 'feedback' | 'files'>('overview')
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setBoard(initializeBoard(cards))
   }, [cards])
+
+  const allCards = useMemo(() => STAGE_COLUMNS.flatMap((column) => board[column.key]), [board])
+
+  useEffect(() => {
+    if (allCards.length === 0) {
+      setSelectedApplicationID(null)
+      setDrawerStage(null)
+      return
+    }
+
+    if (!selectedApplicationID || !allCards.some((card) => card.id === selectedApplicationID)) {
+      const defaultCard = allCards[0]
+      setSelectedApplicationID(defaultCard?.id || null)
+      setDrawerStage(defaultCard?.stage || null)
+    }
+  }, [allCards, selectedApplicationID])
+
+  const selectedCard = useMemo(
+    () => allCards.find((card) => card.id === selectedApplicationID) || null,
+    [allCards, selectedApplicationID],
+  )
+
+  const selectedTransitionTargets = useMemo(() => {
+    if (!selectedCard) {
+      return []
+    }
+
+    return getAllowedTransitionTargets({
+      boardRole,
+      fromStage: selectedCard.stage,
+    })
+  }, [boardRole, selectedCard])
+
+  const selectedPreferredNextStage = useMemo(() => {
+    if (!selectedCard) {
+      return null
+    }
+
+    return getPreferredNextStage({
+      boardRole,
+      fromStage: selectedCard.stage,
+    })
+  }, [boardRole, selectedCard])
+
+  useEffect(() => {
+    if (!selectedCard) {
+      setDrawerStage(null)
+      setDrawerComment('')
+      return
+    }
+
+    setDrawerStage(selectedCard.stage)
+    setDrawerComment('')
+  }, [selectedCard])
 
   const totalCards = useMemo(
     () => STAGE_COLUMNS.reduce((sum, column) => sum + board[column.key].length, 0),
@@ -306,10 +362,12 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
   const moveApplication = ({
     applicationId,
     fromStage,
+    latestComment,
     toStage,
   }: {
     applicationId: number
     fromStage: ApplicationStage
+    latestComment?: string
     toStage: ApplicationStage
   }) => {
     if (fromStage === toStage) {
@@ -327,7 +385,9 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
 
       const updatedCard: BoardCard = {
         ...movingCard,
+        latestComment: latestComment || movingCard.latestComment,
         stage: toStage,
+        updatedAt: new Date().toISOString(),
       }
 
       return {
@@ -356,7 +416,7 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
 
     const previousBoard = board
     setPendingApplicationID(applicationId)
-    moveApplication({ applicationId, fromStage, toStage })
+    moveApplication({ applicationId, fromStage, latestComment, toStage })
 
     try {
       const response = await fetch(`${APP_ROUTES.internal.jobs.detailBase}/${jobId}/stage`, {
@@ -395,6 +455,7 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
     }
 
     setActiveApplicationID(applicationId)
+    setSelectedApplicationID(applicationId)
     setNotice(null)
     setError(null)
   }
@@ -417,61 +478,284 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
     })
   }
 
+  const handleManualStageUpdate = async () => {
+    if (!selectedCard || !drawerStage || drawerStage === selectedCard.stage || pendingApplicationID === selectedCard.id) {
+      return
+    }
+
+    await persistMove({
+      applicationId: selectedCard.id,
+      fromStage: selectedCard.stage,
+      latestComment: drawerComment.trim() || undefined,
+      toStage: drawerStage,
+    })
+    setDrawerComment('')
+  }
+
+  const handleArchive = async () => {
+    if (
+      !selectedCard ||
+      selectedCard.stage === 'internalReviewRejected' ||
+      pendingApplicationID === selectedCard.id ||
+      !selectedTransitionTargets.includes('internalReviewRejected')
+    ) {
+      return
+    }
+
+    await persistMove({
+      applicationId: selectedCard.id,
+      fromStage: selectedCard.stage,
+      latestComment: drawerComment.trim() || 'Moved to rejected',
+      toStage: 'internalReviewRejected',
+    })
+    setDrawerComment('')
+  }
+
+  const handleNextStage = async () => {
+    if (
+      !selectedCard ||
+      !selectedPreferredNextStage ||
+      pendingApplicationID === selectedCard.id ||
+      selectedPreferredNextStage === selectedCard.stage
+    ) {
+      return
+    }
+
+    await persistMove({
+      applicationId: selectedCard.id,
+      fromStage: selectedCard.stage,
+      latestComment: drawerComment.trim() || undefined,
+      toStage: selectedPreferredNextStage,
+    })
+    setDrawerComment('')
+  }
+
   return (
-    <div className="job-board">
-      <div className="job-board-meta">
-        <p className="muted small">
-          Total applicants: <strong>{totalCards}</strong>
-        </p>
-        <p className="muted tiny">{getRoleDragHint(boardRole)}</p>
-      </div>
-      {notice ? <p className="muted small">{notice}</p> : null}
-      {error ? <p className="error-text">{error}</p> : null}
-      <DndContext onDragEnd={handleDragEnd} onDragStart={handleDragStart} sensors={sensors}>
-        <div className="job-board-columns">
-          {STAGE_COLUMNS.map((column) => (
-            <section className="job-stage-column" key={column.key}>
-              <header className="job-stage-header">
-                <div className="job-stage-title-wrap">
-                  <span className={`job-stage-dot job-stage-dot-${column.tone}`} />
-                  <h3>{column.label}</h3>
-                </div>
-                <span className="job-stage-count">{board[column.key].length}</span>
-              </header>
-
-              <DroppableStage id={`stage-${column.key}`} isOverClassName="job-stage-over">
-                <div className="job-stage-cards">
-                  {board[column.key].length === 0 ? (
-                    <p className="board-empty">No applicants</p>
-                  ) : (
-                    board[column.key].map((card) => {
-                      const transitionTargets = getAllowedTransitionTargets({
-                        boardRole,
-                        fromStage: card.stage,
-                      })
-
-                      return (
-                        <BoardCardItem
-                          canDrag={
-                            activeApplicationID !== card.id &&
-                            pendingApplicationID !== card.id &&
-                            transitionTargets.length > 0
-                          }
-                          card={card}
-                          isSaving={pendingApplicationID === card.id}
-                          key={card.id}
-                          onManualMove={persistMove}
-                          transitionTargets={transitionTargets}
-                        />
-                      )
-                    })
-                  )}
-                </div>
-              </DroppableStage>
-            </section>
-          ))}
+    <section className="job-kanban-shell">
+      <div className="job-kanban-main">
+        <div className="job-kanban-meta">
+          <p>
+            Total applicants <strong>{totalCards}</strong>
+          </p>
+          <p>{getRoleDragHint(boardRole)}</p>
         </div>
-      </DndContext>
-    </div>
+
+        {notice ? <p className="job-kanban-notice">{notice}</p> : null}
+        {error ? <p className="job-kanban-error">{error}</p> : null}
+
+        <DndContext onDragEnd={handleDragEnd} onDragStart={handleDragStart} sensors={sensors}>
+          <div className="job-kanban-columns">
+            {STAGE_COLUMNS.map((column) => (
+              <section className="job-kanban-column" key={column.key}>
+                <header className="job-kanban-column-header">
+                  <div className="job-kanban-column-title">
+                    <span className={`job-stage-dot job-stage-dot-${column.tone}`} />
+                    <h3>{column.label}</h3>
+                    <span className="job-kanban-column-count">{board[column.key].length}</span>
+                  </div>
+                  <button aria-label="Column options" className="job-kanban-column-menu" type="button">
+                    •••
+                  </button>
+                </header>
+
+                <DroppableStage id={`stage-${column.key}`} isOverClassName="job-stage-over">
+                  <div className="job-kanban-card-list">
+                    {board[column.key].length === 0 ? (
+                      <p className="job-kanban-empty">No applicants</p>
+                    ) : (
+                      board[column.key].map((card) => {
+                        const transitionTargets = getAllowedTransitionTargets({
+                          boardRole,
+                          fromStage: card.stage,
+                        })
+
+                        return (
+                          <BoardCardItem
+                            canDrag={
+                              activeApplicationID !== card.id &&
+                              pendingApplicationID !== card.id &&
+                              transitionTargets.length > 0
+                            }
+                            card={card}
+                            isSaving={pendingApplicationID === card.id}
+                            isSelected={selectedApplicationID === card.id}
+                            key={card.id}
+                            onSelect={setSelectedApplicationID}
+                          />
+                        )
+                      })
+                    )}
+                  </div>
+                </DroppableStage>
+              </section>
+            ))}
+          </div>
+        </DndContext>
+      </div>
+
+      <aside className="job-candidate-drawer">
+        {!selectedCard ? (
+          <div className="job-candidate-empty">Select a candidate card to view full profile details.</div>
+        ) : (
+          <>
+            <header className="job-candidate-drawer-head">
+              <button
+                className="job-candidate-action-button job-candidate-action-ghost"
+                disabled={
+                  pendingApplicationID === selectedCard.id ||
+                  selectedCard.stage === 'internalReviewRejected' ||
+                  !selectedTransitionTargets.includes('internalReviewRejected')
+                }
+                onClick={handleArchive}
+                type="button"
+              >
+                Archive
+              </button>
+              <button
+                className="job-candidate-action-button"
+                disabled={
+                  pendingApplicationID === selectedCard.id ||
+                  !selectedPreferredNextStage ||
+                  selectedPreferredNextStage === selectedCard.stage
+                }
+                onClick={handleNextStage}
+                type="button"
+              >
+                Next Stage
+              </button>
+            </header>
+
+            <div className="job-candidate-profile">
+              <div className="job-candidate-avatar">{getInitials(selectedCard.candidateName)}</div>
+              <h3>{selectedCard.candidateName}</h3>
+              <p>{selectedCard.candidateRole}</p>
+              <p>{selectedCard.candidateExperience}</p>
+            </div>
+
+            <div className="job-candidate-contact">
+              <span>{selectedCard.candidateEmail || 'No email'}</span>
+              <span>{selectedCard.candidatePhone || 'No phone'}</span>
+              <span>{selectedCard.candidatePortfolio || selectedCard.candidateLinkedIn || 'No profile URL'}</span>
+            </div>
+
+            <nav className="job-candidate-tabs">
+              {(['overview', 'experience', 'feedback', 'files'] as const).map((tab) => (
+                <button
+                  className={`job-candidate-tab ${drawerTab === tab ? 'job-candidate-tab-active' : ''}`}
+                  key={tab}
+                  onClick={() => setDrawerTab(tab)}
+                  type="button"
+                >
+                  {tab === 'overview'
+                    ? 'Overview'
+                    : tab === 'experience'
+                      ? 'Experience'
+                      : tab === 'feedback'
+                        ? 'Feedback'
+                        : 'Files'}
+                </button>
+              ))}
+            </nav>
+
+            <div className="job-candidate-tab-panel">
+              {drawerTab === 'overview' ? (
+                <div className="job-candidate-panel-content">
+                  <p className="job-candidate-section-label">Recruiter Summary</p>
+                  <blockquote>{selectedCard.latestComment || 'No recruiter summary added yet.'}</blockquote>
+                  <p className="job-candidate-section-label">Current Stage</p>
+                  <p className="job-candidate-stage-pill">{APPLICATION_STAGE_LABELS[selectedCard.stage]}</p>
+                  <p className="job-candidate-section-label">Location</p>
+                  <p>{selectedCard.candidateLocation || 'Not provided'}</p>
+                  <p className="job-candidate-section-label">Current Company</p>
+                  <p>{selectedCard.candidateCompany.replace(/^Ex:\s*/, '')}</p>
+                </div>
+              ) : null}
+
+              {drawerTab === 'experience' ? (
+                <div className="job-candidate-panel-content">
+                  <p className="job-candidate-section-label">Role</p>
+                  <p>{selectedCard.candidateRole}</p>
+                  <p className="job-candidate-section-label">Total Experience</p>
+                  <p>{selectedCard.candidateExperience}</p>
+                  <p className="job-candidate-section-label">Last Updated</p>
+                  <p>{formatUpdatedAt(selectedCard.updatedAt)}</p>
+                  <p className="job-candidate-section-label">Recruiter</p>
+                  <p>{selectedCard.recruiterName}</p>
+                </div>
+              ) : null}
+
+              {drawerTab === 'feedback' ? (
+                <div className="job-candidate-panel-content">
+                  <p className="job-candidate-section-label">Latest Comment</p>
+                  <p>{selectedCard.latestComment || 'No latest comment yet.'}</p>
+                  <p className="job-candidate-section-label">Application Notes</p>
+                  <p>{selectedCard.applicationNotes || 'No additional notes.'}</p>
+                </div>
+              ) : null}
+
+              {drawerTab === 'files' ? (
+                <div className="job-candidate-panel-content">
+                  <p className="job-candidate-section-label">Quick Links</p>
+                  <div className="job-candidate-links">
+                    {selectedCard.candidateId ? (
+                      <Link
+                        className="job-candidate-link"
+                        href={`${APP_ROUTES.internal.candidates.detailBase}/${selectedCard.candidateId}`}
+                      >
+                        Open candidate profile
+                      </Link>
+                    ) : null}
+                    <Link className="job-candidate-link" href={`${APP_ROUTES.internal.applications.detailBase}/${selectedCard.id}`}>
+                      Open application
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="job-candidate-stage-controls">
+              <p className="job-candidate-section-label">Manual Stage Update</p>
+              <select
+                className="job-candidate-select"
+                disabled={pendingApplicationID === selectedCard.id}
+                onChange={(event) => setDrawerStage(event.target.value as ApplicationStage)}
+                value={drawerStage || selectedCard.stage}
+              >
+                <option value={selectedCard.stage}>{APPLICATION_STAGE_LABELS[selectedCard.stage]}</option>
+                {selectedTransitionTargets
+                  .filter((stage) => stage !== selectedCard.stage)
+                  .map((stage) => (
+                    <option key={`drawer-${selectedCard.id}-${stage}`} value={stage}>
+                      {APPLICATION_STAGE_LABELS[stage]}
+                    </option>
+                  ))}
+              </select>
+
+              <input
+                className="job-candidate-input"
+                disabled={pendingApplicationID === selectedCard.id}
+                onChange={(event) => setDrawerComment(event.target.value)}
+                placeholder="Add stage note (optional)"
+                type="text"
+                value={drawerComment}
+              />
+
+              <button
+                className="job-candidate-update"
+                disabled={
+                  pendingApplicationID === selectedCard.id ||
+                  !drawerStage ||
+                  drawerStage === selectedCard.stage
+                }
+                onClick={handleManualStageUpdate}
+                type="button"
+              >
+                {pendingApplicationID === selectedCard.id ? 'Saving...' : 'Update Stage'}
+              </button>
+            </div>
+          </>
+        )}
+      </aside>
+    </section>
   )
 }
