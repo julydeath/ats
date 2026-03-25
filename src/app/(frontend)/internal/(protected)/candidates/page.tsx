@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { getPayload } from 'payload'
 
 import { requireInternalRole } from '@/lib/auth/internal-auth'
-import { CANDIDATE_SOURCE_OPTIONS } from '@/lib/constants/recruitment'
+import { CANDIDATE_SOURCE_OPTIONS, CANDIDATE_SOURCES, type CandidateSource } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
@@ -55,6 +55,21 @@ const getRelativeDate = (value: string): string => {
 }
 
 const normalize = (value: string) => value.trim().toLowerCase()
+
+const isCandidateSource = (value: string): value is CandidateSource =>
+  CANDIDATE_SOURCES.includes(value as CandidateSource)
+
+const getSourceLabel = (value: unknown): string => {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return 'Unknown'
+  }
+
+  if (isCandidateSource(value)) {
+    return SOURCE_LABELS.get(value) || value
+  }
+
+  return value
+}
 
 const getExperienceBucket = (years: number | null): 'junior' | 'mid' | 'senior' | 'unspecified' => {
   if (years === null) {
@@ -326,7 +341,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                     : []
                   const primarySkill = (skills[0] || candidate.currentRole || 'Generalist').toUpperCase()
                   const extraSkillsCount = Math.max(skills.length - 1, 0)
-                  const sourceLabel = SOURCE_LABELS.get(String(candidate.source || '')) || String(candidate.source || 'Unknown')
+                  const sourceLabel = getSourceLabel(candidate.source)
 
                   return (
                     <tr key={`candidate-row-${candidate.id}`}>

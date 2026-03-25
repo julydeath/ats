@@ -5,8 +5,16 @@ import { getPayload } from 'payload'
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { APP_ROUTES } from '@/lib/constants/routes'
 
-const LOGO_MIME_TYPES = new Set<string>(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'])
+const LOGO_MIME_TYPES = new Set<string>([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/svg+xml',
+])
 const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024
+const CLIENT_COMPANY_SIZES = ['1-50', '51-200', '201-1000', '1000+'] as const
+type ClientCompanySize = (typeof CLIENT_COMPANY_SIZES)[number]
 
 const readString = (value: FormDataEntryValue | null): string => {
   if (typeof value !== 'string') {
@@ -26,7 +34,22 @@ const parseNumericID = (value: FormDataEntryValue | null): number | null => {
   return Number(raw)
 }
 
-const buildClientsRedirectURL = (request: Request): URL => new URL(APP_ROUTES.internal.clients.list, request.url)
+const parseCompanySize = (value: FormDataEntryValue | null): ClientCompanySize | undefined => {
+  const raw = readString(value)
+
+  if (!raw) {
+    return undefined
+  }
+
+  if (CLIENT_COMPANY_SIZES.includes(raw as ClientCompanySize)) {
+    return raw as ClientCompanySize
+  }
+
+  return undefined
+}
+
+const buildClientsRedirectURL = (request: Request): URL =>
+  new URL(APP_ROUTES.internal.clients.list, request.url)
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
@@ -49,7 +72,7 @@ export async function POST(request: Request) {
   const address = readString(formData.get('address')) || undefined
   const location = readString(formData.get('location')) || undefined
   const website = readString(formData.get('website')) || undefined
-  const companySize = readString(formData.get('companySize')) || undefined
+  const companySize = parseCompanySize(formData.get('companySize'))
   const billingTerms = readString(formData.get('billingTerms')) || undefined
   const notes = readString(formData.get('notes')) || undefined
   const status = statusInput === 'inactive' ? 'inactive' : 'active'
@@ -155,7 +178,10 @@ export async function POST(request: Request) {
 
     if (!name || !contactPerson || !email || !phone) {
       const failureURL = buildClientsRedirectURL(request)
-      failureURL.searchParams.set('error', 'Client name, contact person, email, and phone are required.')
+      failureURL.searchParams.set(
+        'error',
+        'Client name, contact person, email, and phone are required.',
+      )
       return NextResponse.redirect(failureURL, 303)
     }
 

@@ -78,7 +78,7 @@ export const CandidateCreateForm = ({ errorMessage, jobs, selectedJobID }: Candi
   const applyParsedData = (data: ParsedResumeData) => {
     let appliedCount = 0
 
-    const setInputValue = (ref: RefObject<HTMLInputElement>, nextValue?: string) => {
+    const setInputValue = (ref: RefObject<HTMLInputElement | null>, nextValue?: string) => {
       const el = ref.current
       if (!el || !nextValue || isEmpty(nextValue)) {
         return

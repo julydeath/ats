@@ -1,5 +1,5 @@
 import mammoth from 'mammoth'
-import pdfParse from 'pdf-parse'
+import { PDFParse } from 'pdf-parse'
 
 export type ParsedResumeData = {
   currentCompany?: string
@@ -224,8 +224,13 @@ export const parseResumeBuffer = async ({
   const lowerMime = mimeType.toLowerCase()
 
   if (lowerMime.includes('pdf') || fileExt === 'pdf') {
-    const parsed = await pdfParse(buffer)
-    return parseTextToCandidateData(parsed.text || '')
+    const parser = new PDFParse({ data: buffer })
+    try {
+      const parsed = await parser.getText()
+      return parseTextToCandidateData(parsed.text || '')
+    } finally {
+      await parser.destroy().catch(() => undefined)
+    }
   }
 
   if (

@@ -249,11 +249,9 @@ const BoardCardItem = ({
         }
       }}
       ref={setNodeRef}
-      role="button"
       style={{
         transform: transform ? CSS.Translate.toString(transform) : undefined,
       }}
-      tabIndex={0}
       {...attributes}
       {...listeners}
     >
