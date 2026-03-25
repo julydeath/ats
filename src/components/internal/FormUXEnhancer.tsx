@@ -23,6 +23,15 @@ export const FormUXEnhancer = () => {
       }
 
       if (submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement) {
+        if (submitter.name && submitter.value) {
+          const hiddenInput = document.createElement('input')
+          hiddenInput.type = 'hidden'
+          hiddenInput.name = submitter.name
+          hiddenInput.value = submitter.value
+          hiddenInput.dataset.submitterMirror = 'true'
+          form.appendChild(hiddenInput)
+        }
+
         if (submitter.dataset.pendingLabel) {
           submitter.dataset.originalLabel = submitter.textContent || ''
           submitter.textContent = submitter.dataset.pendingLabel
