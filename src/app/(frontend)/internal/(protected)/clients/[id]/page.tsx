@@ -74,7 +74,7 @@ type ClientDetailPageProps = {
 }
 
 export default async function ClientDetailPage({ params }: ClientDetailPageProps) {
-  const user = await requireInternalRole(['admin'])
+  const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const { id } = await params
 

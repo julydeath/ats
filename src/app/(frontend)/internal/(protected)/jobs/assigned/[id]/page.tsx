@@ -143,7 +143,7 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
   const activeTab: JobTab = isJobTab(tabRaw) ? tabRaw : 'applicants'
   const searchQuery = (resolvedSearchParams.q || '').trim().toLowerCase()
   const stageFilter = (resolvedSearchParams.stage || '').trim()
-  const canAddApplicant = user.role === 'admin' || user.role === 'recruiter'
+  const canAddApplicant = user.role === 'admin' || user.role === 'leadRecruiter'
   const boardRole = BOARD_ROLE[user.role]
 
   try {

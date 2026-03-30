@@ -8,7 +8,6 @@ import {
   applicationsUpdateAccess,
 } from '@/access/visibility'
 import { buildCandidateInviteExpiryDate, generateCandidateInviteToken } from '@/lib/auth/candidate-invites'
-import { getLeadVisibleJobIDs, getRecruiterAssignedJobIDs } from '@/lib/assignments/selectors'
 import { APPLICATION_STAGES, APPLICATION_STAGE_OPTIONS, type ApplicationStage } from '@/lib/constants/recruitment'
 import { buildCandidateInviteLink, sendCandidateInviteEmail } from '@/lib/email/resend'
 import { extractRelationshipID } from '@/lib/utils/relationships'
@@ -97,15 +96,15 @@ const validateStageTransition = ({
   }
 
   if (operation === 'create') {
-    if (hasInternalRole(user, ['recruiter', 'leadRecruiter'])) {
+    if (hasInternalRole(user, ['leadRecruiter'])) {
       if (nextStage !== 'sourcedByRecruiter' && nextStage !== 'internalReviewPending') {
-        throw new APIError('Recruiter/Lead can only create applications as sourced or pending review.', 403)
+        throw new APIError('Lead Recruiter can only create applications as sourced or pending review.', 403)
       }
 
       return
     }
 
-    throw new APIError('Only recruiter, lead recruiter, or admin can create applications.', 403)
+    throw new APIError('Only lead recruiter or admin can create applications.', 403)
   }
 
   if (!previousStage) {
@@ -284,7 +283,6 @@ export const Applications: CollectionConfig = {
         const candidateAccountID = toNumericID(
           extractRelationshipID(typedData.candidateAccount ?? typedOriginalDoc?.candidateAccount),
         )
-        const leadRecruiterID = toNumericID(user?.id)
         const previousStage = typedOriginalDoc ? normalizeStage(typedOriginalDoc.stage ?? DEFAULT_STAGE) : null
         const nextStage = normalizeStage(typedData.stage ?? typedOriginalDoc?.stage ?? DEFAULT_STAGE)
         const stageChanged = operation === 'create' || previousStage !== nextStage
@@ -293,36 +291,11 @@ export const Applications: CollectionConfig = {
           throw new APIError('Candidate, job, and recruiter are required for application mapping.', 400)
         }
 
-        if (hasInternalRole(user, ['recruiter']) && String(recruiterID) !== String(currentUserID)) {
-          throw new APIError('Recruiter can create/update only their own applications.', 403)
-        }
-
         if (hasInternalRole(user, ['recruiter'])) {
-          const assignedJobIDs = await getRecruiterAssignedJobIDs({
-            recruiterID,
-            req,
-          })
-          const isAssignedJob = assignedJobIDs.some((assignedJobID) => String(assignedJobID) === String(jobID))
-
-          if (!isAssignedJob) {
-            throw new APIError('Recruiter can create applications only under assigned jobs.', 403)
-          }
-        }
-
-        if (hasInternalRole(user, ['leadRecruiter'])) {
-          if (!leadRecruiterID) {
-            throw new APIError('Lead Recruiter context is missing on this request.', 401)
-          }
-
-          const visibleJobIDs = await getLeadVisibleJobIDs({
-            leadRecruiterID,
-            req,
-          })
-          const canReviewJob = visibleJobIDs.some((visibleJobID) => String(visibleJobID) === String(jobID))
-
-          if (!canReviewJob) {
-            throw new APIError('Lead Recruiter can review applications only under assigned jobs.', 403)
-          }
+          throw new APIError(
+            'Recruiter can only manage candidate records. Application actions require Lead Recruiter or Admin.',
+            403,
+          )
         }
 
         if (!req.context?.skipStageTransitionValidation) {

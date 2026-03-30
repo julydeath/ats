@@ -1,9 +1,7 @@
 import { APIError, type CollectionConfig, type Endpoint } from 'payload'
 
 import {
-  adminLeadershipAccess,
-  adminLeadershipAdminAccess,
-  canManageInternalUsers,
+  hasInternalRole,
   type InternalUserLike,
 } from '@/access/internalRoles'
 import {
@@ -50,7 +48,7 @@ const processJobRequestEndpoint: Endpoint = {
   path: '/:id/process',
   method: 'post',
   handler: async (req) => {
-    if (!canManageInternalUsers(req.user as InternalUserLike)) {
+    if (!hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])) {
       throw new APIError('Forbidden', 403)
     }
 
@@ -236,7 +234,7 @@ const processJobRequestEndpoint: Endpoint = {
       data: {
         ...baseJobData,
         status: 'active',
-      } as any,
+      } as Record<string, unknown>,
       overrideAccess: false,
       req,
     })
@@ -263,11 +261,11 @@ const processJobRequestEndpoint: Endpoint = {
 export const JobRequests: CollectionConfig = {
   slug: 'job-requests',
   access: {
-    admin: adminLeadershipAdminAccess,
-    create: adminLeadershipAccess,
-    read: adminLeadershipAccess,
-    update: adminLeadershipAccess,
-    delete: adminLeadershipAccess,
+    admin: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter']),
+    create: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter']),
+    read: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter']),
+    update: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter']),
+    delete: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin']),
   },
   admin: {
     defaultColumns: ['subject', 'client', 'status', 'intakeSource', 'receivedAt', 'processedBy'],

@@ -3,7 +3,6 @@ import { APIError, type CollectionConfig, type Where } from 'payload'
 import { isCandidateAuthenticated, type CandidateUserLike } from '@/access/candidateRoles'
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { candidatesCreateAccess, candidatesManageAccess, candidatesReadAccess } from '@/access/visibility'
-import { getLeadVisibleJobIDs, getRecruiterAssignedJobIDs } from '@/lib/assignments/selectors'
 import { buildCandidateDuplicateSignals } from '@/lib/candidates/dedupe'
 import { CANDIDATE_SOURCE_OPTIONS } from '@/lib/constants/recruitment'
 import { extractRelationshipID } from '@/lib/utils/relationships'
@@ -201,43 +200,6 @@ export const Candidates: CollectionConfig = {
 
         if (!signals.normalizedEmail && !signals.normalizedPhone) {
           throw new APIError('Either email or phone number is required for candidate dedupe checks.', 400)
-        }
-
-        if (hasInternalRole(user, ['recruiter'])) {
-          const recruiterID = user?.id
-
-          if (!recruiterID) {
-            throw new APIError('Recruiter context is missing on this request.', 401)
-          }
-
-          const assignedJobIDs = await getRecruiterAssignedJobIDs({
-            recruiterID,
-            req,
-          })
-
-          const canUseJob = assignedJobIDs.some((jobID) => String(jobID) === String(sourceJobID))
-
-          if (!canUseJob) {
-            throw new APIError('Recruiter can add candidates only for jobs assigned to them.', 403)
-          }
-        }
-
-        if (hasInternalRole(user, ['leadRecruiter'])) {
-          const leadRecruiterID = user?.id
-
-          if (!leadRecruiterID) {
-            throw new APIError('Lead Recruiter context is missing on this request.', 401)
-          }
-
-          const visibleJobIDs = await getLeadVisibleJobIDs({
-            leadRecruiterID,
-            req,
-          })
-
-          const canUseJob = visibleJobIDs.some((jobID) => String(jobID) === String(sourceJobID))
-          if (!canUseJob) {
-            throw new APIError('Lead Recruiter can add candidates only under visible jobs.', 403)
-          }
         }
 
         if (operation === 'update' && isCandidateAuthenticated(candidateUser)) {

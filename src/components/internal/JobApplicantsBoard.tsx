@@ -93,14 +93,6 @@ const getAllowedTransitionTargets = ({
   }
 
   if (boardRole === 'recruiter') {
-    if (fromStage === 'sourcedByRecruiter' || fromStage === 'sentBackForCorrection') {
-      return ['internalReviewPending']
-    }
-
-    if (['internalReviewApproved', 'candidateInvited', 'candidateApplied'].includes(fromStage)) {
-      return ['internalReviewApproved', 'candidateInvited', 'candidateApplied']
-    }
-
     return []
   }
 
@@ -133,7 +125,7 @@ const getRoleDragHint = (role: JobApplicantsBoardProps['boardRole']) => {
   }
 
   if (role === 'recruiter') {
-    return 'Move sourced or returned profiles to review, then continue approved pipeline stages.'
+    return 'View-only board for recruiters. Stage movement is managed by lead recruiters and admins.'
   }
 
   return 'Review pending submissions and decide approve, reject, or send back for correction.'

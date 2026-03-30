@@ -6,7 +6,6 @@ import { getPayload } from 'payload'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
-import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   if (!value) {
@@ -45,29 +44,17 @@ const formatDateTime = (value: string | Date | null | undefined): string => {
 }
 
 const canSubmitForReview = ({
-  recruiter,
   stage,
-  userID,
   userRole,
 }: {
-  recruiter: unknown
   stage: ApplicationStage
-  userID: number | string
   userRole: string
 }): boolean => {
   if (stage !== 'sourcedByRecruiter' && stage !== 'sentBackForCorrection') {
     return false
   }
 
-  if (userRole === 'admin' || userRole === 'leadRecruiter') {
-    return true
-  }
-
-  if (userRole !== 'recruiter') {
-    return false
-  }
-
-  return String(extractRelationshipID(recruiter)) === String(userID)
+  return userRole === 'admin' || userRole === 'leadRecruiter'
 }
 
 type ApplicationDetailPageProps = {
@@ -141,9 +128,7 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
     const stage = application.stage as ApplicationStage
     const stageLabel = APPLICATION_STAGE_LABELS[stage] || stage
     const allowSubmitForReview = canSubmitForReview({
-      recruiter: application.recruiter,
       stage,
-      userID: user.id,
       userRole: user.role,
     })
     const allowReview = (user.role === 'admin' || user.role === 'leadRecruiter') && stage === 'internalReviewPending'

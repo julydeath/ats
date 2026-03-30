@@ -142,6 +142,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
   const isCreateModalOpen = resolvedSearchParams.create === '1'
   const canCreateJobs = user.role === 'admin' || user.role === 'leadRecruiter'
   const canSourceCandidates = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
+  const canReassignJobs = user.role === 'admin' || user.role === 'leadRecruiter'
 
   const rangeStart = new Date()
   rangeStart.setDate(rangeStart.getDate() - Number(dateRangeFilter))
@@ -237,28 +238,24 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       user,
       where: whereQuery,
     }),
-    user.role === 'recruiter'
-      ? Promise.resolve({
-          docs: [] as Array<{ id: number | string; name: string }>,
-        })
-      : payload.find({
-          collection: 'clients',
-          depth: 0,
-          limit: 200,
-          overrideAccess: false,
-          pagination: false,
-          select: {
-            id: true,
-            name: true,
-          },
-          sort: 'name',
-          user,
-          where: {
-            status: {
-              equals: 'active',
-            },
-          },
-        }),
+    payload.find({
+      collection: 'clients',
+      depth: 0,
+      limit: 200,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        id: true,
+        name: true,
+      },
+      sort: 'name',
+      user,
+      where: {
+        status: {
+          equals: 'active',
+        },
+      },
+    }),
     user.role === 'admin'
       ? payload.find({
           collection: 'users',
@@ -715,16 +712,18 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                               Add Candidate
                             </Link>
                           ) : null}
-                          <Link
-                            className="jobs-row-action jobs-row-action-secondary"
-                            href={
-                              user.role === 'admin'
-                                ? APP_ROUTES.internal.assignments.head
-                                : APP_ROUTES.internal.assignments.lead
-                            }
-                          >
-                            Reassign
-                          </Link>
+                          {canReassignJobs ? (
+                            <Link
+                              className="jobs-row-action jobs-row-action-secondary"
+                              href={
+                                user.role === 'admin'
+                                  ? APP_ROUTES.internal.assignments.head
+                                  : APP_ROUTES.internal.assignments.lead
+                              }
+                            >
+                              Reassign
+                            </Link>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

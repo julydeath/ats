@@ -32,12 +32,12 @@ type ApplicationsNewPageProps = {
 }
 
 export default async function ApplicationsNewPage({ searchParams }: ApplicationsNewPageProps) {
-  const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
+  const user = await requireInternalRole(['admin', 'leadRecruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
   const selectedCandidateID = String(resolvedSearchParams.candidateId || '')
   const selectedJobID = String(resolvedSearchParams.jobId || '')
-  const canSelectRecruiter = user.role === 'admin' || user.role === 'leadRecruiter'
+  const canSelectRecruiter = true
 
   const [jobsResult, candidatesResult, recruitersResult] = await Promise.all([
     payload.find({

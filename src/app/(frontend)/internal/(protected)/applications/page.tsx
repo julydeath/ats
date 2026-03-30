@@ -6,7 +6,6 @@ import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { INTERNAL_ROLE_LABELS } from '@/lib/constants/roles'
-import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   if (!value) {
@@ -32,17 +31,13 @@ const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
 }
 
 const canRecruiterSubmit = ({
-  recruiter,
   stage,
-  userID,
   userRole,
 }: {
-  recruiter: unknown
   stage: unknown
-  userID: number | string
   userRole: string
 }): boolean => {
-  if (userRole !== 'admin' && userRole !== 'leadRecruiter' && userRole !== 'recruiter') {
+  if (userRole !== 'admin' && userRole !== 'leadRecruiter') {
     return false
   }
 
@@ -50,11 +45,7 @@ const canRecruiterSubmit = ({
     return false
   }
 
-  if (userRole === 'admin' || userRole === 'leadRecruiter') {
-    return true
-  }
-
-  return String(extractRelationshipID(recruiter)) === String(userID)
+  return true
 }
 
 type StageColumn = {
@@ -86,7 +77,7 @@ export default async function ApplicationsListPage({ searchParams }: Application
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
-  const canCreate = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
+  const canCreate = user.role === 'admin' || user.role === 'leadRecruiter'
   const canReview = user.role === 'admin' || user.role === 'leadRecruiter'
   const query = (resolvedSearchParams.q || '').trim().toLowerCase()
   const stageFilter = (resolvedSearchParams.stage || '').trim()
@@ -228,9 +219,7 @@ export default async function ApplicationsListPage({ searchParams }: Application
                       </div>
 
                       {canRecruiterSubmit({
-                        recruiter: application.recruiter,
                         stage: application.stage,
-                        userID: user.id,
                         userRole: user.role,
                       }) ? (
                         <form action={APP_ROUTES.internal.applications.submit} className="auth-form" method="post">

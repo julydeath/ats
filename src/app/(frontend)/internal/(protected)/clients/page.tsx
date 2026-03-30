@@ -113,7 +113,7 @@ type ClientsPageProps = {
 }
 
 export default async function ClientsPage({ searchParams }: ClientsPageProps) {
-  const user = await requireInternalRole(['admin'])
+  const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
   const searchTerm = String(resolvedSearchParams.q || '').trim()
@@ -123,6 +123,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       : ''
   const requestedPage = parsePage(resolvedSearchParams.page)
   const isCreateModalOpen = resolvedSearchParams.create === '1'
+  const canManageClients = user.role === 'admin'
 
   const whereConditions: Where[] = []
 
@@ -172,34 +173,38 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       user,
       where: whereQuery,
     }),
-    payload.find({
-      collection: 'users',
-      depth: 0,
-      limit: 120,
-      overrideAccess: false,
-      pagination: false,
-      select: {
-        email: true,
-        fullName: true,
-        id: true,
-      },
-      sort: 'fullName',
-      user,
-      where: {
-        and: [
-          {
-            role: {
-              equals: 'leadRecruiter',
-            },
+    canManageClients
+      ? payload.find({
+          collection: 'users',
+          depth: 0,
+          limit: 120,
+          overrideAccess: false,
+          pagination: false,
+          select: {
+            email: true,
+            fullName: true,
+            id: true,
           },
-          {
-            isActive: {
-              equals: true,
-            },
+          sort: 'fullName',
+          user,
+          where: {
+            and: [
+              {
+                role: {
+                  equals: 'leadRecruiter',
+                },
+              },
+              {
+                isActive: {
+                  equals: true,
+                },
+              },
+            ],
           },
-        ],
-      },
-    }),
+        })
+      : Promise.resolve({
+          docs: [] as Array<{ email?: string; fullName?: string; id: number | string }>,
+        }),
     payload.count({
       collection: 'clients',
       overrideAccess: false,
@@ -291,18 +296,20 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
     <section className="clients-grid-page">
       <header className="clients-grid-header">
         <div>
-          <p className="clients-grid-kicker">Clients | Admin</p>
+          <p className="clients-grid-kicker">Clients</p>
           <h1>Clients Directory</h1>
           <p>Manage client accounts with clear ownership, branding, and hiring context.</p>
         </div>
-        <div className="clients-grid-header-actions">
-          <Link className="clients-grid-header-btn" href={APP_ROUTES.internal.assignments.head}>
-            Assign Leads
-          </Link>
-          <Link className="clients-grid-header-btn clients-grid-header-btn-primary" href={`${APP_ROUTES.internal.clients.list}?create=1`}>
-            + Add Client
-          </Link>
-        </div>
+        {canManageClients ? (
+          <div className="clients-grid-header-actions">
+            <Link className="clients-grid-header-btn" href={APP_ROUTES.internal.assignments.head}>
+              Assign Leads
+            </Link>
+            <Link className="clients-grid-header-btn clients-grid-header-btn-primary" href={`${APP_ROUTES.internal.clients.list}?create=1`}>
+              + Add Client
+            </Link>
+          </div>
+        ) : null}
       </header>
 
       {successMessage ? <p className="clients-grid-feedback clients-grid-feedback-success">{successMessage}</p> : null}
@@ -448,7 +455,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
         </div>
       </footer>
 
-      {isCreateModalOpen ? (
+      {isCreateModalOpen && canManageClients ? (
         <section aria-label="Create Client Profile" aria-modal="true" className="clients-create-modal-layer" role="dialog">
           <div className="clients-create-modal-backdrop" />
           <article className="clients-create-modal">

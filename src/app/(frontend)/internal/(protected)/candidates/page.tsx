@@ -136,7 +136,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
   const expFilter = (resolvedSearchParams.exp || '').trim()
   const requestedPage = Number.parseInt(String(resolvedSearchParams.page || '1'), 10)
   const canCreateCandidate = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
-  const canCreateApplication = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
+  const canCreateApplication = user.role === 'admin' || user.role === 'leadRecruiter'
 
   const candidatesResult = await payload.find({
     collection: 'candidates',

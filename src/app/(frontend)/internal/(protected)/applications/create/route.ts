@@ -23,18 +23,6 @@ const parseNumericID = (value: FormDataEntryValue | null): number | null => {
   return Number(raw)
 }
 
-const toNumericID = (value: unknown): number | null => {
-  if (typeof value === 'number') {
-    return value
-  }
-
-  if (typeof value === 'string' && /^\d+$/.test(value)) {
-    return Number(value)
-  }
-
-  return null
-}
-
 const buildCreateRedirectURL = (request: Request): URL => new URL(APP_ROUTES.internal.applications.new, request.url)
 
 export async function POST(request: Request) {
@@ -42,7 +30,7 @@ export async function POST(request: Request) {
   const { user } = await payload.auth({ headers: request.headers })
   const internalUser = user as InternalUserLike
 
-  if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter', 'recruiter'])) {
+  if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter'])) {
     return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
   }
 
@@ -51,10 +39,7 @@ export async function POST(request: Request) {
   const jobID = parseNumericID(formData.get('jobId'))
   const notes = readString(formData.get('notes')) || undefined
   const latestComment = readString(formData.get('latestComment')) || undefined
-  const currentUserID = toNumericID(internalUser?.id)
-  const recruiterID = hasInternalRole(internalUser, ['recruiter'])
-    ? currentUserID
-    : parseNumericID(formData.get('recruiterId'))
+  const recruiterID = parseNumericID(formData.get('recruiterId'))
 
   if (!candidateID || !jobID || !recruiterID) {
     const failureURL = buildCreateRedirectURL(request)

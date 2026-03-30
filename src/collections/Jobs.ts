@@ -13,7 +13,6 @@ import {
   REACTIVATABLE_JOB_STATUSES,
 } from '@/lib/constants/recruitment'
 import { buildJobDedupeKey } from '@/lib/jobs/dedupe'
-import { getLeadAssignedClientIDs } from '@/lib/assignments/selectors'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const activeJobStatusSet = new Set<string>(ACTIVE_JOB_STATUSES)
@@ -201,7 +200,7 @@ export const Jobs: CollectionConfig = {
     create: jobsCreateAccess,
     read: jobsReadAccess,
     update: jobsManageAccess,
-    delete: jobsManageAccess,
+    delete: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin']),
   },
   admin: {
     defaultColumns: ['title', 'client', 'status', 'priority', 'openings', 'updatedAt'],
@@ -393,31 +392,8 @@ export const Jobs: CollectionConfig = {
           throw new APIError('Owning lead recruiter is required for each job.', 400)
         }
 
-        if (hasInternalRole(user, ['leadRecruiter']) && String(owningHeadRecruiterID) !== String(currentUserID)) {
-          throw new APIError('Lead Recruiter can only manage jobs under their ownership.', 403)
-        }
-
         if (operation === 'create' && req.user?.id) {
           typedData.createdBy = req.user.id
-        }
-
-        if (hasInternalRole(user, ['leadRecruiter'])) {
-          const leadID = user?.id
-
-          if (!leadID || !clientID) {
-            throw new APIError('Lead Recruiter context and client are required for job ownership.', 400)
-          }
-
-          const assignedClientIDs = await getLeadAssignedClientIDs({
-            leadRecruiterID: leadID,
-            req,
-          })
-
-          const canUseClient = assignedClientIDs.some((assignedClientID) => String(assignedClientID) === String(clientID))
-
-          if (!canUseClient) {
-            throw new APIError('Lead Recruiter can create or manage jobs only for clients assigned to them.', 403)
-          }
         }
 
         if (!clientID || !dedupeKey) {
