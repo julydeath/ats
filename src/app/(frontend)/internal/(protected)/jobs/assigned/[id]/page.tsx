@@ -154,7 +154,11 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
         depth: 1,
         overrideAccess: false,
         select: {
+          assignedTo: true,
+          businessUnit: true,
           client: true,
+          clientBillRate: true,
+          clientJobID: true,
           createdAt: true,
           department: true,
           description: true,
@@ -162,13 +166,23 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
           experienceMax: true,
           experienceMin: true,
           id: true,
+          jobCode: true,
           location: true,
           openings: true,
+          owningHeadRecruiter: true,
+          payRate: true,
+          payType: true,
+          primaryRecruiter: true,
           priority: true,
+          recruitmentManager: true,
+          requirementAssignedOn: true,
+          requisitionTitle: true,
           requiredSkills: true,
+          salaryRangeLabel: true,
           salaryMax: true,
           salaryMin: true,
           status: true,
+          states: true,
           targetClosureDate: true,
           title: true,
           updatedAt: true,
@@ -305,6 +319,7 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
             <p className="job-detail-kicker">Jobs / {job.title}</p>
             <h1>{job.title}</h1>
             <p className="job-detail-meta-line">
+              <span>{job.jobCode || `JOB-${job.id}`}</span>
               <span>{job.location || 'Location not set'}</span>
               <span>Posted {formatDate(job.createdAt)}</span>
               <span>{applications.totalDocs} Applicants</span>
@@ -400,6 +415,15 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
                 <strong>Client:</strong> {readLabel(job.client)}
               </p>
               <p>
+                <strong>Client Job ID:</strong> {job.clientJobID || 'Not set'}
+              </p>
+              <p>
+                <strong>Requisition:</strong> {job.requisitionTitle || 'Not set'}
+              </p>
+              <p>
+                <strong>Business Unit:</strong> {job.businessUnit || 'Not set'}
+              </p>
+              <p>
                 <strong>Department:</strong> {job.department || 'Not set'}
               </p>
               <p>
@@ -418,10 +442,43 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
                 <strong>Salary:</strong> {job.salaryMin ?? 0} - {job.salaryMax ?? 'Not set'}
               </p>
               <p>
+                <strong>Salary Label:</strong> {job.salaryRangeLabel || 'Not set'}
+              </p>
+              <p>
+                <strong>Client Bill Rate:</strong> {job.clientBillRate || 'Not set'}
+              </p>
+              <p>
+                <strong>Pay Rate:</strong> {job.payRate || 'Not set'}
+              </p>
+              <p>
+                <strong>Pay Type:</strong> {job.payType || 'Not set'}
+              </p>
+              <p>
                 <strong>Priority:</strong> {job.priority}
               </p>
               <p>
                 <strong>Status:</strong> {job.status}
+              </p>
+              <p>
+                <strong>States:</strong> {Array.isArray(job.states) && job.states.length > 0 ? job.states.join(', ') : 'Not set'}
+              </p>
+              <p>
+                <strong>Lead Recruiter:</strong> {readLabel(job.owningHeadRecruiter)}
+              </p>
+              <p>
+                <strong>Recruitment Manager:</strong> {readLabel(job.recruitmentManager, 'Not set')}
+              </p>
+              <p>
+                <strong>Primary Recruiter:</strong> {readLabel(job.primaryRecruiter, 'Not set')}
+              </p>
+              <p>
+                <strong>Assigned Team:</strong>{' '}
+                {Array.isArray(job.assignedTo) && job.assignedTo.length > 0
+                  ? job.assignedTo.map((member) => readLabel(member)).join(', ')
+                  : 'Not set'}
+              </p>
+              <p>
+                <strong>Requirement Assigned On:</strong> {formatDate(job.requirementAssignedOn)}
               </p>
               <p>
                 <strong>Target Closure:</strong> {formatDate(job.targetClosureDate)}

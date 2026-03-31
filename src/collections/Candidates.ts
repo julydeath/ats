@@ -5,6 +5,7 @@ import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { candidatesCreateAccess, candidatesManageAccess, candidatesReadAccess } from '@/access/visibility'
 import { buildCandidateDuplicateSignals } from '@/lib/candidates/dedupe'
 import { CANDIDATE_SOURCE_OPTIONS } from '@/lib/constants/recruitment'
+import { resolveBusinessCode } from '@/lib/utils/business-codes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const getCandidateSignals = (data?: Record<string, unknown>, originalDoc?: Record<string, unknown>) =>
@@ -25,11 +26,40 @@ export const Candidates: CollectionConfig = {
     delete: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin']),
   },
   admin: {
-    defaultColumns: ['fullName', 'email', 'phone', 'source', 'sourceJob', 'sourcedBy', 'updatedAt'],
+    defaultColumns: ['candidateCode', 'fullName', 'email', 'phone', 'source', 'sourceJob', 'sourcedBy', 'updatedAt'],
     group: 'Candidates',
     useAsTitle: 'fullName',
   },
   fields: [
+    {
+      name: 'candidateCode',
+      type: 'text',
+      unique: true,
+      index: true,
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'prefix',
+      type: 'text',
+    },
+    {
+      name: 'firstName',
+      type: 'text',
+    },
+    {
+      name: 'middleName',
+      type: 'text',
+    },
+    {
+      name: 'lastName',
+      type: 'text',
+    },
+    {
+      name: 'nickName',
+      type: 'text',
+    },
     {
       name: 'fullName',
       type: 'text',
@@ -51,8 +81,57 @@ export const Candidates: CollectionConfig = {
       type: 'text',
     },
     {
+      name: 'homePhone',
+      type: 'text',
+    },
+    {
+      name: 'workPhone',
+      type: 'text',
+    },
+    {
+      name: 'otherPhone',
+      type: 'text',
+    },
+    {
+      name: 'skypeID',
+      type: 'text',
+    },
+    {
+      name: 'facebookProfileURL',
+      type: 'text',
+    },
+    {
+      name: 'twitterProfileURL',
+      type: 'text',
+    },
+    {
+      name: 'videoReference',
+      type: 'text',
+    },
+    {
       name: 'currentLocation',
       type: 'text',
+    },
+    {
+      name: 'city',
+      type: 'text',
+    },
+    {
+      name: 'state',
+      type: 'text',
+    },
+    {
+      name: 'country',
+      type: 'text',
+      defaultValue: 'India',
+    },
+    {
+      name: 'postalCode',
+      type: 'text',
+    },
+    {
+      name: 'address',
+      type: 'textarea',
     },
     {
       name: 'totalExperienceYears',
@@ -60,7 +139,17 @@ export const Candidates: CollectionConfig = {
       min: 0,
     },
     {
+      name: 'totalExperienceMonths',
+      type: 'number',
+      min: 0,
+      max: 11,
+    },
+    {
       name: 'currentCompany',
+      type: 'text',
+    },
+    {
+      name: 'jobTitle',
       type: 'text',
     },
     {
@@ -73,14 +162,132 @@ export const Candidates: CollectionConfig = {
       hasMany: true,
     },
     {
+      name: 'primarySkills',
+      type: 'text',
+      hasMany: true,
+    },
+    {
+      name: 'technology',
+      type: 'text',
+    },
+    {
       name: 'expectedSalary',
       type: 'number',
       min: 0,
     },
     {
+      name: 'expectedPayCurrency',
+      type: 'text',
+    },
+    {
+      name: 'expectedPayType',
+      type: 'text',
+    },
+    {
       name: 'noticePeriodDays',
       type: 'number',
       min: 0,
+    },
+    {
+      name: 'noticePeriodLabel',
+      type: 'text',
+    },
+    {
+      name: 'relocation',
+      type: 'checkbox',
+      defaultValue: false,
+    },
+    {
+      name: 'taxTerms',
+      type: 'text',
+    },
+    {
+      name: 'gpa',
+      type: 'text',
+    },
+    {
+      name: 'nationality',
+      type: 'text',
+    },
+    {
+      name: 'aadhaarNumber',
+      type: 'text',
+    },
+    {
+      name: 'referenceID',
+      type: 'text',
+    },
+    {
+      name: 'referredBy',
+      type: 'text',
+    },
+    {
+      name: 'applicantStatus',
+      type: 'text',
+      index: true,
+    },
+    {
+      name: 'applicantGroup',
+      type: 'text',
+    },
+    {
+      name: 'ownership',
+      type: 'relationship',
+      relationTo: 'users',
+    },
+    {
+      name: 'workAuthorization',
+      type: 'text',
+      index: true,
+    },
+    {
+      name: 'workAuthorizationExpiry',
+      type: 'date',
+    },
+    {
+      name: 'clearance',
+      type: 'checkbox',
+      defaultValue: false,
+    },
+    {
+      name: 'gender',
+      type: 'text',
+    },
+    {
+      name: 'raceEthnicity',
+      type: 'text',
+    },
+    {
+      name: 'veteranStatus',
+      type: 'text',
+    },
+    {
+      name: 'disabilityStatus',
+      type: 'text',
+    },
+    {
+      name: 'technicalSkillsRating',
+      type: 'number',
+      min: 0,
+      max: 5,
+    },
+    {
+      name: 'communicationSkillsRating',
+      type: 'number',
+      min: 0,
+      max: 5,
+    },
+    {
+      name: 'professionalismRating',
+      type: 'number',
+      min: 0,
+      max: 5,
+    },
+    {
+      name: 'overallRating',
+      type: 'number',
+      min: 0,
+      max: 5,
     },
     {
       name: 'source',
@@ -144,6 +351,110 @@ export const Candidates: CollectionConfig = {
       type: 'textarea',
     },
     {
+      name: 'educationDetails',
+      type: 'array',
+      fields: [
+        {
+          name: 'degree',
+          type: 'text',
+        },
+        {
+          name: 'institution',
+          type: 'text',
+        },
+        {
+          name: 'location',
+          type: 'text',
+        },
+        {
+          name: 'startDate',
+          type: 'date',
+        },
+        {
+          name: 'endDate',
+          type: 'date',
+        },
+      ],
+    },
+    {
+      name: 'certifications',
+      type: 'array',
+      fields: [
+        {
+          name: 'name',
+          type: 'text',
+        },
+        {
+          name: 'issuer',
+          type: 'text',
+        },
+        {
+          name: 'credentialID',
+          type: 'text',
+        },
+        {
+          name: 'issueDate',
+          type: 'date',
+        },
+        {
+          name: 'expiryDate',
+          type: 'date',
+        },
+      ],
+    },
+    {
+      name: 'workExperience',
+      type: 'array',
+      fields: [
+        {
+          name: 'employer',
+          type: 'text',
+        },
+        {
+          name: 'title',
+          type: 'text',
+        },
+        {
+          name: 'startDate',
+          type: 'date',
+        },
+        {
+          name: 'endDate',
+          type: 'date',
+        },
+        {
+          name: 'isCurrent',
+          type: 'checkbox',
+          defaultValue: false,
+        },
+      ],
+    },
+    {
+      name: 'languages',
+      type: 'array',
+      fields: [
+        {
+          name: 'language',
+          type: 'text',
+        },
+        {
+          name: 'canRead',
+          type: 'checkbox',
+          defaultValue: false,
+        },
+        {
+          name: 'canWrite',
+          type: 'checkbox',
+          defaultValue: false,
+        },
+        {
+          name: 'canSpeak',
+          type: 'checkbox',
+          defaultValue: false,
+        },
+      ],
+    },
+    {
       name: 'normalizedEmail',
       type: 'text',
       index: true,
@@ -171,6 +482,14 @@ export const Candidates: CollectionConfig = {
         const typedOriginalDoc = originalDoc as Record<string, unknown> | undefined
         const signals = getCandidateSignals(typedData, typedOriginalDoc)
         const currentUserID = (req.user as InternalUserLike | null | undefined)?.id ?? null
+        const candidateCode = await resolveBusinessCode({
+          collection: 'candidates',
+          data: typedData,
+          fieldName: 'candidateCode',
+          originalDoc: typedOriginalDoc,
+          prefix: 'CAN',
+          req,
+        })
 
         if (operation === 'create' && currentUserID !== null && !typedData.sourcedBy) {
           typedData.sourcedBy = currentUserID
@@ -178,6 +497,7 @@ export const Candidates: CollectionConfig = {
 
         return {
           ...typedData,
+          candidateCode,
           normalizedEmail: signals.normalizedEmail,
           normalizedPhone: signals.normalizedPhone,
         }
@@ -280,6 +600,7 @@ export const Candidates: CollectionConfig = {
 
         return {
           ...typedData,
+          candidateCode: typedData.candidateCode ?? typedOriginalDoc?.candidateCode,
           normalizedEmail: signals.normalizedEmail,
           normalizedPhone: signals.normalizedPhone,
           resume: resumeID ?? undefined,
@@ -290,6 +611,10 @@ export const Candidates: CollectionConfig = {
     ],
   },
   indexes: [
+    {
+      fields: ['candidateCode'],
+      unique: true,
+    },
     {
       fields: ['sourceJob', 'updatedAt'],
     },

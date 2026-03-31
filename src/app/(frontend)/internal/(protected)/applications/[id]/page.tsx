@@ -85,17 +85,27 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
         id: applicationID,
         overrideAccess: false,
         select: {
+          applicationCode: true,
           candidate: true,
           candidateAppliedAt: true,
           candidateInvitedAt: true,
+          clientBillRate: true,
+          clientSubmittedAt: true,
+          confirmedAt: true,
           id: true,
+          interviewAt: true,
           job: true,
           latestComment: true,
           notes: true,
+          notJoinedAt: true,
+          payRate: true,
+          pipelineSource: true,
+          placedAt: true,
           recruiter: true,
           reviewedAt: true,
           reviewedBy: true,
           stage: true,
+          submissionType: true,
           submittedAt: true,
           updatedAt: true,
         },
@@ -139,7 +149,9 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
           <div>
             <p className="application-detail-kicker">Application Detail</p>
             <h1>{readLabel(application.candidate)}</h1>
-            <p>Job: {readLabel(application.job)} · Recruiter: {readLabel(application.recruiter)}</p>
+            <p>
+              {application.applicationCode || `APP-${application.id}`} · Job: {readLabel(application.job)} · Recruiter: {readLabel(application.recruiter)}
+            </p>
           </div>
           <div className="application-detail-header-actions">
             <span className="application-detail-stage">{stageLabel}</span>
@@ -162,6 +174,11 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
               <p><span>Reviewed By</span>{readLabel(application.reviewedBy, 'Not reviewed')}</p>
               <p><span>Candidate Invited At</span>{formatDateTime(application.candidateInvitedAt)}</p>
               <p><span>Candidate Applied At</span>{formatDateTime(application.candidateAppliedAt)}</p>
+              <p><span>Client Submitted At</span>{formatDateTime(application.clientSubmittedAt)}</p>
+              <p><span>Interview At</span>{formatDateTime(application.interviewAt)}</p>
+              <p><span>Confirmed At</span>{formatDateTime(application.confirmedAt)}</p>
+              <p><span>Placed At</span>{formatDateTime(application.placedAt)}</p>
+              <p><span>Not Joined At</span>{formatDateTime(application.notJoinedAt)}</p>
               <p><span>Last Updated</span>{formatDateTime(application.updatedAt)}</p>
             </div>
           </article>
@@ -171,6 +188,10 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
             <div className="application-detail-comment-block">
               <p><span>Latest Comment</span>{application.latestComment || 'No comment'}</p>
               <p><span>Notes</span>{application.notes || 'No notes'}</p>
+              <p><span>Pipeline Source</span>{application.pipelineSource || 'Not set'}</p>
+              <p><span>Submission Type</span>{application.submissionType || 'Not set'}</p>
+              <p><span>Client Bill Rate</span>{application.clientBillRate || 'Not set'}</p>
+              <p><span>Pay Rate</span>{application.payRate || 'Not set'}</p>
             </div>
           </article>
         </div>

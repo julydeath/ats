@@ -10,13 +10,20 @@ import { APP_ROUTES } from '@/lib/constants/routes'
 type JobOption = {
   clientLabel: string
   id: number | string
+  jobCode: string
   priority: string
   title: string
+}
+
+type OwnerOption = {
+  id: number | string
+  label: string
 }
 
 type CandidateCreateFormProps = {
   errorMessage?: string
   jobs: JobOption[]
+  owners: OwnerOption[]
   selectedJobID: string
 }
 
@@ -36,7 +43,12 @@ const parseNumber = (value: unknown): string => {
   return ''
 }
 
-export const CandidateCreateForm = ({ errorMessage, jobs, selectedJobID }: CandidateCreateFormProps) => {
+export const CandidateCreateForm = ({
+  errorMessage,
+  jobs,
+  owners,
+  selectedJobID,
+}: CandidateCreateFormProps) => {
   const [isParsing, setIsParsing] = useState(false)
   const [parseError, setParseError] = useState<string | null>(null)
   const [parseWarnings, setParseWarnings] = useState<string[]>([])
@@ -206,7 +218,7 @@ export const CandidateCreateForm = ({ errorMessage, jobs, selectedJobID }: Candi
                     <option value="">{hasJobs ? 'Select a job' : 'No jobs available'}</option>
                     {jobs.map((job) => (
                       <option key={`source-job-${job.id}`} value={job.id}>
-                        {job.title} | {job.clientLabel}
+                        {(job.jobCode || `JOB-${job.id}`)} | {job.title} | {job.clientLabel}
                       </option>
                     ))}
                   </select>
@@ -232,6 +244,26 @@ export const CandidateCreateForm = ({ errorMessage, jobs, selectedJobID }: Candi
               <h2>Contact Details</h2>
               <div className="candidate-intake-fields candidate-intake-fields-2">
                 <label>
+                  <span>Prefix</span>
+                  <input name="prefix" placeholder="Mr / Ms / Dr" type="text" />
+                </label>
+                <label>
+                  <span>Nick Name</span>
+                  <input name="nickName" placeholder="Optional short name" type="text" />
+                </label>
+                <label>
+                  <span>First Name</span>
+                  <input name="firstName" type="text" />
+                </label>
+                <label>
+                  <span>Middle Name</span>
+                  <input name="middleName" type="text" />
+                </label>
+                <label>
+                  <span>Last Name</span>
+                  <input name="lastName" type="text" />
+                </label>
+                <label>
                   <span>Full Name *</span>
                   <input name="fullName" ref={fullNameRef} required type="text" />
                 </label>
@@ -247,9 +279,57 @@ export const CandidateCreateForm = ({ errorMessage, jobs, selectedJobID }: Candi
                   <span>Alternate Phone</span>
                   <input name="alternatePhone" type="tel" />
                 </label>
+                <label>
+                  <span>Home Phone</span>
+                  <input name="homePhone" type="tel" />
+                </label>
+                <label>
+                  <span>Work Phone</span>
+                  <input name="workPhone" type="tel" />
+                </label>
+                <label>
+                  <span>Other Phone</span>
+                  <input name="otherPhone" type="tel" />
+                </label>
                 <label className="candidate-intake-field-span-2">
                   <span>Current Location</span>
                   <input name="currentLocation" type="text" />
+                </label>
+                <label>
+                  <span>City</span>
+                  <input name="city" type="text" />
+                </label>
+                <label>
+                  <span>State</span>
+                  <input name="state" type="text" />
+                </label>
+                <label>
+                  <span>Country</span>
+                  <input defaultValue="India" name="country" type="text" />
+                </label>
+                <label>
+                  <span>Postal Code</span>
+                  <input name="postalCode" type="text" />
+                </label>
+                <label className="candidate-intake-field-span-2">
+                  <span>Address</span>
+                  <textarea name="address" rows={2} />
+                </label>
+                <label>
+                  <span>Skype ID</span>
+                  <input name="skypeID" type="text" />
+                </label>
+                <label>
+                  <span>Facebook URL</span>
+                  <input name="facebookProfileURL" type="url" />
+                </label>
+                <label>
+                  <span>Twitter URL</span>
+                  <input name="twitterProfileURL" type="url" />
+                </label>
+                <label>
+                  <span>Video Reference</span>
+                  <input name="videoReference" placeholder="YouTube / Loom link" type="url" />
                 </label>
               </div>
             </section>
@@ -265,21 +345,49 @@ export const CandidateCreateForm = ({ errorMessage, jobs, selectedJobID }: Candi
                   <span>Current Role</span>
                   <input name="currentRole" ref={currentRoleRef} type="text" />
                 </label>
+                <label>
+                  <span>Job Title</span>
+                  <input name="jobTitle" placeholder="Current designation" type="text" />
+                </label>
+                <label>
+                  <span>Technology</span>
+                  <input name="technology" placeholder="Stack or domain" type="text" />
+                </label>
                 <label className="candidate-intake-field-span-2">
                   <span>Skills</span>
                   <input name="skills" placeholder="e.g. React, Node.js, Figma" type="text" />
+                </label>
+                <label className="candidate-intake-field-span-2">
+                  <span>Primary Skills</span>
+                  <input name="primarySkills" placeholder="Top 3-5 strengths" type="text" />
                 </label>
                 <label>
                   <span>Total Experience (Years)</span>
                   <input min={0} name="totalExperienceYears" ref={totalExperienceYearsRef} type="number" />
                 </label>
                 <label>
+                  <span>Total Experience (Months)</span>
+                  <input max={11} min={0} name="totalExperienceMonths" type="number" />
+                </label>
+                <label>
                   <span>Expected Salary</span>
                   <input min={0} name="expectedSalary" type="number" />
                 </label>
                 <label>
+                  <span>Expected Pay Currency</span>
+                  <input name="expectedPayCurrency" placeholder="INR / USD / AED" type="text" />
+                </label>
+                <label>
+                  <span>Expected Pay Type</span>
+                  <input name="expectedPayType" placeholder="Monthly / Yearly / Hourly" type="text" />
+                </label>
+                <label>
                   <span>Notice Period (Days)</span>
                   <input min={0} name="noticePeriodDays" type="number" />
+                </label>
+                <label>
+                  <span>Notice Period Label</span>
+                  <input name="noticePeriodLabel" placeholder="Immediate / 30 days / 60 days" type="text" />
                 </label>
                 <label>
                   <span>LinkedIn URL</span>
@@ -288,6 +396,61 @@ export const CandidateCreateForm = ({ errorMessage, jobs, selectedJobID }: Candi
                 <label className="candidate-intake-field-span-2">
                   <span>Portfolio URL</span>
                   <input name="portfolioURL" ref={portfolioURLRef} type="url" />
+                </label>
+                <label>
+                  <span>Work Authorization</span>
+                  <input name="workAuthorization" placeholder="H1-B / Citizen / PR" type="text" />
+                </label>
+                <label>
+                  <span>Work Authorization Expiry</span>
+                  <input name="workAuthorizationExpiry" type="date" />
+                </label>
+                <label>
+                  <span>Tax Terms</span>
+                  <input name="taxTerms" placeholder="W2 / C2C / 1099" type="text" />
+                </label>
+                <label>
+                  <span>Applicant Status</span>
+                  <input name="applicantStatus" placeholder="New lead / Active / Hold" type="text" />
+                </label>
+                <label>
+                  <span>Applicant Group</span>
+                  <input name="applicantGroup" placeholder="UI, Data, Backend..." type="text" />
+                </label>
+                <label>
+                  <span>Ownership</span>
+                  <select defaultValue="" name="ownershipId">
+                    <option value="">Unassigned</option>
+                    {owners.map((owner) => (
+                      <option key={`candidate-owner-${owner.id}`} value={String(owner.id)}>
+                        {owner.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Referred By</span>
+                  <input name="referredBy" placeholder="Employee/partner reference" type="text" />
+                </label>
+                <label>
+                  <span>Nationality</span>
+                  <input name="nationality" type="text" />
+                </label>
+                <label>
+                  <span>Reference ID</span>
+                  <input name="referenceID" type="text" />
+                </label>
+                <label>
+                  <span>GPA</span>
+                  <input name="gpa" type="text" />
+                </label>
+                <label className="candidate-intake-checkbox">
+                  <input name="relocation" type="checkbox" />
+                  <span>Open to Relocation</span>
+                </label>
+                <label className="candidate-intake-checkbox">
+                  <input name="clearance" type="checkbox" />
+                  <span>Security Clearance</span>
                 </label>
               </div>
             </section>
@@ -365,7 +528,7 @@ export const CandidateCreateForm = ({ errorMessage, jobs, selectedJobID }: Candi
                     <div key={`job-preview-${job.id}`}>
                       <p>{job.title}</p>
                       <small>
-                        {job.clientLabel} · {job.priority}
+                        {(job.jobCode || `JOB-${job.id}`)} · {job.clientLabel} · {job.priority}
                       </small>
                     </div>
                   ))

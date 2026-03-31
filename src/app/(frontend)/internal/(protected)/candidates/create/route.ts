@@ -41,6 +41,28 @@ const parseOptionalNumber = (value: FormDataEntryValue | null): number | undefin
   return Number.isFinite(numeric) ? numeric : undefined
 }
 
+const parseBoolean = (value: FormDataEntryValue | null): boolean => {
+  const raw = readString(value).toLowerCase()
+  return raw === 'on' || raw === 'true'
+}
+
+const parseList = (value: FormDataEntryValue | string | null): string[] => {
+  const raw = typeof value === 'string' ? value.trim() : readString(value)
+
+  if (!raw) {
+    return []
+  }
+
+  return Array.from(
+    new Set(
+      raw
+        .split(/[,\n]/g)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  )
+}
+
 const toNumericID = (value: unknown): number | null => {
   if (typeof value === 'number') {
     return value
@@ -67,34 +89,64 @@ export async function POST(request: Request) {
   const formData = await request.formData()
 
   const fullName = readString(formData.get('fullName'))
+  const prefix = readString(formData.get('prefix')) || undefined
+  const firstName = readString(formData.get('firstName')) || undefined
+  const middleName = readString(formData.get('middleName')) || undefined
+  const lastName = readString(formData.get('lastName')) || undefined
+  const nickName = readString(formData.get('nickName')) || undefined
   const email = readString(formData.get('email')) || undefined
   const phone = readString(formData.get('phone')) || undefined
   const alternatePhone = readString(formData.get('alternatePhone')) || undefined
+  const homePhone = readString(formData.get('homePhone')) || undefined
+  const workPhone = readString(formData.get('workPhone')) || undefined
+  const otherPhone = readString(formData.get('otherPhone')) || undefined
+  const skypeID = readString(formData.get('skypeID')) || undefined
+  const facebookProfileURL = readString(formData.get('facebookProfileURL')) || undefined
+  const twitterProfileURL = readString(formData.get('twitterProfileURL')) || undefined
+  const videoReference = readString(formData.get('videoReference')) || undefined
   const currentLocation = readString(formData.get('currentLocation')) || undefined
+  const city = readString(formData.get('city')) || undefined
+  const state = readString(formData.get('state')) || undefined
+  const country = readString(formData.get('country')) || undefined
+  const postalCode = readString(formData.get('postalCode')) || undefined
+  const address = readString(formData.get('address')) || undefined
   const currentCompany = readString(formData.get('currentCompany')) || undefined
+  const jobTitle = readString(formData.get('jobTitle')) || undefined
   const currentRole = readString(formData.get('currentRole')) || undefined
   const linkedInURL = readString(formData.get('linkedInURL')) || undefined
   const portfolioURL = readString(formData.get('portfolioURL')) || undefined
+  const technology = readString(formData.get('technology')) || undefined
   const sourceInput = readString(formData.get('source'))
   const source: CandidateSource = CANDIDATE_SOURCES.includes(sourceInput as CandidateSource)
     ? (sourceInput as CandidateSource)
     : 'linkedin'
   const sourceDetails = readString(formData.get('sourceDetails')) || undefined
   const skillsInput = readString(formData.get('skills'))
+  const primarySkillsInput = readString(formData.get('primarySkills'))
   const notes = readString(formData.get('notes')) || undefined
   const sourceJobID = parseNumericID(formData.get('sourceJob'))
   const totalExperienceYears = parseOptionalNumber(formData.get('totalExperienceYears'))
+  const totalExperienceMonths = parseOptionalNumber(formData.get('totalExperienceMonths'))
   const expectedSalary = parseOptionalNumber(formData.get('expectedSalary'))
+  const expectedPayCurrency = readString(formData.get('expectedPayCurrency')) || undefined
+  const expectedPayType = readString(formData.get('expectedPayType')) || undefined
   const noticePeriodDays = parseOptionalNumber(formData.get('noticePeriodDays'))
+  const noticePeriodLabel = readString(formData.get('noticePeriodLabel')) || undefined
+  const relocation = parseBoolean(formData.get('relocation'))
+  const taxTerms = readString(formData.get('taxTerms')) || undefined
+  const workAuthorization = readString(formData.get('workAuthorization')) || undefined
+  const workAuthorizationExpiry = readString(formData.get('workAuthorizationExpiry')) || undefined
+  const clearance = parseBoolean(formData.get('clearance'))
+  const applicantStatus = readString(formData.get('applicantStatus')) || undefined
+  const applicantGroup = readString(formData.get('applicantGroup')) || undefined
+  const ownership = parseNumericID(formData.get('ownershipId'))
+  const referredBy = readString(formData.get('referredBy')) || undefined
+  const nationality = readString(formData.get('nationality')) || undefined
+  const referenceID = readString(formData.get('referenceID')) || undefined
+  const gpa = readString(formData.get('gpa')) || undefined
   const currentUserID = toNumericID(internalUser?.id)
-  const skills = Array.from(
-    new Set(
-      skillsInput
-        .split(',')
-        .map((skill) => skill.trim())
-        .filter((skill) => skill.length > 0),
-    ),
-  ).slice(0, 20)
+  const skills = parseList(skillsInput).slice(0, 30)
+  const primarySkills = parseList(primarySkillsInput).slice(0, 20)
 
   if (!fullName || !sourceJobID) {
     const failureURL = buildCreateRedirectURL(request)
@@ -145,24 +197,60 @@ export async function POST(request: Request) {
       collection: 'candidates',
       data: {
         alternatePhone,
+        applicantGroup,
+        applicantStatus,
+        address,
+        city,
+        clearance,
+        country,
         currentCompany,
         currentLocation,
         currentRole,
         email,
+        expectedPayCurrency,
+        expectedPayType,
         expectedSalary,
+        facebookProfileURL,
+        firstName,
         fullName,
+        gpa,
+        homePhone,
+        jobTitle,
         linkedInURL,
+        middleName,
+        nationality,
+        nickName,
         noticePeriodDays,
+        noticePeriodLabel,
         notes,
+        otherPhone,
+        ownership: ownership ?? undefined,
         phone,
         portfolioURL,
+        postalCode,
+        prefix,
+        primarySkills: primarySkills.length > 0 ? primarySkills : undefined,
+        referenceID,
+        referredBy,
+        relocation,
         resume: uploadedResumeID ?? undefined,
+        skypeID,
+        state,
         source,
         sourceDetails,
         sourceJob: sourceJobID,
         sourcedBy: currentUserID ?? undefined,
         skills: skills.length > 0 ? skills : undefined,
+        taxTerms,
+        technology,
+        totalExperienceMonths,
         totalExperienceYears,
+        twitterProfileURL,
+        videoReference,
+        workAuthorization,
+        workAuthorizationExpiry,
+        workPhone,
+        lastName,
       },
       overrideAccess: false,
       user: internalUser,

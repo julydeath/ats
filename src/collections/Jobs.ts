@@ -13,6 +13,7 @@ import {
   REACTIVATABLE_JOB_STATUSES,
 } from '@/lib/constants/recruitment'
 import { buildJobDedupeKey } from '@/lib/jobs/dedupe'
+import { resolveBusinessCode } from '@/lib/utils/business-codes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const activeJobStatusSet = new Set<string>(ACTIVE_JOB_STATUSES)
@@ -203,12 +204,21 @@ export const Jobs: CollectionConfig = {
     delete: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin']),
   },
   admin: {
-    defaultColumns: ['title', 'client', 'status', 'priority', 'openings', 'updatedAt'],
+    defaultColumns: ['jobCode', 'title', 'client', 'status', 'priority', 'openings', 'updatedAt'],
     group: 'Recruitment Ops',
     useAsTitle: 'title',
   },
   endpoints: [reactivateJobEndpoint],
   fields: [
+    {
+      name: 'jobCode',
+      type: 'text',
+      unique: true,
+      index: true,
+      admin: {
+        readOnly: true,
+      },
+    },
     {
       name: 'client',
       type: 'relationship',
@@ -220,6 +230,21 @@ export const Jobs: CollectionConfig = {
       name: 'title',
       type: 'text',
       required: true,
+      index: true,
+    },
+    {
+      name: 'requisitionTitle',
+      type: 'text',
+      index: true,
+    },
+    {
+      name: 'businessUnit',
+      type: 'text',
+      index: true,
+    },
+    {
+      name: 'clientJobID',
+      type: 'text',
       index: true,
     },
     {
@@ -236,6 +261,27 @@ export const Jobs: CollectionConfig = {
     },
     {
       name: 'location',
+      type: 'text',
+    },
+    {
+      name: 'states',
+      type: 'text',
+      hasMany: true,
+    },
+    {
+      name: 'clientBillRate',
+      type: 'text',
+    },
+    {
+      name: 'payRate',
+      type: 'text',
+    },
+    {
+      name: 'payType',
+      type: 'text',
+    },
+    {
+      name: 'salaryRangeLabel',
       type: 'text',
     },
     {
@@ -302,12 +348,37 @@ export const Jobs: CollectionConfig = {
       type: 'date',
     },
     {
+      name: 'requirementAssignedOn',
+      type: 'date',
+    },
+    {
       name: 'createdBy',
       type: 'relationship',
       relationTo: 'users',
       admin: {
         readOnly: true,
       },
+    },
+    {
+      name: 'recruitmentManager',
+      type: 'relationship',
+      relationTo: 'users',
+    },
+    {
+      name: 'primaryRecruiter',
+      type: 'relationship',
+      relationTo: 'users',
+      filterOptions: {
+        role: {
+          equals: 'recruiter',
+        },
+      },
+    },
+    {
+      name: 'assignedTo',
+      type: 'relationship',
+      relationTo: 'users',
+      hasMany: true,
     },
     {
       name: 'owningHeadRecruiter',
@@ -340,18 +411,30 @@ export const Jobs: CollectionConfig = {
   ],
   hooks: {
     beforeValidate: [
-      async ({ data, originalDoc }) => {
+      async ({ data, originalDoc, req }) => {
         const typedData = (data as Record<string, unknown> | undefined) || {}
         const typedOriginalDoc = originalDoc as Record<string, unknown> | undefined
         const dedupeKey = buildJobDedupeKey(getDedupeInput(typedData, typedOriginalDoc))
+        const jobCode = await resolveBusinessCode({
+          collection: 'jobs',
+          data: typedData,
+          fieldName: 'jobCode',
+          originalDoc: typedOriginalDoc,
+          prefix: 'JOB',
+          req,
+        })
 
         if (!dedupeKey) {
-          return typedData
+          return {
+            ...typedData,
+            jobCode,
+          }
         }
 
         return {
           ...typedData,
           dedupeKey,
+          jobCode,
         }
       },
     ],
@@ -439,12 +522,17 @@ export const Jobs: CollectionConfig = {
         return {
           ...typedData,
           dedupeKey,
+          jobCode: typedData.jobCode ?? typedOriginalDoc?.jobCode,
           owningHeadRecruiter: owningHeadRecruiterID,
         }
       },
     ],
   },
   indexes: [
+    {
+      fields: ['jobCode'],
+      unique: true,
+    },
     {
       fields: ['client', 'dedupeKey'],
     },

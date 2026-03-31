@@ -89,6 +89,7 @@ export default async function ApplicationsListPage({ searchParams }: Application
     pagination: false,
     overrideAccess: false,
     select: {
+      applicationCode: true,
       candidate: true,
       id: true,
       job: true,
@@ -112,6 +113,7 @@ export default async function ApplicationsListPage({ searchParams }: Application
     }
 
     const haystack = [
+      application.applicationCode || '',
       readLabel(application.candidate),
       readLabel(application.job),
       readLabel(application.recruiter),
@@ -200,6 +202,7 @@ export default async function ApplicationsListPage({ searchParams }: Application
                   column.docs.map((application) => (
                     <article className="stage-card" key={`application-${column.key}-${application.id}`}>
                       <p className="stage-card-name">{readLabel(application.candidate)}</p>
+                      <p className="stage-card-meta">{application.applicationCode || `APP-${application.id}`}</p>
                       <p className="stage-card-meta">{readLabel(application.job)}</p>
                       <p className="stage-card-meta">Recruiter: {readLabel(application.recruiter)}</p>
                       <p className="stage-card-meta">

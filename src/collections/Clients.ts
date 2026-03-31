@@ -7,6 +7,7 @@ import {
 import { clientCreateAccess, clientManageAccess, clientReadAccess } from '@/access/visibility'
 import { CLIENT_STATUS_OPTIONS } from '@/lib/constants/recruitment'
 import { buildClientDuplicateSignals } from '@/lib/jobs/dedupe'
+import { resolveBusinessCode } from '@/lib/utils/business-codes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const CLIENT_COMPANY_SIZE_OPTIONS = [
@@ -14,6 +15,18 @@ const CLIENT_COMPANY_SIZE_OPTIONS = [
   { label: '51-200', value: '51-200' },
   { label: '201-1000', value: '201-1000' },
   { label: '1000+', value: '1000+' },
+] as const
+
+const CLIENT_VISIBILITY_OPTIONS = [
+  { label: 'Organization Level', value: 'organization' },
+  { label: 'Business Unit', value: 'businessUnit' },
+] as const
+
+const CLIENT_REQUIRED_DOCUMENT_OPTIONS = [
+  { label: 'MSA', value: 'msa' },
+  { label: 'NDA', value: 'nda' },
+  { label: 'SOW', value: 'sow' },
+  { label: 'Compliance Certificate', value: 'complianceCertificate' },
 ] as const
 
 const getCandidateClientSignals = (data?: Record<string, unknown>, originalDoc?: Record<string, unknown>) =>
@@ -34,11 +47,20 @@ export const Clients: CollectionConfig = {
     delete: clientManageAccess,
   },
   admin: {
-    defaultColumns: ['name', 'industry', 'location', 'contactPerson', 'email', 'status', 'updatedAt'],
+    defaultColumns: ['clientCode', 'name', 'industry', 'location', 'contactPerson', 'email', 'status', 'updatedAt'],
     group: 'Recruitment Ops',
     useAsTitle: 'name',
   },
   fields: [
+    {
+      name: 'clientCode',
+      type: 'text',
+      unique: true,
+      index: true,
+      admin: {
+        readOnly: true,
+      },
+    },
     {
       name: 'name',
       type: 'text',
@@ -73,6 +95,33 @@ export const Clients: CollectionConfig = {
       type: 'text',
     },
     {
+      name: 'category',
+      type: 'text',
+    },
+    {
+      name: 'primaryBusinessUnit',
+      type: 'text',
+    },
+    {
+      name: 'businessUnits',
+      type: 'text',
+      hasMany: true,
+    },
+    {
+      name: 'clientVisibilityLevel',
+      type: 'select',
+      defaultValue: 'organization',
+      options: CLIENT_VISIBILITY_OPTIONS.map((option) => ({ ...option })),
+    },
+    {
+      name: 'vmsClientName',
+      type: 'text',
+    },
+    {
+      name: 'federalID',
+      type: 'text',
+    },
+    {
       name: 'location',
       type: 'text',
       index: true,
@@ -91,8 +140,37 @@ export const Clients: CollectionConfig = {
       type: 'textarea',
     },
     {
+      name: 'city',
+      type: 'text',
+    },
+    {
+      name: 'state',
+      type: 'text',
+    },
+    {
+      name: 'country',
+      type: 'text',
+      defaultValue: 'India',
+    },
+    {
+      name: 'postalCode',
+      type: 'text',
+    },
+    {
+      name: 'fax',
+      type: 'text',
+    },
+    {
       name: 'billingTerms',
       type: 'textarea',
+    },
+    {
+      name: 'paymentTerms',
+      type: 'text',
+    },
+    {
+      name: 'practice',
+      type: 'text',
     },
     {
       name: 'status',
@@ -115,6 +193,70 @@ export const Clients: CollectionConfig = {
           equals: 'leadRecruiter',
         },
       },
+    },
+    {
+      name: 'primaryOwner',
+      type: 'relationship',
+      relationTo: 'users',
+    },
+    {
+      name: 'ownership',
+      type: 'relationship',
+      relationTo: 'users',
+    },
+    {
+      name: 'clientLead',
+      type: 'relationship',
+      relationTo: 'users',
+      filterOptions: {
+        role: {
+          equals: 'leadRecruiter',
+        },
+      },
+    },
+    {
+      name: 'requiredDocuments',
+      type: 'select',
+      hasMany: true,
+      options: CLIENT_REQUIRED_DOCUMENT_OPTIONS.map((option) => ({ ...option })),
+    },
+    {
+      name: 'clientShortName',
+      type: 'text',
+    },
+    {
+      name: 'aboutCompany',
+      type: 'textarea',
+    },
+    {
+      name: 'sendRequirement',
+      type: 'checkbox',
+      defaultValue: true,
+    },
+    {
+      name: 'sendHotlist',
+      type: 'checkbox',
+      defaultValue: true,
+    },
+    {
+      name: 'allowAccessToAllUsers',
+      type: 'checkbox',
+      defaultValue: false,
+    },
+    {
+      name: 'displayOnJob',
+      type: 'checkbox',
+      defaultValue: true,
+    },
+    {
+      name: 'stopContactNotification',
+      type: 'checkbox',
+      defaultValue: false,
+    },
+    {
+      name: 'defaultJobAddress',
+      type: 'checkbox',
+      defaultValue: false,
     },
     {
       name: 'notes',
@@ -153,13 +295,23 @@ export const Clients: CollectionConfig = {
   ],
   hooks: {
     beforeValidate: [
-      async ({ data, originalDoc }) => {
+      async ({ data, originalDoc, req }) => {
         const typedData = (data as Record<string, unknown> | undefined) || {}
         const typedOriginalDoc = originalDoc as Record<string, unknown> | undefined
 
         const signals = getCandidateClientSignals(typedData, typedOriginalDoc)
+        const clientCode = await resolveBusinessCode({
+          collection: 'clients',
+          data: typedData,
+          fieldName: 'clientCode',
+          originalDoc: typedOriginalDoc,
+          prefix: 'CLT',
+          req,
+        })
+
         return {
           ...typedData,
+          clientCode,
           normalizedEmail: signals.normalizedEmail,
           normalizedName: signals.normalizedNameKey,
           normalizedPhone: signals.normalizedPhone,
@@ -233,6 +385,7 @@ export const Clients: CollectionConfig = {
 
         return {
           ...typedData,
+          clientCode: typedData.clientCode ?? typedOriginalDoc?.clientCode,
           normalizedEmail: signals.normalizedEmail,
           normalizedName: signals.normalizedNameKey,
           normalizedPhone: signals.normalizedPhone,
@@ -242,6 +395,10 @@ export const Clients: CollectionConfig = {
     ],
   },
   indexes: [
+    {
+      fields: ['clientCode'],
+      unique: true,
+    },
     {
       fields: ['normalizedName'],
       unique: true,

@@ -209,6 +209,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
     jobsResult,
     clientsResult,
     leadsResult,
+    recruitersResult,
     recruiterAssignmentsResult,
     applicationsResult,
     stageHistory,
@@ -221,14 +222,18 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       overrideAccess: false,
       pagination: false,
       select: {
+        businessUnit: true,
         client: true,
+        clientJobID: true,
         createdAt: true,
         employmentType: true,
         id: true,
+        jobCode: true,
         location: true,
         openings: true,
         owningHeadRecruiter: true,
         priority: true,
+        requisitionTitle: true,
         status: true,
         targetClosureDate: true,
         title: true,
@@ -245,6 +250,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       overrideAccess: false,
       pagination: false,
       select: {
+        clientCode: true,
         id: true,
         name: true,
       },
@@ -286,6 +292,38 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           },
         })
       : Promise.resolve(null),
+    canCreateJobs
+      ? payload.find({
+          collection: 'users',
+          depth: 0,
+          limit: 250,
+          overrideAccess: false,
+          pagination: false,
+          select: {
+            email: true,
+            fullName: true,
+            id: true,
+          },
+          sort: 'fullName',
+          user,
+          where: {
+            and: [
+              {
+                role: {
+                  equals: 'recruiter',
+                },
+              },
+              {
+                isActive: {
+                  equals: true,
+                },
+              },
+            ],
+          },
+        })
+      : Promise.resolve({
+          docs: [] as Array<{ email?: string; fullName?: string; id: number | string }>,
+        }),
     payload.find({
       collection: 'recruiter-job-assignments',
       depth: 1,
@@ -354,8 +392,12 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
     Pick<
       Job,
       | 'id'
+      | 'jobCode'
       | 'title'
+      | 'requisitionTitle'
       | 'client'
+      | 'clientJobID'
+      | 'businessUnit'
       | 'location'
       | 'priority'
       | 'status'
@@ -388,7 +430,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
   )
   const [fallbackClientsResult, fallbackLeadsResult] = await Promise.all([
     unresolvedClientIDs.length === 0
-      ? Promise.resolve({ docs: [] as Array<{ id: number | string; name?: string }> })
+      ? Promise.resolve({ docs: [] as Array<{ clientCode?: string | null; id: number | string; name?: string }> })
       : payload.find({
           collection: 'clients',
           depth: 0,
@@ -396,6 +438,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           overrideAccess: true,
           pagination: false,
           select: {
+            clientCode: true,
             id: true,
             name: true,
           },
@@ -426,7 +469,10 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
         }),
   ])
   const fallbackClientNameByID = new Map(
-    fallbackClientsResult.docs.map((client) => [String(client.id), client.name || String(client.id)]),
+    fallbackClientsResult.docs.map((client) => [
+      String(client.id),
+      `${client.clientCode || `CLT-${client.id}`} · ${client.name || String(client.id)}`,
+    ]),
   )
   const fallbackLeadNameByID = new Map(
     fallbackLeadsResult.docs.map((lead) => [String(lead.id), lead.fullName || lead.email || String(lead.id)]),
@@ -504,6 +550,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
             id: user.id,
           },
         ]
+  const recruiterUserOptions = recruitersResult.docs
 
   const successMessage =
     resolvedSearchParams.success === 'jobCreated'
@@ -586,7 +633,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
               <option value="">All Clients</option>
               {clientsResult.docs.map((client) => (
                 <option key={`jobs-filter-client-${client.id}`} value={String(client.id)}>
-                  {client.name}
+                  {client.clientCode || `CLT-${client.id}`} · {client.name}
                 </option>
               ))}
             </select>
@@ -656,7 +703,13 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                       <td>
                         <p className="jobs-table-title">{job.title}</p>
                         <p className="jobs-table-subtitle">
-                          ID: JOB-{job.id} • {job.location || 'Remote'} • {job.employmentType}
+                          ID: {job.jobCode || `JOB-${job.id}`}
+                          {job.clientJobID ? ` • Client Ref: ${job.clientJobID}` : ''}
+                          {job.requisitionTitle ? ` • ${job.requisitionTitle}` : ''}
+                          {job.location ? ` • ${job.location}` : ' • Remote'}
+                          {job.businessUnit ? ` • ${job.businessUnit}` : ''}
+                          {' • '}
+                          {job.employmentType}
                         </p>
                       </td>
                       <td className="jobs-table-subtitle">
@@ -809,7 +862,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                       <option value="">Select client</option>
                       {clientsResult.docs.map((client) => (
                         <option key={`create-job-client-${client.id}`} value={String(client.id)}>
-                          {client.name}
+                          {client.clientCode || `CLT-${client.id}`} · {client.name}
                         </option>
                       ))}
                     </select>
@@ -851,6 +904,48 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                         </option>
                       ))}
                     </select>
+                  </label>
+                </div>
+
+                <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-requisition-title">
+                    <span>Requisition Title</span>
+                    <input
+                      id="create-job-requisition-title"
+                      name="requisitionTitle"
+                      placeholder="Internal requisition title"
+                      type="text"
+                    />
+                  </label>
+                  <label className="jobs-modal-field" htmlFor="create-job-client-job-id">
+                    <span>Client Job ID</span>
+                    <input
+                      id="create-job-client-job-id"
+                      name="clientJobID"
+                      placeholder="Client-side requisition ID"
+                      type="text"
+                    />
+                  </label>
+                </div>
+
+                <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-business-unit">
+                    <span>Business Unit</span>
+                    <input
+                      id="create-job-business-unit"
+                      name="businessUnit"
+                      placeholder="Engineering, Product, Operations..."
+                      type="text"
+                    />
+                  </label>
+                  <label className="jobs-modal-field" htmlFor="create-job-states">
+                    <span>States / Regions</span>
+                    <input
+                      id="create-job-states"
+                      name="states"
+                      placeholder="Telangana, Karnataka, Maharashtra"
+                      type="text"
+                    />
                   </label>
                 </div>
 
@@ -906,6 +1001,43 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                 </div>
 
                 <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-recruitment-manager">
+                    <span>Recruitment Manager</span>
+                    <select defaultValue="" id="create-job-recruitment-manager" name="recruitmentManagerId">
+                      <option value="">Unassigned</option>
+                      {leadsOptions.map((lead) => (
+                        <option key={`create-job-manager-${lead.id}`} value={String(lead.id)}>
+                          {lead.fullName || lead.email}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="jobs-modal-field" htmlFor="create-job-primary-recruiter">
+                    <span>Primary Recruiter</span>
+                    <select defaultValue="" id="create-job-primary-recruiter" name="primaryRecruiterId">
+                      <option value="">Unassigned</option>
+                      {recruiterUserOptions.map((recruiter) => (
+                        <option key={`create-job-primary-recruiter-${recruiter.id}`} value={String(recruiter.id)}>
+                          {recruiter.fullName || recruiter.email}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <label className="jobs-modal-field" htmlFor="create-job-assigned-to">
+                  <span>Assigned Recruiters</span>
+                  <select id="create-job-assigned-to" multiple name="assignedTo" size={4}>
+                    {recruiterUserOptions.map((recruiter) => (
+                      <option key={`create-job-assigned-to-${recruiter.id}`} value={String(recruiter.id)}>
+                        {recruiter.fullName || recruiter.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="jobs-modal-grid">
                   <label className="jobs-modal-field" htmlFor="create-job-status">
                     <span>Status</span>
                     <select defaultValue="active" id="create-job-status" name="status">
@@ -958,6 +1090,41 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                     <span>Salary Max</span>
                     <input id="create-job-salary-max" min={0} name="salaryMax" type="number" />
                   </label>
+                </div>
+
+                <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-client-bill-rate">
+                    <span>Client Bill Rate</span>
+                    <input id="create-job-client-bill-rate" name="clientBillRate" placeholder="e.g. USD 75/hour" type="text" />
+                  </label>
+                  <label className="jobs-modal-field" htmlFor="create-job-pay-rate">
+                    <span>Pay Rate</span>
+                    <input id="create-job-pay-rate" name="payRate" placeholder="e.g. INR 18 LPA" type="text" />
+                  </label>
+                </div>
+
+                <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-pay-type">
+                    <span>Pay Type</span>
+                    <input id="create-job-pay-type" name="payType" placeholder="Hourly / Monthly / Yearly" type="text" />
+                  </label>
+                  <label className="jobs-modal-field" htmlFor="create-job-salary-range-label">
+                    <span>Salary Range Label</span>
+                    <input id="create-job-salary-range-label" name="salaryRangeLabel" placeholder="10-14 LPA, 60-75 USD/hr" type="text" />
+                  </label>
+                </div>
+
+                <div className="jobs-modal-grid">
+                  <label className="jobs-modal-field" htmlFor="create-job-requirement-assigned-on">
+                    <span>Requirement Assigned On</span>
+                    <input
+                      defaultValue={toISODate(new Date())}
+                      id="create-job-requirement-assigned-on"
+                      name="requirementAssignedOn"
+                      type="date"
+                    />
+                  </label>
+                  <div />
                 </div>
 
                 <label className="jobs-modal-field" htmlFor="create-job-description">

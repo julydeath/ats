@@ -43,6 +43,32 @@ const parseOptionalNumber = (value: FormDataEntryValue | null): number | undefin
   return Number.isFinite(numeric) ? numeric : undefined
 }
 
+const parseTextArray = (value: FormDataEntryValue | null): string[] => {
+  const normalized = readString(value)
+
+  if (!normalized) {
+    return []
+  }
+
+  return Array.from(
+    new Set(
+      normalized
+        .split(/[\n,]/g)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  )
+}
+
+const parseMultiNumericIDs = (values: FormDataEntryValue[]): number[] =>
+  Array.from(
+    new Set(
+      values
+        .map((value) => parseNumericID(value))
+        .filter((value): value is number => value !== null),
+    ),
+  )
+
 const toNumericID = (value: unknown): number | null => {
   if (typeof value === 'number') {
     return value
@@ -114,9 +140,17 @@ export async function POST(request: Request) {
   const formData = await request.formData()
   const clientID = parseNumericID(formData.get('clientId'))
   const title = readString(formData.get('title'))
+  const requisitionTitle = readString(formData.get('requisitionTitle')) || undefined
+  const businessUnit = readString(formData.get('businessUnit')) || undefined
+  const clientJobID = readString(formData.get('clientJobID')) || undefined
   const department = readString(formData.get('department')) || undefined
   const employmentType = parseJobEmploymentType(formData.get('employmentType'))
   const location = readString(formData.get('location')) || undefined
+  const states = parseTextArray(formData.get('states'))
+  const clientBillRate = readString(formData.get('clientBillRate')) || undefined
+  const payRate = readString(formData.get('payRate')) || undefined
+  const payType = readString(formData.get('payType')) || undefined
+  const salaryRangeLabel = readString(formData.get('salaryRangeLabel')) || undefined
   const openings = parseOptionalNumber(formData.get('openings')) || 1
   const description = readString(formData.get('description'))
   const requiredSkills = parseSkills(formData.get('requiredSkills'))
@@ -127,6 +161,10 @@ export async function POST(request: Request) {
   const salaryMin = parseOptionalNumber(formData.get('salaryMin'))
   const salaryMax = parseOptionalNumber(formData.get('salaryMax'))
   const targetClosureDate = readString(formData.get('targetClosureDate')) || undefined
+  const requirementAssignedOn = readString(formData.get('requirementAssignedOn')) || undefined
+  const recruitmentManagerID = parseNumericID(formData.get('recruitmentManagerId'))
+  const primaryRecruiterID = parseNumericID(formData.get('primaryRecruiterId'))
+  const assignedToIDs = parseMultiNumericIDs(formData.getAll('assignedTo'))
   let leadRecruiterID = hasInternalRole(internalUser, ['leadRecruiter'])
     ? currentUserID
     : parseNumericID(formData.get('leadRecruiterId'))
@@ -166,6 +204,9 @@ export async function POST(request: Request) {
     const job = await payload.create({
       collection: 'jobs',
       data: {
+        businessUnit,
+        clientBillRate,
+        clientJobID,
         client: clientID,
         department,
         description,
@@ -175,13 +216,22 @@ export async function POST(request: Request) {
         location,
         openings,
         owningHeadRecruiter: leadRecruiterID,
+        payRate,
+        payType,
+        primaryRecruiter: primaryRecruiterID ?? undefined,
         priority,
+        recruitmentManager: recruitmentManagerID ?? undefined,
+        requisitionTitle,
+        requirementAssignedOn,
         requiredSkills,
+        salaryRangeLabel,
         salaryMax,
         salaryMin,
+        states: states.length > 0 ? states : undefined,
         status,
         targetClosureDate,
         title,
+        assignedTo: assignedToIDs.length > 0 ? assignedToIDs : undefined,
       },
       overrideAccess: false,
       user: internalUser,

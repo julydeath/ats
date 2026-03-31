@@ -224,17 +224,63 @@ export interface CandidateUser {
  */
 export interface Candidate {
   id: number;
+  candidateCode?: string | null;
+  prefix?: string | null;
+  firstName?: string | null;
+  middleName?: string | null;
+  lastName?: string | null;
+  nickName?: string | null;
   fullName: string;
   email?: string | null;
   phone?: string | null;
   alternatePhone?: string | null;
+  homePhone?: string | null;
+  workPhone?: string | null;
+  otherPhone?: string | null;
+  skypeID?: string | null;
+  facebookProfileURL?: string | null;
+  twitterProfileURL?: string | null;
+  videoReference?: string | null;
   currentLocation?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  address?: string | null;
   totalExperienceYears?: number | null;
+  totalExperienceMonths?: number | null;
   currentCompany?: string | null;
+  jobTitle?: string | null;
   currentRole?: string | null;
   skills?: string[] | null;
+  primarySkills?: string[] | null;
+  technology?: string | null;
   expectedSalary?: number | null;
+  expectedPayCurrency?: string | null;
+  expectedPayType?: string | null;
   noticePeriodDays?: number | null;
+  noticePeriodLabel?: string | null;
+  relocation?: boolean | null;
+  taxTerms?: string | null;
+  gpa?: string | null;
+  nationality?: string | null;
+  aadhaarNumber?: string | null;
+  referenceID?: string | null;
+  referredBy?: string | null;
+  applicantStatus?: string | null;
+  applicantGroup?: string | null;
+  ownership?: (number | null) | User;
+  workAuthorization?: string | null;
+  workAuthorizationExpiry?: string | null;
+  clearance?: boolean | null;
+  gender?: string | null;
+  raceEthnicity?: string | null;
+  veteranStatus?: string | null;
+  disabilityStatus?: string | null;
+  technicalSkillsRating?: number | null;
+  communicationSkillsRating?: number | null;
+  professionalismRating?: number | null;
+  overallRating?: number | null;
   source: 'naukri' | 'linkedin' | 'reference' | 'careerPortal' | 'walkIn' | 'consultancy' | 'database' | 'other';
   sourceDetails?: string | null;
   resume?: (number | null) | CandidateResume;
@@ -245,6 +291,45 @@ export interface Candidate {
   candidateAccount?: (number | null) | CandidateUser;
   profileCompletedAt?: string | null;
   notes?: string | null;
+  educationDetails?:
+    | {
+        degree?: string | null;
+        institution?: string | null;
+        location?: string | null;
+        startDate?: string | null;
+        endDate?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  certifications?:
+    | {
+        name?: string | null;
+        issuer?: string | null;
+        credentialID?: string | null;
+        issueDate?: string | null;
+        expiryDate?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  workExperience?:
+    | {
+        employer?: string | null;
+        title?: string | null;
+        startDate?: string | null;
+        endDate?: string | null;
+        isCurrent?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  languages?:
+    | {
+        language?: string | null;
+        canRead?: boolean | null;
+        canWrite?: boolean | null;
+        canSpeak?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
   normalizedEmail?: string | null;
   normalizedPhone?: string | null;
   updatedAt: string;
@@ -277,11 +362,20 @@ export interface CandidateResume {
  */
 export interface Job {
   id: number;
+  jobCode?: string | null;
   client: number | Client;
   title: string;
+  requisitionTitle?: string | null;
+  businessUnit?: string | null;
+  clientJobID?: string | null;
   department?: string | null;
   employmentType: 'fullTime' | 'partTime' | 'contract' | 'internship';
   location?: string | null;
+  states?: string[] | null;
+  clientBillRate?: string | null;
+  payRate?: string | null;
+  payType?: string | null;
+  salaryRangeLabel?: string | null;
   salaryMin?: number | null;
   salaryMax?: number | null;
   experienceMin?: number | null;
@@ -297,7 +391,11 @@ export interface Job {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'active' | 'onHold' | 'closed' | 'inactive';
   targetClosureDate?: string | null;
+  requirementAssignedOn?: string | null;
   createdBy?: (number | null) | User;
+  recruitmentManager?: (number | null) | User;
+  primaryRecruiter?: (number | null) | User;
+  assignedTo?: (number | User)[] | null;
   /**
    * Lead recruiter owning execution for this job.
    */
@@ -313,22 +411,48 @@ export interface Job {
  */
 export interface Client {
   id: number;
+  clientCode?: string | null;
   name: string;
   logo?: (number | null) | Media;
   contactPerson: string;
   email: string;
   phone: string;
   industry?: string | null;
+  category?: string | null;
+  primaryBusinessUnit?: string | null;
+  businessUnits?: string[] | null;
+  clientVisibilityLevel?: ('organization' | 'businessUnit') | null;
+  vmsClientName?: string | null;
+  federalID?: string | null;
   location?: string | null;
   website?: string | null;
   companySize?: ('1-50' | '51-200' | '201-1000' | '1000+') | null;
   address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  fax?: string | null;
   billingTerms?: string | null;
+  paymentTerms?: string | null;
+  practice?: string | null;
   status: 'active' | 'inactive';
   /**
    * Optional primary lead owner. Admin can still assign multiple leads separately.
    */
   owningHeadRecruiter?: (number | null) | User;
+  primaryOwner?: (number | null) | User;
+  ownership?: (number | null) | User;
+  clientLead?: (number | null) | User;
+  requiredDocuments?: ('msa' | 'nda' | 'sow' | 'complianceCertificate')[] | null;
+  clientShortName?: string | null;
+  aboutCompany?: string | null;
+  sendRequirement?: boolean | null;
+  sendHotlist?: boolean | null;
+  allowAccessToAllUsers?: boolean | null;
+  displayOnJob?: boolean | null;
+  stopContactNotification?: boolean | null;
+  defaultJobAddress?: boolean | null;
   notes?: string | null;
   normalizedName?: string | null;
   normalizedEmail?: string | null;
@@ -361,6 +485,7 @@ export interface Media {
  */
 export interface JobRequest {
   id: number;
+  jobRequestCode?: string | null;
   intakeSource: 'email' | 'phone' | 'portal' | 'manual';
   subject: string;
   message: string;
@@ -456,6 +581,7 @@ export interface RecruiterJobAssignment {
  */
 export interface Application {
   id: number;
+  applicationCode?: string | null;
   candidate: number | Candidate;
   job: number | Job;
   recruiter: number | User;
@@ -470,7 +596,16 @@ export interface Application {
     | 'candidateApplied';
   notes?: string | null;
   latestComment?: string | null;
+  pipelineSource?: string | null;
+  submissionType?: string | null;
+  clientBillRate?: string | null;
+  payRate?: string | null;
   submittedAt?: string | null;
+  clientSubmittedAt?: string | null;
+  interviewAt?: string | null;
+  confirmedAt?: string | null;
+  placedAt?: string | null;
+  notJoinedAt?: string | null;
   reviewedBy?: (number | null) | User;
   reviewedAt?: string | null;
   candidateInvitedAt?: string | null;
@@ -724,19 +859,45 @@ export interface CandidateUsersSelect<T extends boolean = true> {
  * via the `definition` "clients_select".
  */
 export interface ClientsSelect<T extends boolean = true> {
+  clientCode?: T;
   name?: T;
   logo?: T;
   contactPerson?: T;
   email?: T;
   phone?: T;
   industry?: T;
+  category?: T;
+  primaryBusinessUnit?: T;
+  businessUnits?: T;
+  clientVisibilityLevel?: T;
+  vmsClientName?: T;
+  federalID?: T;
   location?: T;
   website?: T;
   companySize?: T;
   address?: T;
+  city?: T;
+  state?: T;
+  country?: T;
+  postalCode?: T;
+  fax?: T;
   billingTerms?: T;
+  paymentTerms?: T;
+  practice?: T;
   status?: T;
   owningHeadRecruiter?: T;
+  primaryOwner?: T;
+  ownership?: T;
+  clientLead?: T;
+  requiredDocuments?: T;
+  clientShortName?: T;
+  aboutCompany?: T;
+  sendRequirement?: T;
+  sendHotlist?: T;
+  allowAccessToAllUsers?: T;
+  displayOnJob?: T;
+  stopContactNotification?: T;
+  defaultJobAddress?: T;
   notes?: T;
   normalizedName?: T;
   normalizedEmail?: T;
@@ -749,11 +910,20 @@ export interface ClientsSelect<T extends boolean = true> {
  * via the `definition` "jobs_select".
  */
 export interface JobsSelect<T extends boolean = true> {
+  jobCode?: T;
   client?: T;
   title?: T;
+  requisitionTitle?: T;
+  businessUnit?: T;
+  clientJobID?: T;
   department?: T;
   employmentType?: T;
   location?: T;
+  states?: T;
+  clientBillRate?: T;
+  payRate?: T;
+  payType?: T;
+  salaryRangeLabel?: T;
   salaryMin?: T;
   salaryMax?: T;
   experienceMin?: T;
@@ -769,7 +939,11 @@ export interface JobsSelect<T extends boolean = true> {
   priority?: T;
   status?: T;
   targetClosureDate?: T;
+  requirementAssignedOn?: T;
   createdBy?: T;
+  recruitmentManager?: T;
+  primaryRecruiter?: T;
+  assignedTo?: T;
   owningHeadRecruiter?: T;
   sourceJobRequest?: T;
   dedupeKey?: T;
@@ -781,6 +955,7 @@ export interface JobsSelect<T extends boolean = true> {
  * via the `definition` "job-requests_select".
  */
 export interface JobRequestsSelect<T extends boolean = true> {
+  jobRequestCode?: T;
   intakeSource?: T;
   subject?: T;
   message?: T;
@@ -883,17 +1058,63 @@ export interface CandidateResumesSelect<T extends boolean = true> {
  * via the `definition` "candidates_select".
  */
 export interface CandidatesSelect<T extends boolean = true> {
+  candidateCode?: T;
+  prefix?: T;
+  firstName?: T;
+  middleName?: T;
+  lastName?: T;
+  nickName?: T;
   fullName?: T;
   email?: T;
   phone?: T;
   alternatePhone?: T;
+  homePhone?: T;
+  workPhone?: T;
+  otherPhone?: T;
+  skypeID?: T;
+  facebookProfileURL?: T;
+  twitterProfileURL?: T;
+  videoReference?: T;
   currentLocation?: T;
+  city?: T;
+  state?: T;
+  country?: T;
+  postalCode?: T;
+  address?: T;
   totalExperienceYears?: T;
+  totalExperienceMonths?: T;
   currentCompany?: T;
+  jobTitle?: T;
   currentRole?: T;
   skills?: T;
+  primarySkills?: T;
+  technology?: T;
   expectedSalary?: T;
+  expectedPayCurrency?: T;
+  expectedPayType?: T;
   noticePeriodDays?: T;
+  noticePeriodLabel?: T;
+  relocation?: T;
+  taxTerms?: T;
+  gpa?: T;
+  nationality?: T;
+  aadhaarNumber?: T;
+  referenceID?: T;
+  referredBy?: T;
+  applicantStatus?: T;
+  applicantGroup?: T;
+  ownership?: T;
+  workAuthorization?: T;
+  workAuthorizationExpiry?: T;
+  clearance?: T;
+  gender?: T;
+  raceEthnicity?: T;
+  veteranStatus?: T;
+  disabilityStatus?: T;
+  technicalSkillsRating?: T;
+  communicationSkillsRating?: T;
+  professionalismRating?: T;
+  overallRating?: T;
   source?: T;
   sourceDetails?: T;
   resume?: T;
@@ -904,6 +1125,45 @@ export interface CandidatesSelect<T extends boolean = true> {
   candidateAccount?: T;
   profileCompletedAt?: T;
   notes?: T;
+  educationDetails?:
+    | T
+    | {
+        degree?: T;
+        institution?: T;
+        location?: T;
+        startDate?: T;
+        endDate?: T;
+        id?: T;
+      };
+  certifications?:
+    | T
+    | {
+        name?: T;
+        issuer?: T;
+        credentialID?: T;
+        issueDate?: T;
+        expiryDate?: T;
+        id?: T;
+      };
+  workExperience?:
+    | T
+    | {
+        employer?: T;
+        title?: T;
+        startDate?: T;
+        endDate?: T;
+        isCurrent?: T;
+        id?: T;
+      };
+  languages?:
+    | T
+    | {
+        language?: T;
+        canRead?: T;
+        canWrite?: T;
+        canSpeak?: T;
+        id?: T;
+      };
   normalizedEmail?: T;
   normalizedPhone?: T;
   updatedAt?: T;
@@ -914,6 +1174,7 @@ export interface CandidatesSelect<T extends boolean = true> {
  * via the `definition` "applications_select".
  */
 export interface ApplicationsSelect<T extends boolean = true> {
+  applicationCode?: T;
   candidate?: T;
   job?: T;
   recruiter?: T;
@@ -921,7 +1182,16 @@ export interface ApplicationsSelect<T extends boolean = true> {
   stage?: T;
   notes?: T;
   latestComment?: T;
+  pipelineSource?: T;
+  submissionType?: T;
+  clientBillRate?: T;
+  payRate?: T;
   submittedAt?: T;
+  clientSubmittedAt?: T;
+  interviewAt?: T;
+  confirmedAt?: T;
+  placedAt?: T;
+  notJoinedAt?: T;
   reviewedBy?: T;
   reviewedAt?: T;
   candidateInvitedAt?: T;

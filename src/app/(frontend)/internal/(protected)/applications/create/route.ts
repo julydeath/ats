@@ -39,6 +39,10 @@ export async function POST(request: Request) {
   const jobID = parseNumericID(formData.get('jobId'))
   const notes = readString(formData.get('notes')) || undefined
   const latestComment = readString(formData.get('latestComment')) || undefined
+  const pipelineSource = readString(formData.get('pipelineSource')) || undefined
+  const submissionType = readString(formData.get('submissionType')) || undefined
+  const clientBillRate = readString(formData.get('clientBillRate')) || undefined
+  const payRate = readString(formData.get('payRate')) || undefined
   const recruiterID = parseNumericID(formData.get('recruiterId'))
 
   if (!candidateID || !jobID || !recruiterID) {
@@ -52,11 +56,15 @@ export async function POST(request: Request) {
       collection: 'applications',
       data: {
         candidate: candidateID,
+        clientBillRate,
         job: jobID,
         latestComment,
         notes,
+        payRate,
+        pipelineSource,
         recruiter: recruiterID,
         stage: 'sourcedByRecruiter',
+        submissionType,
       },
       overrideAccess: false,
       user: internalUser,

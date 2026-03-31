@@ -93,20 +93,45 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
         overrideAccess: false,
         select: {
           address: true,
+          allowAccessToAllUsers: true,
+          aboutCompany: true,
+          businessUnits: true,
+          category: true,
           billingTerms: true,
+          city: true,
+          clientCode: true,
+          clientLead: true,
+          clientShortName: true,
+          clientVisibilityLevel: true,
           companySize: true,
           contactPerson: true,
+          country: true,
+          defaultJobAddress: true,
+          displayOnJob: true,
           email: true,
+          fax: true,
+          federalID: true,
           id: true,
           industry: true,
           location: true,
           logo: true,
           name: true,
           notes: true,
+          ownership: true,
           owningHeadRecruiter: true,
+          paymentTerms: true,
           phone: true,
+          practice: true,
+          primaryBusinessUnit: true,
+          primaryOwner: true,
+          requiredDocuments: true,
+          sendHotlist: true,
+          sendRequirement: true,
           status: true,
+          state: true,
+          stopContactNotification: true,
           updatedAt: true,
+          vmsClientName: true,
           website: true,
         },
         user,
@@ -119,6 +144,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
         pagination: false,
         select: {
           id: true,
+          jobCode: true,
           location: true,
           openings: true,
           priority: true,
@@ -153,7 +179,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
               <p className="client-detail-kicker">Client Profile</p>
               <h1>{client.name}</h1>
               <p>
-                {client.industry || 'Industry not set'} · {client.location || 'Location not set'} · Updated {formatDateTime(client.updatedAt)}
+                {(client.clientCode || `CLT-${client.id}`)} · {client.industry || 'Industry not set'} · {client.location || 'Location not set'} · Updated {formatDateTime(client.updatedAt)}
               </p>
             </div>
           </div>
@@ -176,17 +202,39 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
               <p><span>Email</span>{client.email}</p>
               <p><span>Phone</span>{client.phone}</p>
               <p><span>Lead Recruiter</span>{readLabel(client.owningHeadRecruiter, 'Unassigned')}</p>
+              <p><span>Client Lead</span>{readLabel(client.clientLead, 'Unassigned')}</p>
+              <p><span>Primary Owner</span>{readLabel(client.primaryOwner, 'Unassigned')}</p>
+              <p><span>Ownership</span>{readLabel(client.ownership, 'Unassigned')}</p>
               <p><span>Status</span>{client.status === 'active' ? 'Active' : 'Inactive'}</p>
               <p><span>Company Size</span>{client.companySize || 'Not set'}</p>
+              <p><span>Category</span>{client.category || 'Not set'}</p>
+              <p><span>Visibility</span>{client.clientVisibilityLevel || 'organization'}</p>
             </div>
           </article>
 
           <article className="client-detail-card">
             <h2>Business Notes</h2>
             <div className="client-detail-text-block">
+              <p><span>Client Short Name</span>{client.clientShortName || 'Not set'}</p>
+              <p><span>VMS Client Name</span>{client.vmsClientName || 'Not set'}</p>
+              <p><span>Federal ID</span>{client.federalID || 'Not set'}</p>
+              <p><span>Fax</span>{client.fax || 'Not set'}</p>
               <p><span>Website</span>{client.website || 'Not set'}</p>
               <p><span>Address</span>{client.address || 'Not set'}</p>
+              <p><span>City / State / Country</span>{[client.city, client.state, client.country].filter(Boolean).join(', ') || 'Not set'}</p>
+              <p><span>Primary Business Unit</span>{client.primaryBusinessUnit || 'Not set'}</p>
+              <p><span>Business Units</span>{Array.isArray(client.businessUnits) && client.businessUnits.length > 0 ? client.businessUnits.join(', ') : 'Not set'}</p>
+              <p><span>Practice</span>{client.practice || 'Not set'}</p>
               <p><span>Billing Terms</span>{client.billingTerms || 'Not set'}</p>
+              <p><span>Payment Terms</span>{client.paymentTerms || 'Not set'}</p>
+              <p><span>Required Documents</span>{Array.isArray(client.requiredDocuments) && client.requiredDocuments.length > 0 ? client.requiredDocuments.join(', ') : 'Not set'}</p>
+              <p><span>About Company</span>{client.aboutCompany || 'Not set'}</p>
+              <p><span>Send Requirement</span>{client.sendRequirement ? 'Yes' : 'No'}</p>
+              <p><span>Send Hotlist</span>{client.sendHotlist ? 'Yes' : 'No'}</p>
+              <p><span>Allow All Users</span>{client.allowAccessToAllUsers ? 'Yes' : 'No'}</p>
+              <p><span>Display On Job</span>{client.displayOnJob ? 'Yes' : 'No'}</p>
+              <p><span>Stop Contact Notification</span>{client.stopContactNotification ? 'Yes' : 'No'}</p>
+              <p><span>Default Job Address</span>{client.defaultJobAddress ? 'Yes' : 'No'}</p>
               <p><span>Notes</span>{client.notes || 'Not set'}</p>
             </div>
           </article>
@@ -205,6 +253,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
               {jobs.docs.map((job) => (
                 <article className="client-detail-job-card" key={`client-job-${job.id}`}>
                   <p>{job.title}</p>
+                  <small>{job.jobCode || `JOB-${job.id}`}</small>
                   <small>{job.location || 'Location not set'}</small>
                   <small>Openings: {job.openings ?? 0}</small>
                   <small>Priority: {job.priority || 'medium'}</small>

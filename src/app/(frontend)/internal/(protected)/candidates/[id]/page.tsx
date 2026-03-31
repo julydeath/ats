@@ -150,26 +150,42 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
         id: candidateID,
         overrideAccess: false,
         select: {
+          address: true,
           alternatePhone: true,
+          applicantStatus: true,
+          candidateCode: true,
+          city: true,
+          country: true,
           currentCompany: true,
           currentLocation: true,
           currentRole: true,
           email: true,
+          expectedPayCurrency: true,
+          expectedPayType: true,
           expectedSalary: true,
           fullName: true,
+          homePhone: true,
           id: true,
           linkedInURL: true,
+          nationality: true,
           notes: true,
+          noticePeriodLabel: true,
           noticePeriodDays: true,
+          ownership: true,
           phone: true,
           portfolioURL: true,
+          primarySkills: true,
           resume: true,
+          state: true,
           source: true,
           sourceDetails: true,
           sourceJob: true,
           sourcedBy: true,
           skills: true,
           totalExperienceYears: true,
+          workAuthorization: true,
+          workAuthorizationExpiry: true,
+          workPhone: true,
           updatedAt: true,
         },
         user,
@@ -206,6 +222,7 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
     const latestStageLabel = latestStage ? APPLICATION_STAGE_LABELS[latestStage] : 'Profile Created'
     const skillTags = getSkillTags([
       ...(Array.isArray(candidate.skills) ? candidate.skills : []),
+      ...(Array.isArray(candidate.primarySkills) ? candidate.primarySkills : []),
       candidate.currentRole,
       candidate.sourceDetails,
       candidate.notes,
@@ -240,7 +257,7 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
               <span className={`candidate-profile-status ${stageToneClass(latestStage)}`}>{latestStageLabel}</span>
             </div>
             <p className="candidate-profile-meta-line">
-              {candidate.currentRole || 'Role not specified'} · {candidate.currentLocation || 'Location not provided'} ·{' '}
+              {candidate.candidateCode || `CAN-${candidate.id}`} · {candidate.currentRole || 'Role not specified'} · {candidate.currentLocation || 'Location not provided'} ·{' '}
               {candidate.totalExperienceYears ?? 'N/A'} years experience
             </p>
             {resolvedSearchParams.success ? <p className="candidate-profile-success">Candidate profile saved successfully.</p> : null}
@@ -294,14 +311,33 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
                   <span className="candidate-profile-detail-icon">☎</span>
                   <div>
                     <p className="candidate-profile-detail-label">Phone</p>
-                    <p className="candidate-profile-detail-value">{candidate.phone || candidate.alternatePhone || 'Not provided'}</p>
+                    <p className="candidate-profile-detail-value">
+                      {candidate.phone || candidate.alternatePhone || candidate.homePhone || candidate.workPhone || 'Not provided'}
+                    </p>
                   </div>
                 </div>
                 <div className="candidate-profile-detail-item">
                   <span className="candidate-profile-detail-icon">⌂</span>
                   <div>
                     <p className="candidate-profile-detail-label">Location</p>
-                    <p className="candidate-profile-detail-value">{candidate.currentLocation || 'Not provided'}</p>
+                    <p className="candidate-profile-detail-value">
+                      {candidate.currentLocation ||
+                        [candidate.city, candidate.state, candidate.country].filter(Boolean).join(', ') ||
+                        candidate.address ||
+                        'Not provided'}
+                    </p>
+                  </div>
+                </div>
+                <div className="candidate-profile-detail-item">
+                  <span className="candidate-profile-detail-icon">⚑</span>
+                  <div>
+                    <p className="candidate-profile-detail-label">Work Authorization</p>
+                    <p className="candidate-profile-detail-value">
+                      {candidate.workAuthorization || 'Not set'}
+                      {candidate.workAuthorizationExpiry
+                        ? ` · Expires ${formatDate(candidate.workAuthorizationExpiry)}`
+                        : ''}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -394,6 +430,16 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
                 <Link className="candidate-profile-link" href={APP_ROUTES.internal.candidates.list}>
                   Back to Candidate List
                 </Link>
+                <span className="candidate-profile-link">
+                  Source: {String(candidate.source || 'Unknown')} · Status: {candidate.applicantStatus || 'N/A'}
+                </span>
+                <span className="candidate-profile-link">
+                  Expected: {candidate.expectedSalary || 'N/A'} {candidate.expectedPayCurrency || ''} {candidate.expectedPayType || ''}
+                </span>
+                <span className="candidate-profile-link">
+                  Notice: {candidate.noticePeriodLabel || `${candidate.noticePeriodDays ?? 'N/A'} days`} · Owner: {readLabel(candidate.ownership, 'Unassigned')}
+                </span>
+                <span className="candidate-profile-link">Nationality: {candidate.nationality || 'N/A'}</span>
                 {candidate.linkedInURL ? (
                   <a className="candidate-profile-link" href={candidate.linkedInURL} rel="noreferrer" target="_blank">
                     LinkedIn

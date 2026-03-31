@@ -48,7 +48,9 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
       overrideAccess: false,
       select: {
         client: true,
+        clientJobID: true,
         id: true,
+        jobCode: true,
         location: true,
         priority: true,
         title: true,
@@ -68,6 +70,7 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
       pagination: false,
       overrideAccess: false,
       select: {
+        candidateCode: true,
         email: true,
         fullName: true,
         id: true,
@@ -152,7 +155,9 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
 
     return {
       clientLabel,
+      clientJobID: job.clientJobID || '',
       id: String(job.id),
+      jobCode: job.jobCode || '',
       location: job.location || 'Location not specified',
       priority: String(job.priority || 'medium'),
       title: job.title,
@@ -160,6 +165,7 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
   })
 
   const candidates = candidatesResult.docs.map((candidate) => ({
+    code: candidate.candidateCode || '',
     contact: candidate.email || candidate.phone || 'No contact',
     id: String(candidate.id),
     name: candidate.fullName,
@@ -237,7 +243,7 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
                   <option value="">Select candidate</option>
                   {candidates.map((candidate) => (
                     <option key={`candidate-option-${candidate.id}`} value={candidate.id}>
-                      {candidate.name} | {candidate.contact}
+                      {(candidate.code || `CAN-${candidate.id}`)} | {candidate.name} | {candidate.contact}
                     </option>
                   ))}
                 </select>
@@ -249,7 +255,7 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
                   <option value="">Select job</option>
                   {jobs.map((job) => (
                     <option key={`job-option-${job.id}`} value={job.id}>
-                      {job.title} | {job.clientLabel}
+                      {(job.jobCode || `JOB-${job.id}`)} | {job.title} | {job.clientLabel}
                     </option>
                   ))}
                 </select>
@@ -278,6 +284,26 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
                   placeholder="Short summary for lead review (fit, availability, strengths)"
                   rows={3}
                 />
+              </label>
+
+              <label>
+                <span>Pipeline Source</span>
+                <input name="pipelineSource" placeholder="Naukri, LinkedIn, Referral, Internal DB..." type="text" />
+              </label>
+
+              <label>
+                <span>Submission Type</span>
+                <input name="submissionType" placeholder="Tagged, Applied, Direct Sourced..." type="text" />
+              </label>
+
+              <label>
+                <span>Client Bill Rate</span>
+                <input name="clientBillRate" placeholder="e.g. USD 75/hour" type="text" />
+              </label>
+
+              <label>
+                <span>Pay Rate</span>
+                <input name="payRate" placeholder="e.g. INR 18 LPA" type="text" />
               </label>
 
               <label>

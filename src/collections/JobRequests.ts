@@ -1,4 +1,4 @@
-import { APIError, type CollectionConfig, type Endpoint } from 'payload'
+import { APIError, type CollectionConfig, type DataFromCollectionSlug, type Endpoint } from 'payload'
 
 import {
   hasInternalRole,
@@ -13,6 +13,7 @@ import {
   REACTIVATABLE_JOB_STATUSES,
 } from '@/lib/constants/recruitment'
 import { buildJobDedupeKey } from '@/lib/jobs/dedupe'
+import { resolveBusinessCode } from '@/lib/utils/business-codes'
 import { compactWhitespace } from '@/lib/utils/normalization'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
@@ -229,12 +230,15 @@ const processJobRequestEndpoint: Endpoint = {
       })
     }
 
+    const createdJobData = {
+      ...baseJobData,
+      status: 'active',
+    } as DataFromCollectionSlug<'jobs'>
+
     const createdJob = await req.payload.create({
       collection: 'jobs',
-      data: {
-        ...baseJobData,
-        status: 'active',
-      } as Record<string, unknown>,
+      data: createdJobData,
+      draft: false,
       overrideAccess: false,
       req,
     })
@@ -268,12 +272,21 @@ export const JobRequests: CollectionConfig = {
     delete: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin']),
   },
   admin: {
-    defaultColumns: ['subject', 'client', 'status', 'intakeSource', 'receivedAt', 'processedBy'],
+    defaultColumns: ['jobRequestCode', 'subject', 'client', 'status', 'intakeSource', 'receivedAt', 'processedBy'],
     group: 'Recruitment Ops',
     useAsTitle: 'subject',
   },
   endpoints: [processJobRequestEndpoint],
   fields: [
+    {
+      name: 'jobRequestCode',
+      type: 'text',
+      unique: true,
+      index: true,
+      admin: {
+        readOnly: true,
+      },
+    },
     {
       name: 'intakeSource',
       type: 'select',
@@ -427,9 +440,17 @@ export const JobRequests: CollectionConfig = {
   ],
   hooks: {
     beforeValidate: [
-      async ({ data, originalDoc }) => {
+      async ({ data, originalDoc, req }) => {
         const typedData = (data as Record<string, unknown> | undefined) || {}
         const typedOriginalDoc = originalDoc as Record<string, unknown> | undefined
+        const jobRequestCode = await resolveBusinessCode({
+          collection: 'job-requests',
+          data: typedData,
+          fieldName: 'jobRequestCode',
+          originalDoc: typedOriginalDoc,
+          prefix: 'JREQ',
+          req,
+        })
 
         const client = extractRelationshipID(typedData.client ?? typedOriginalDoc?.client)
         const clientName = compactWhitespace(typedData.clientName ?? typedOriginalDoc?.clientName)
@@ -441,6 +462,7 @@ export const JobRequests: CollectionConfig = {
         return {
           ...typedData,
           clientName: clientName || null,
+          jobRequestCode,
         }
       },
     ],
@@ -462,4 +484,10 @@ export const JobRequests: CollectionConfig = {
       },
     ],
   },
+  indexes: [
+    {
+      fields: ['jobRequestCode'],
+      unique: true,
+    },
+  ],
 }

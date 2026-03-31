@@ -145,6 +145,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
     pagination: false,
     overrideAccess: false,
     select: {
+      candidateCode: true,
       currentCompany: true,
       currentRole: true,
       email: true,
@@ -350,7 +351,9 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                           <span className="candidate-mgmt-avatar">{getInitials(candidate.fullName)}</span>
                           <div>
                             <p className="candidate-mgmt-name">{candidate.fullName}</p>
-                            <p className="candidate-mgmt-sub">{getRelativeDate(candidate.updatedAt)}</p>
+                            <p className="candidate-mgmt-sub">
+                              {(candidate.candidateCode || `CAN-${candidate.id}`)} · {getRelativeDate(candidate.updatedAt)}
+                            </p>
                           </div>
                         </div>
                       </td>

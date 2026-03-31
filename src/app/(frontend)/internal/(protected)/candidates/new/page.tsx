@@ -58,6 +58,7 @@ export default async function CandidateNewPage({ searchParams }: CandidateNewPag
     select: {
       client: true,
       id: true,
+      jobCode: true,
       priority: true,
       title: true,
     },
@@ -80,7 +81,7 @@ export default async function CandidateNewPage({ searchParams }: CandidateNewPag
 
   const fallbackClientsResult =
     unresolvedClientIDs.length === 0
-      ? { docs: [] as Array<{ id: number | string; name?: string }> }
+      ? { docs: [] as Array<{ clientCode?: string | null; id: number | string; name?: string }> }
       : await payload.find({
           collection: 'clients',
           depth: 0,
@@ -88,6 +89,7 @@ export default async function CandidateNewPage({ searchParams }: CandidateNewPag
           overrideAccess: true,
           pagination: false,
           select: {
+            clientCode: true,
             id: true,
             name: true,
           },
@@ -98,8 +100,31 @@ export default async function CandidateNewPage({ searchParams }: CandidateNewPag
           },
         })
 
+  const ownersResult = await payload.find({
+    collection: 'users',
+    depth: 0,
+    limit: 180,
+    pagination: false,
+    overrideAccess: false,
+    select: {
+      email: true,
+      fullName: true,
+      id: true,
+    },
+    sort: 'fullName',
+    user,
+    where: {
+      isActive: {
+        equals: true,
+      },
+    },
+  })
+
   const fallbackClientNameByID = new Map(
-    fallbackClientsResult.docs.map((client) => [String(client.id), client.name || String(client.id)]),
+    fallbackClientsResult.docs.map((client) => [
+      String(client.id),
+      `${client.clientCode || `CLT-${client.id}`} · ${client.name || String(client.id)}`,
+    ]),
   )
 
   const jobs = jobsResult.docs.map((job) => {
@@ -114,13 +139,26 @@ export default async function CandidateNewPage({ searchParams }: CandidateNewPag
     return {
       clientLabel,
       id: job.id,
+      jobCode: job.jobCode || '',
       priority: readLabel(job.priority, 'normal'),
       title: job.title,
     }
   })
 
+  const owners = ownersResult.docs.map((member) => ({
+    id: member.id,
+    label: member.fullName || member.email || String(member.id),
+  }))
+
   const normalizedSelectedJobID = jobs.some((job) => String(job.id) === selectedJobID) ? selectedJobID : ''
   const errorMessage = resolvedSearchParams.error ? String(resolvedSearchParams.error) : undefined
 
-  return <CandidateCreateForm errorMessage={errorMessage} jobs={jobs} selectedJobID={normalizedSelectedJobID} />
+  return (
+    <CandidateCreateForm
+      errorMessage={errorMessage}
+      jobs={jobs}
+      owners={owners}
+      selectedJobID={normalizedSelectedJobID}
+    />
+  )
 }

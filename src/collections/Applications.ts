@@ -10,6 +10,7 @@ import {
 import { buildCandidateInviteExpiryDate, generateCandidateInviteToken } from '@/lib/auth/candidate-invites'
 import { APPLICATION_STAGES, APPLICATION_STAGE_OPTIONS, type ApplicationStage } from '@/lib/constants/recruitment'
 import { buildCandidateInviteLink, sendCandidateInviteEmail } from '@/lib/email/resend'
+import { resolveBusinessCode } from '@/lib/utils/business-codes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const DEFAULT_STAGE: ApplicationStage = 'sourcedByRecruiter'
@@ -144,11 +145,20 @@ export const Applications: CollectionConfig = {
     delete: applicationsDeleteAccess,
   },
   admin: {
-    defaultColumns: ['candidate', 'job', 'recruiter', 'stage', 'updatedAt'],
+    defaultColumns: ['applicationCode', 'candidate', 'job', 'recruiter', 'stage', 'updatedAt'],
     group: 'Applications',
     useAsTitle: 'candidate',
   },
   fields: [
+    {
+      name: 'applicationCode',
+      type: 'text',
+      unique: true,
+      index: true,
+      admin: {
+        readOnly: true,
+      },
+    },
     {
       name: 'candidate',
       type: 'relationship',
@@ -201,11 +211,47 @@ export const Applications: CollectionConfig = {
       type: 'textarea',
     },
     {
+      name: 'pipelineSource',
+      type: 'text',
+    },
+    {
+      name: 'submissionType',
+      type: 'text',
+    },
+    {
+      name: 'clientBillRate',
+      type: 'text',
+    },
+    {
+      name: 'payRate',
+      type: 'text',
+    },
+    {
       name: 'submittedAt',
       type: 'date',
       admin: {
         readOnly: true,
       },
+    },
+    {
+      name: 'clientSubmittedAt',
+      type: 'date',
+    },
+    {
+      name: 'interviewAt',
+      type: 'date',
+    },
+    {
+      name: 'confirmedAt',
+      type: 'date',
+    },
+    {
+      name: 'placedAt',
+      type: 'date',
+    },
+    {
+      name: 'notJoinedAt',
+      type: 'date',
     },
     {
       name: 'reviewedBy',
@@ -247,13 +293,25 @@ export const Applications: CollectionConfig = {
   ],
   hooks: {
     beforeValidate: [
-      async ({ data, operation, req }) => {
+      async ({ data, operation, originalDoc, req }) => {
         const typedData = (data as Record<string, unknown> | undefined) || {}
+        const typedOriginalDoc = originalDoc as Record<string, unknown> | undefined
         const user = req.user as InternalUserLike
         const currentUserID = toNumericID(user?.id)
+        const applicationCode = await resolveBusinessCode({
+          collection: 'applications',
+          data: typedData,
+          fieldName: 'applicationCode',
+          originalDoc: typedOriginalDoc,
+          prefix: 'APP',
+          req,
+        })
 
         if (operation !== 'create') {
-          return typedData
+          return {
+            ...typedData,
+            applicationCode,
+          }
         }
 
         if (hasInternalRole(user, ['recruiter']) && currentUserID !== null) {
@@ -268,7 +326,10 @@ export const Applications: CollectionConfig = {
           typedData.createdBy = currentUserID
         }
 
-        return typedData
+        return {
+          ...typedData,
+          applicationCode,
+        }
       },
     ],
     beforeChange: [
@@ -404,6 +465,7 @@ export const Applications: CollectionConfig = {
 
         return {
           ...typedData,
+          applicationCode: typedData.applicationCode ?? typedOriginalDoc?.applicationCode,
           candidate: candidateID,
           candidateAccount: candidateAccountID ?? undefined,
           candidateAppliedAt: isCandidateApplied ? nowISO : typedOriginalDoc?.candidateAppliedAt,
@@ -582,6 +644,10 @@ export const Applications: CollectionConfig = {
     ],
   },
   indexes: [
+    {
+      fields: ['applicationCode'],
+      unique: true,
+    },
     {
       fields: ['candidate', 'job'],
       unique: true,

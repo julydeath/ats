@@ -16,6 +16,18 @@ const CLIENT_SIZE_OPTIONS = [
   { label: '1000+', value: '1000+' },
 ] as const
 
+const CLIENT_VISIBILITY_OPTIONS = [
+  { label: 'Organization Level', value: 'organization' },
+  { label: 'Business Unit', value: 'businessUnit' },
+] as const
+
+const CLIENT_REQUIRED_DOCUMENT_OPTIONS = [
+  { label: 'MSA', value: 'msa' },
+  { label: 'NDA', value: 'nda' },
+  { label: 'SOW', value: 'sow' },
+  { label: 'Compliance Certificate', value: 'complianceCertificate' },
+] as const
+
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   if (!value) {
     return fallback
@@ -144,7 +156,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const whereQuery: Where | undefined =
     whereConditions.length === 0 ? undefined : whereConditions.length === 1 ? whereConditions[0] : { and: whereConditions }
 
-  const [clientsResult, leadsResult, totalCount, activeCount, inactiveCount, unassignedCount] = await Promise.all([
+  const [clientsResult, leadsResult, usersResult, totalCount, activeCount, inactiveCount, unassignedCount] = await Promise.all([
     payload.find({
       collection: 'clients',
       depth: 1,
@@ -153,9 +165,14 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       page: requestedPage,
       select: {
         address: true,
+        category: true,
         billingTerms: true,
+        city: true,
+        clientCode: true,
+        clientShortName: true,
         companySize: true,
         contactPerson: true,
+        country: true,
         email: true,
         id: true,
         industry: true,
@@ -165,6 +182,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
         notes: true,
         owningHeadRecruiter: true,
         phone: true,
+        state: true,
         status: true,
         updatedAt: true,
         website: true,
@@ -204,6 +222,35 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
         })
       : Promise.resolve({
           docs: [] as Array<{ email?: string; fullName?: string; id: number | string }>,
+        }),
+    canManageClients
+      ? payload.find({
+          collection: 'users',
+          depth: 0,
+          limit: 150,
+          overrideAccess: false,
+          pagination: false,
+          select: {
+            email: true,
+            fullName: true,
+            id: true,
+            role: true,
+          },
+          sort: 'fullName',
+          user,
+          where: {
+            isActive: {
+              equals: true,
+            },
+          },
+        })
+      : Promise.resolve({
+          docs: [] as Array<{
+            email?: string
+            fullName?: string
+            id: number | string
+            role?: 'admin' | 'leadRecruiter' | 'recruiter' | null
+          }>,
         }),
     payload.count({
       collection: 'clients',
@@ -286,6 +333,8 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       : resolvedSearchParams.success === 'clientUpdated'
         ? 'Client details updated successfully.'
         : ''
+  const activeUsers = usersResult.docs
+  const leadOptions = leadsResult.docs
 
   const currentPage = clientsResult.page || 1
   const totalPages = Math.max(clientsResult.totalPages || 1, 1)
@@ -377,7 +426,9 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                   </div>
                   <div className="client-grid-card-title-wrap">
                     <h3>{client.name}</h3>
-                    <p>{client.industry || 'Industry not set'}</p>
+                    <p>
+                      {client.clientCode || `CLT-${client.id}`} · {client.industry || client.category || 'Industry not set'}
+                    </p>
                   </div>
                   <span
                     className={
@@ -393,7 +444,10 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                 <div className="client-grid-info">
                   <p>
                     <span>Location</span>
-                    {client.location || client.address || 'Not provided'}
+                    {client.location ||
+                      [client.city, client.state, client.country].filter(Boolean).join(', ') ||
+                      client.address ||
+                      'Not provided'}
                   </p>
                   <p>
                     <span>Contact</span>
@@ -482,6 +536,17 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
 
               <div className="clients-create-modal-grid">
                 <label>
+                  <span>Client Short Name</span>
+                  <input name="clientShortName" placeholder="e.g. ACME" type="text" />
+                </label>
+                <label>
+                  <span>Category</span>
+                  <input name="category" placeholder="Strategic, Preferred, Project..." type="text" />
+                </label>
+              </div>
+
+              <div className="clients-create-modal-grid">
+                <label>
                   <span>Contact Person *</span>
                   <input name="contactPerson" placeholder="Primary stakeholder" required type="text" />
                 </label>
@@ -536,10 +601,82 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
 
               <div className="clients-create-modal-grid">
                 <label>
+                  <span>City</span>
+                  <input name="city" placeholder="Hyderabad" type="text" />
+                </label>
+                <label>
+                  <span>State</span>
+                  <input name="state" placeholder="Telangana" type="text" />
+                </label>
+              </div>
+
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>Country</span>
+                  <input defaultValue="India" name="country" placeholder="India" type="text" />
+                </label>
+                <label>
+                  <span>Postal Code</span>
+                  <input name="postalCode" placeholder="500001" type="text" />
+                </label>
+              </div>
+
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>Federal ID / Tax ID</span>
+                  <input name="federalID" placeholder="PAN / GST / Federal ID" type="text" />
+                </label>
+                <label>
+                  <span>Fax</span>
+                  <input name="fax" placeholder="Optional fax number" type="text" />
+                </label>
+              </div>
+
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>Primary Business Unit</span>
+                  <input name="primaryBusinessUnit" placeholder="APAC, India GCC..." type="text" />
+                </label>
+                <label>
+                  <span>Business Units (comma-separated)</span>
+                  <input name="businessUnits" placeholder="India, UAE, US" type="text" />
+                </label>
+              </div>
+
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>Client Visibility</span>
+                  <select defaultValue="organization" name="clientVisibilityLevel">
+                    {CLIENT_VISIBILITY_OPTIONS.map((option) => (
+                      <option key={`client-visibility-${option.value}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>VMS Client Name</span>
+                  <input name="vmsClientName" placeholder="Name in external VMS" type="text" />
+                </label>
+              </div>
+
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>Practice</span>
+                  <input name="practice" placeholder="Engineering, Product, Data..." type="text" />
+                </label>
+                <label>
+                  <span>Payment Terms</span>
+                  <input name="paymentTerms" placeholder="Net 30, Net 45..." type="text" />
+                </label>
+              </div>
+
+              <div className="clients-create-modal-grid">
+                <label>
                   <span>Assigned Lead</span>
                   <select defaultValue="" name="leadRecruiterId">
                     <option value="">Unassigned</option>
-                    {leadsResult.docs.map((lead) => (
+                    {leadOptions.map((lead) => (
                       <option key={`lead-${lead.id}`} value={String(lead.id)}>
                         {lead.fullName || lead.email}
                       </option>
@@ -554,6 +691,55 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
 
               <div className="clients-create-modal-grid">
                 <label>
+                  <span>Primary Owner</span>
+                  <select defaultValue="" name="primaryOwnerId">
+                    <option value="">Unassigned</option>
+                    {activeUsers.map((member) => (
+                      <option key={`primary-owner-${member.id}`} value={String(member.id)}>
+                        {member.fullName || member.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Ownership</span>
+                  <select defaultValue="" name="ownershipId">
+                    <option value="">Unassigned</option>
+                    {activeUsers.map((member) => (
+                      <option key={`ownership-${member.id}`} value={String(member.id)}>
+                        {member.fullName || member.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>Client Lead</span>
+                  <select defaultValue="" name="clientLeadId">
+                    <option value="">Unassigned</option>
+                    {leadOptions.map((lead) => (
+                      <option key={`client-lead-${lead.id}`} value={String(lead.id)}>
+                        {lead.fullName || lead.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Required Documents</span>
+                  <select multiple name="requiredDocuments" size={4}>
+                    {CLIENT_REQUIRED_DOCUMENT_OPTIONS.map((option) => (
+                      <option key={`required-doc-${option.value}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="clients-create-modal-grid">
+                <label>
                   <span>Address</span>
                   <textarea name="address" placeholder="Street, city, state, country" rows={2} />
                 </label>
@@ -561,6 +747,28 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                   <span>Billing Terms</span>
                   <textarea name="billingTerms" placeholder="Net 30, milestone based, etc." rows={2} />
                 </label>
+              </div>
+
+              <div className="clients-create-modal-grid">
+                <label>
+                  <span>About Company</span>
+                  <textarea
+                    name="aboutCompany"
+                    placeholder="Add client overview, delivery model, and hiring context..."
+                    rows={3}
+                  />
+                </label>
+                <div className="clients-create-modal-field-block">
+                  <span>Platform Controls</span>
+                  <div className="clients-create-modal-flags">
+                    <label><input defaultChecked name="sendRequirement" type="checkbox" /> Send Requirement</label>
+                    <label><input defaultChecked name="sendHotlist" type="checkbox" /> Send Hotlist</label>
+                    <label><input name="allowAccessToAllUsers" type="checkbox" /> Allow Access To All Users</label>
+                    <label><input defaultChecked name="displayOnJob" type="checkbox" /> Display On Job</label>
+                    <label><input name="stopContactNotification" type="checkbox" /> Stop Contact Notification</label>
+                    <label><input name="defaultJobAddress" type="checkbox" /> Use Address As Default Job Address</label>
+                  </div>
+                </div>
               </div>
 
               <label>

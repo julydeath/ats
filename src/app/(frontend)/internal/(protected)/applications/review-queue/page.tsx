@@ -68,6 +68,21 @@ const toHours = (value: string): number | null => {
 }
 
 const formatJobCode = (value: unknown): string => {
+  if (value && typeof value === 'object') {
+    const typed = value as { id?: number | string; jobCode?: string | null }
+    if (typeof typed.jobCode === 'string' && typed.jobCode.trim().length > 0) {
+      return typed.jobCode
+    }
+
+    if (typeof typed.id === 'number') {
+      return `JOB-${String(typed.id).padStart(4, '0')}`
+    }
+
+    if (typeof typed.id === 'string' && /^\d+$/.test(typed.id)) {
+      return `JOB-${typed.id.padStart(4, '0')}`
+    }
+  }
+
   const id = extractRelationshipID(value)
   if (typeof id === 'number') {
     return `JOB-${String(id).padStart(4, '0')}`
