@@ -10,7 +10,9 @@ export type InternalNavItem = {
     | 'candidates'
     | 'clients'
     | 'dashboard'
+    | 'interviews'
     | 'jobs'
+    | 'placements'
     | 'review'
     | 'schedule'
     | 'settings'
@@ -55,6 +57,18 @@ const ADMIN_NAV: readonly InternalNavGroup[] = [
         href: APP_ROUTES.internal.applications.list,
         description: 'View reporting and workflow summaries.',
         icon: 'applications',
+      },
+      {
+        label: 'Interviews',
+        href: APP_ROUTES.internal.interviews.list,
+        description: 'Schedule and monitor interview rounds.',
+        icon: 'interviews',
+      },
+      {
+        label: 'Placements',
+        href: APP_ROUTES.internal.placements.list,
+        description: 'Track confirmations, joins, and placement outcomes.',
+        icon: 'placements',
       },
       {
         label: 'Settings',
@@ -112,6 +126,18 @@ const LEAD_RECRUITER_NAV: readonly InternalNavGroup[] = [
         description: 'Track application pipeline and review outcomes.',
         icon: 'applications',
       },
+      {
+        label: 'Interviews',
+        href: APP_ROUTES.internal.interviews.list,
+        description: 'Manage interview schedule for active pipeline.',
+        icon: 'interviews',
+      },
+      {
+        label: 'Placements',
+        href: APP_ROUTES.internal.placements.list,
+        description: 'Track candidates moving into placement lifecycle.',
+        icon: 'placements',
+      },
     ],
   },
 ]
@@ -149,6 +175,18 @@ const RECRUITER_NAV: readonly InternalNavGroup[] = [
         href: APP_ROUTES.internal.applications.list,
         description: 'View application pipeline status.',
         icon: 'applications',
+      },
+      {
+        label: 'Interviews',
+        href: APP_ROUTES.internal.interviews.list,
+        description: 'View interview schedules and upcoming sessions.',
+        icon: 'interviews',
+      },
+      {
+        label: 'Placements',
+        href: APP_ROUTES.internal.placements.list,
+        description: 'View placement status across assigned applications.',
+        icon: 'placements',
       },
     ],
   },

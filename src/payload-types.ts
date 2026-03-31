@@ -78,9 +78,13 @@ export interface Config {
     'recruiter-job-assignments': RecruiterJobAssignment;
     'candidate-resumes': CandidateResume;
     candidates: Candidate;
+    'candidate-activities': CandidateActivity;
     applications: Application;
     'application-stage-history': ApplicationStageHistory;
     'candidate-invites': CandidateInvite;
+    'job-templates': JobTemplate;
+    interviews: Interview;
+    placements: Placement;
     media: Media;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -99,9 +103,13 @@ export interface Config {
     'recruiter-job-assignments': RecruiterJobAssignmentsSelect<false> | RecruiterJobAssignmentsSelect<true>;
     'candidate-resumes': CandidateResumesSelect<false> | CandidateResumesSelect<true>;
     candidates: CandidatesSelect<false> | CandidatesSelect<true>;
+    'candidate-activities': CandidateActivitiesSelect<false> | CandidateActivitiesSelect<true>;
     applications: ApplicationsSelect<false> | ApplicationsSelect<true>;
     'application-stage-history': ApplicationStageHistorySelect<false> | ApplicationStageHistorySelect<true>;
     'candidate-invites': CandidateInvitesSelect<false> | CandidateInvitesSelect<true>;
+    'job-templates': JobTemplatesSelect<false> | JobTemplatesSelect<true>;
+    interviews: InterviewsSelect<false> | InterviewsSelect<true>;
+    placements: PlacementsSelect<false> | PlacementsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -232,6 +240,7 @@ export interface Candidate {
   nickName?: string | null;
   fullName: string;
   email?: string | null;
+  alternateEmail?: string | null;
   phone?: string | null;
   alternatePhone?: string | null;
   homePhone?: string | null;
@@ -256,8 +265,11 @@ export interface Candidate {
   primarySkills?: string[] | null;
   technology?: string | null;
   expectedSalary?: number | null;
+  expectedPayMin?: number | null;
+  expectedPayMax?: number | null;
   expectedPayCurrency?: string | null;
   expectedPayType?: string | null;
+  expectedPayUnit?: string | null;
   noticePeriodDays?: number | null;
   noticePeriodLabel?: string | null;
   relocation?: boolean | null;
@@ -291,6 +303,7 @@ export interface Candidate {
   candidateAccount?: (number | null) | CandidateUser;
   profileCompletedAt?: string | null;
   notes?: string | null;
+  additionalComments?: string | null;
   educationDetails?:
     | {
         degree?: string | null;
@@ -318,6 +331,30 @@ export interface Candidate {
         startDate?: string | null;
         endDate?: string | null;
         isCurrent?: boolean | null;
+        summary?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  employerDetails?:
+    | {
+        employerName?: string | null;
+        contactName?: string | null;
+        contactEmail?: string | null;
+        contactPhone?: string | null;
+        designation?: string | null;
+        startDate?: string | null;
+        endDate?: string | null;
+        reasonForLeaving?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  employmentTestResults?:
+    | {
+        testName?: string | null;
+        score?: number | null;
+        maxScore?: number | null;
+        result?: string | null;
+        completedAt?: string | null;
         id?: string | null;
       }[]
     | null;
@@ -577,6 +614,30 @@ export interface RecruiterJobAssignment {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidate-activities".
+ */
+export interface CandidateActivity {
+  id: number;
+  activityCode?: string | null;
+  candidate: number | Candidate;
+  application?: (number | null) | Application;
+  type: 'note' | 'task' | 'message' | 'activity';
+  title: string;
+  description?: string | null;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'open' | 'inProgress' | 'completed' | 'cancelled';
+  actionRequired?: string | null;
+  dueAt?: string | null;
+  timezone?: string | null;
+  assignedTo?: (number | null) | User;
+  createdBy?: (number | null) | User;
+  modifiedOn?: string | null;
+  statusModifiedOn?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "applications".
  */
 export interface Application {
@@ -672,6 +733,100 @@ export interface CandidateInvite {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "job-templates".
+ */
+export interface JobTemplate {
+  id: number;
+  templateCode?: string | null;
+  templateName: string;
+  title: string;
+  requisitionTitle?: string | null;
+  department?: string | null;
+  businessUnit?: string | null;
+  employmentType: 'fullTime' | 'partTime' | 'contract' | 'internship';
+  location?: string | null;
+  states?: string[] | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  experienceMin?: number | null;
+  experienceMax?: number | null;
+  openings?: number | null;
+  description: string;
+  requiredSkills?:
+    | {
+        skill: string;
+        id?: string | null;
+      }[]
+    | null;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  isActive?: boolean | null;
+  ownedByLeadRecruiter?: (number | null) | User;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "interviews".
+ */
+export interface Interview {
+  id: number;
+  interviewCode?: string | null;
+  application: number | Application;
+  candidate?: (number | null) | Candidate;
+  job?: (number | null) | Job;
+  recruiter?: (number | null) | User;
+  client?: (number | null) | Client;
+  interviewRound: 'screening' | 'technicalRound1' | 'technicalRound2' | 'managerial' | 'hr' | 'final';
+  interviewTemplate?: string | null;
+  interviewerName: string;
+  interviewerEmail?: string | null;
+  clientPOC?: string | null;
+  mode: 'video' | 'inPerson' | 'phone';
+  meetingLink?: string | null;
+  location?: string | null;
+  timezone?: string | null;
+  startTime: string;
+  endTime: string;
+  status: 'scheduled' | 'rescheduled' | 'completed' | 'cancelled' | 'noShow';
+  initiatedBy?: (number | null) | User;
+  initiatedOn?: string | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "placements".
+ */
+export interface Placement {
+  id: number;
+  placementCode?: string | null;
+  application: number | Application;
+  candidate?: (number | null) | Candidate;
+  job?: (number | null) | Job;
+  recruiter?: (number | null) | User;
+  client?: (number | null) | Client;
+  placementType: 'recurringRevenue' | 'oneTimeRevenue' | 'inHouse';
+  clientPrimeVendor?: string | null;
+  businessUnit?: string | null;
+  clientBillRate?: string | null;
+  payRate?: string | null;
+  perDiemPerHour?: string | null;
+  overhead?: string | null;
+  margin?: string | null;
+  tentativeStartDate?: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
+  projectDurationDays?: number | null;
+  status: 'active' | 'inactive' | 'completed' | 'cancelled';
+  createdBy?: (number | null) | User;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -735,6 +890,10 @@ export interface PayloadLockedDocument {
         value: number | Candidate;
       } | null)
     | ({
+        relationTo: 'candidate-activities';
+        value: number | CandidateActivity;
+      } | null)
+    | ({
         relationTo: 'applications';
         value: number | Application;
       } | null)
@@ -745,6 +904,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'candidate-invites';
         value: number | CandidateInvite;
+      } | null)
+    | ({
+        relationTo: 'job-templates';
+        value: number | JobTemplate;
+      } | null)
+    | ({
+        relationTo: 'interviews';
+        value: number | Interview;
+      } | null)
+    | ({
+        relationTo: 'placements';
+        value: number | Placement;
       } | null)
     | ({
         relationTo: 'media';
@@ -1066,6 +1237,7 @@ export interface CandidatesSelect<T extends boolean = true> {
   nickName?: T;
   fullName?: T;
   email?: T;
+  alternateEmail?: T;
   phone?: T;
   alternatePhone?: T;
   homePhone?: T;
@@ -1090,8 +1262,11 @@ export interface CandidatesSelect<T extends boolean = true> {
   primarySkills?: T;
   technology?: T;
   expectedSalary?: T;
+  expectedPayMin?: T;
+  expectedPayMax?: T;
   expectedPayCurrency?: T;
   expectedPayType?: T;
+  expectedPayUnit?: T;
   noticePeriodDays?: T;
   noticePeriodLabel?: T;
   relocation?: T;
@@ -1125,6 +1300,7 @@ export interface CandidatesSelect<T extends boolean = true> {
   candidateAccount?: T;
   profileCompletedAt?: T;
   notes?: T;
+  additionalComments?: T;
   educationDetails?:
     | T
     | {
@@ -1153,6 +1329,30 @@ export interface CandidatesSelect<T extends boolean = true> {
         startDate?: T;
         endDate?: T;
         isCurrent?: T;
+        summary?: T;
+        id?: T;
+      };
+  employerDetails?:
+    | T
+    | {
+        employerName?: T;
+        contactName?: T;
+        contactEmail?: T;
+        contactPhone?: T;
+        designation?: T;
+        startDate?: T;
+        endDate?: T;
+        reasonForLeaving?: T;
+        id?: T;
+      };
+  employmentTestResults?:
+    | T
+    | {
+        testName?: T;
+        score?: T;
+        maxScore?: T;
+        result?: T;
+        completedAt?: T;
         id?: T;
       };
   languages?:
@@ -1166,6 +1366,29 @@ export interface CandidatesSelect<T extends boolean = true> {
       };
   normalizedEmail?: T;
   normalizedPhone?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidate-activities_select".
+ */
+export interface CandidateActivitiesSelect<T extends boolean = true> {
+  activityCode?: T;
+  candidate?: T;
+  application?: T;
+  type?: T;
+  title?: T;
+  description?: T;
+  priority?: T;
+  status?: T;
+  actionRequired?: T;
+  dueAt?: T;
+  timezone?: T;
+  assignedTo?: T;
+  createdBy?: T;
+  modifiedOn?: T;
+  statusModifiedOn?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1234,6 +1457,97 @@ export interface CandidateInvitesSelect<T extends boolean = true> {
   consumedAt?: T;
   revokedAt?: T;
   accountAccessSentAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "job-templates_select".
+ */
+export interface JobTemplatesSelect<T extends boolean = true> {
+  templateCode?: T;
+  templateName?: T;
+  title?: T;
+  requisitionTitle?: T;
+  department?: T;
+  businessUnit?: T;
+  employmentType?: T;
+  location?: T;
+  states?: T;
+  salaryMin?: T;
+  salaryMax?: T;
+  experienceMin?: T;
+  experienceMax?: T;
+  openings?: T;
+  description?: T;
+  requiredSkills?:
+    | T
+    | {
+        skill?: T;
+        id?: T;
+      };
+  priority?: T;
+  isActive?: T;
+  ownedByLeadRecruiter?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "interviews_select".
+ */
+export interface InterviewsSelect<T extends boolean = true> {
+  interviewCode?: T;
+  application?: T;
+  candidate?: T;
+  job?: T;
+  recruiter?: T;
+  client?: T;
+  interviewRound?: T;
+  interviewTemplate?: T;
+  interviewerName?: T;
+  interviewerEmail?: T;
+  clientPOC?: T;
+  mode?: T;
+  meetingLink?: T;
+  location?: T;
+  timezone?: T;
+  startTime?: T;
+  endTime?: T;
+  status?: T;
+  initiatedBy?: T;
+  initiatedOn?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "placements_select".
+ */
+export interface PlacementsSelect<T extends boolean = true> {
+  placementCode?: T;
+  application?: T;
+  candidate?: T;
+  job?: T;
+  recruiter?: T;
+  client?: T;
+  placementType?: T;
+  clientPrimeVendor?: T;
+  businessUnit?: T;
+  clientBillRate?: T;
+  payRate?: T;
+  perDiemPerHour?: T;
+  overhead?: T;
+  margin?: T;
+  tentativeStartDate?: T;
+  actualStartDate?: T;
+  actualEndDate?: T;
+  projectDurationDays?: T;
+  status?: T;
+  createdBy?: T;
+  notes?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { getPayload } from 'payload'
 
 import { requireInternalRole } from '@/lib/auth/internal-auth'
-import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
+import { INTERVIEW_STATUS_LABELS, type InterviewStatus } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
@@ -70,16 +70,16 @@ const dateLabel = (value: string | Date) => {
   })
 }
 
-const stageChipClass = (stage: ApplicationStage): string => {
-  if (stage === 'internalReviewApproved' || stage === 'candidateApplied') {
+const statusChipClass = (status: InterviewStatus): string => {
+  if (status === 'completed') {
     return 'schedule-workspace-chip-good'
   }
 
-  if (stage === 'candidateInvited') {
+  if (status === 'scheduled' || status === 'rescheduled') {
     return 'schedule-workspace-chip-blue'
   }
 
-  if (stage === 'internalReviewPending') {
+  if (status === 'cancelled' || status === 'noShow') {
     return 'schedule-workspace-chip-orange'
   }
 
@@ -140,37 +140,39 @@ export default async function InternalSchedulePage({ searchParams }: InternalSch
   const calendarStart = addDays(firstOfMonth, -monthStartDay)
   const calendarDays = Array.from({ length: CALENDAR_PAGE_SIZE }, (_, index) => addDays(calendarStart, index))
 
-  const applicationsResult = await payload.find({
-    collection: 'applications',
+  const interviewsResult = await payload.find({
+    collection: 'interviews',
     depth: 1,
-    limit: 300,
+    limit: 350,
     pagination: false,
     overrideAccess: false,
-    select: {
-      candidate: true,
-      id: true,
-      job: true,
-      recruiter: true,
-      stage: true,
-      updatedAt: true,
-    },
-    sort: 'updatedAt',
-    user,
-    where: {
-      stage: {
-        in: ['internalReviewPending', 'internalReviewApproved', 'candidateInvited', 'candidateApplied'],
+      select: {
+        candidate: true,
+        endTime: true,
+        id: true,
+        interviewCode: true,
+        interviewerName: true,
+        job: true,
+        meetingLink: true,
+        recruiter: true,
+        startTime: true,
+        status: true,
+        updatedAt: true,
       },
-    },
+    sort: 'startTime',
+    user,
   })
 
-  const filteredEvents = applicationsResult.docs.filter((application) => {
-    const recruiterID = String(extractRelationshipID(application.recruiter) || '')
-    const jobID = String(extractRelationshipID(application.job) || '')
+  const filteredEvents = interviewsResult.docs.filter((event) => {
+    const recruiterID = String(extractRelationshipID(event.recruiter) || '')
+    const jobID = String(extractRelationshipID(event.job) || '')
     const haystack = [
-      readLabel(application.candidate),
-      readLabel(application.job),
-      readLabel(application.recruiter),
-      APPLICATION_STAGE_LABELS[application.stage as ApplicationStage] || application.stage,
+      event.interviewCode || '',
+      event.interviewerName || '',
+      readLabel(event.candidate),
+      readLabel(event.job),
+      readLabel(event.recruiter),
+      INTERVIEW_STATUS_LABELS[event.status as InterviewStatus] || String(event.status || ''),
     ]
       .join(' ')
       .toLowerCase()
@@ -192,10 +194,7 @@ export default async function InternalSchedulePage({ searchParams }: InternalSch
 
   const interviewerOptions = Array.from(
     new Map(
-      applicationsResult.docs.map((application) => [
-        String(extractRelationshipID(application.recruiter) || ''),
-        readLabel(application.recruiter),
-      ]),
+      interviewsResult.docs.map((event) => [String(extractRelationshipID(event.recruiter) || ''), readLabel(event.recruiter)]),
     ).entries(),
   )
     .filter(([id]) => id.length > 0)
@@ -204,10 +203,7 @@ export default async function InternalSchedulePage({ searchParams }: InternalSch
 
   const jobOptions = Array.from(
     new Map(
-      applicationsResult.docs.map((application) => [
-        String(extractRelationshipID(application.job) || ''),
-        readLabel(application.job),
-      ]),
+      interviewsResult.docs.map((event) => [String(extractRelationshipID(event.job) || ''), readLabel(event.job)]),
     ).entries(),
   )
     .filter(([id]) => id.length > 0)
@@ -216,15 +212,15 @@ export default async function InternalSchedulePage({ searchParams }: InternalSch
 
   const eventsByDay = new Map<string, typeof filteredEvents>()
   filteredEvents.forEach((event) => {
-    const key = dateKey(new Date(event.updatedAt))
+    const key = dateKey(new Date(event.startTime))
     const list = eventsByDay.get(key) || []
     list.push(event)
     eventsByDay.set(key, list)
   })
 
   const sortedFutureEvents = filteredEvents
-    .filter((event) => new Date(event.updatedAt).getTime() >= Date.now())
-    .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())
+    .filter((event) => new Date(event.startTime).getTime() >= Date.now())
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 
   const nextUp = sortedFutureEvents[0] || filteredEvents[0] || null
   const todayKey = dateKey(today)
@@ -236,7 +232,7 @@ export default async function InternalSchedulePage({ searchParams }: InternalSch
   const weekStart = addDays(today, -((today.getDay() + 6) % 7))
   const weekEnd = addDays(weekStart, 7)
   const weekLoad = filteredEvents.filter((event) => {
-    const eventDate = new Date(event.updatedAt)
+    const eventDate = new Date(event.startTime)
     return eventDate >= weekStart && eventDate < weekEnd
   }).length
   const capacityPercent = Math.min(100, Math.round((weekLoad / 10) * 100))
@@ -248,7 +244,7 @@ export default async function InternalSchedulePage({ searchParams }: InternalSch
           <p className="schedule-workspace-breadcrumb">Workspace &gt; Schedule</p>
           <h1>Schedule</h1>
         </div>
-        <Link className="schedule-workspace-main-action" href={APP_ROUTES.internal.applications.list}>
+        <Link className="schedule-workspace-main-action" href={`${APP_ROUTES.internal.interviews.list}?create=1`}>
           Schedule Interview
         </Link>
       </header>
@@ -341,12 +337,12 @@ export default async function InternalSchedulePage({ searchParams }: InternalSch
                       <div className="schedule-workspace-day-events">
                         {events.map((event) => (
                           <Link
-                            className={`schedule-workspace-event ${stageChipClass(event.stage as ApplicationStage)}`}
-                            href={`${APP_ROUTES.internal.applications.detailBase}/${event.id}`}
+                            className={`schedule-workspace-event ${statusChipClass(event.status as InterviewStatus)}`}
+                            href={APP_ROUTES.internal.interviews.list}
                             key={`event-${event.id}-${dayKey}`}
                           >
                             <strong>{readLabel(event.candidate)}</strong>
-                            <small>{timeLabel(event.updatedAt)}</small>
+                            <small>{timeLabel(event.startTime)}</small>
                           </Link>
                         ))}
                         {events.length === 0 ? <span className="schedule-workspace-empty-slot" /> : null}
@@ -368,12 +364,12 @@ export default async function InternalSchedulePage({ searchParams }: InternalSch
                       <div>
                         <p>{readLabel(event.candidate)}</p>
                         <small>
-                          {readLabel(event.job)} · {readLabel(event.recruiter)}
+                          {readLabel(event.job)} · {event.interviewerName || readLabel(event.recruiter)}
                         </small>
                       </div>
                       <div>
-                        <span>{APPLICATION_STAGE_LABELS[event.stage as ApplicationStage]}</span>
-                        <small>{dateLabel(event.updatedAt)}</small>
+                        <span>{INTERVIEW_STATUS_LABELS[event.status as InterviewStatus] || String(event.status)}</span>
+                        <small>{dateLabel(event.startTime)}</small>
                       </div>
                     </article>
                   ))}
@@ -393,8 +389,10 @@ export default async function InternalSchedulePage({ searchParams }: InternalSch
               <div className="schedule-workspace-next-item">
                 <p>{readLabel(nextUp.candidate)}</p>
                 <small>{readLabel(nextUp.job)}</small>
-                <small>{timeLabel(nextUp.updatedAt)}</small>
-                <Link href={`${APP_ROUTES.internal.applications.detailBase}/${nextUp.id}`}>Join Meeting</Link>
+                <small>{timeLabel(nextUp.startTime)}</small>
+                <a href={nextUp.meetingLink || '#'} rel="noreferrer" target="_blank">
+                  Join Meeting
+                </a>
               </div>
             ) : (
               <p className="schedule-workspace-empty">No next session planned.</p>
@@ -411,7 +409,7 @@ export default async function InternalSchedulePage({ searchParams }: InternalSch
                   <div key={`later-${event.id}`}>
                     <strong>{readLabel(event.candidate)}</strong>
                     <span>
-                      {APPLICATION_STAGE_LABELS[event.stage as ApplicationStage]} · {timeLabel(event.updatedAt)}
+                      {INTERVIEW_STATUS_LABELS[event.status as InterviewStatus]} · {timeLabel(event.startTime)}
                     </span>
                   </div>
                 ))
@@ -421,17 +419,16 @@ export default async function InternalSchedulePage({ searchParams }: InternalSch
 
           <article className="schedule-workspace-side-card">
             <h3>Tomorrow</h3>
-            <p className="schedule-workspace-tomorrow-count">{tomorrowEvents.length} interviews scheduled</p>
-            <Link href={`${APP_ROUTES.internal.schedule}?view=upcoming`}>See tomorrow&apos;s agenda</Link>
+            <p>{tomorrowEvents.length} interviews scheduled</p>
+            <small>{dateLabel(tomorrow)}</small>
           </article>
 
-          <article className="schedule-workspace-capacity-card">
-            <p>Your Capacity</p>
-            <strong>{capacityPercent}% Full this week</strong>
-            <div>
+          <article className="schedule-workspace-side-card schedule-workspace-capacity-card">
+            <h3>Your Capacity</h3>
+            <p>{capacityPercent}% full this week</p>
+            <div className="schedule-workspace-capacity-track">
               <span style={{ width: `${capacityPercent}%` }} />
             </div>
-            <small>{weekLoad} planned sessions in current week</small>
           </article>
         </aside>
       </div>

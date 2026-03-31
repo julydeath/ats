@@ -181,3 +181,124 @@ export const APPLICATION_STAGE_OPTIONS = APPLICATION_STAGES.map((value) => ({
   label: APPLICATION_STAGE_LABELS[value],
   value,
 }))
+
+export const INTERVIEW_ROUNDS = ['screening', 'technicalRound1', 'technicalRound2', 'managerial', 'hr', 'final'] as const
+export type InterviewRound = (typeof INTERVIEW_ROUNDS)[number]
+
+export const INTERVIEW_ROUND_LABELS: Record<InterviewRound, string> = {
+  screening: 'Screening',
+  technicalRound1: 'Technical Round 1',
+  technicalRound2: 'Technical Round 2',
+  managerial: 'Managerial',
+  hr: 'HR',
+  final: 'Final',
+}
+
+export const INTERVIEW_ROUND_OPTIONS = INTERVIEW_ROUNDS.map((value) => ({
+  label: INTERVIEW_ROUND_LABELS[value],
+  value,
+}))
+
+export const INTERVIEW_STATUSES = ['scheduled', 'rescheduled', 'completed', 'cancelled', 'noShow'] as const
+export type InterviewStatus = (typeof INTERVIEW_STATUSES)[number]
+
+export const INTERVIEW_STATUS_LABELS: Record<InterviewStatus, string> = {
+  scheduled: 'Scheduled',
+  rescheduled: 'Rescheduled',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  noShow: 'No Show',
+}
+
+export const INTERVIEW_STATUS_OPTIONS = INTERVIEW_STATUSES.map((value) => ({
+  label: INTERVIEW_STATUS_LABELS[value],
+  value,
+}))
+
+export const INTERVIEW_MODES = ['video', 'inPerson', 'phone'] as const
+export type InterviewMode = (typeof INTERVIEW_MODES)[number]
+
+export const INTERVIEW_MODE_LABELS: Record<InterviewMode, string> = {
+  video: 'Video',
+  inPerson: 'In-person',
+  phone: 'Phone',
+}
+
+export const INTERVIEW_MODE_OPTIONS = INTERVIEW_MODES.map((value) => ({
+  label: INTERVIEW_MODE_LABELS[value],
+  value,
+}))
+
+export const PLACEMENT_TYPES = ['recurringRevenue', 'oneTimeRevenue', 'inHouse'] as const
+export type PlacementType = (typeof PLACEMENT_TYPES)[number]
+
+export const PLACEMENT_TYPE_LABELS: Record<PlacementType, string> = {
+  recurringRevenue: 'Recurring Revenue',
+  oneTimeRevenue: 'One Time Revenue',
+  inHouse: 'In-house',
+}
+
+export const PLACEMENT_TYPE_OPTIONS = PLACEMENT_TYPES.map((value) => ({
+  label: PLACEMENT_TYPE_LABELS[value],
+  value,
+}))
+
+export const PLACEMENT_STATUSES = ['active', 'inactive', 'completed', 'cancelled'] as const
+export type PlacementStatus = (typeof PLACEMENT_STATUSES)[number]
+
+export const PLACEMENT_STATUS_LABELS: Record<PlacementStatus, string> = {
+  active: 'Active',
+  inactive: 'Inactive',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+}
+
+export const PLACEMENT_STATUS_OPTIONS = PLACEMENT_STATUSES.map((value) => ({
+  label: PLACEMENT_STATUS_LABELS[value],
+  value,
+}))
+
+export const CANDIDATE_ACTIVITY_TYPES = ['note', 'task', 'message', 'activity'] as const
+export type CandidateActivityType = (typeof CANDIDATE_ACTIVITY_TYPES)[number]
+
+export const CANDIDATE_ACTIVITY_TYPE_LABELS: Record<CandidateActivityType, string> = {
+  note: 'Note',
+  task: 'Task',
+  message: 'Message',
+  activity: 'Activity',
+}
+
+export const CANDIDATE_ACTIVITY_TYPE_OPTIONS = CANDIDATE_ACTIVITY_TYPES.map((value) => ({
+  label: CANDIDATE_ACTIVITY_TYPE_LABELS[value],
+  value,
+}))
+
+export const CANDIDATE_ACTIVITY_STATUSES = ['open', 'inProgress', 'completed', 'cancelled'] as const
+export type CandidateActivityStatus = (typeof CANDIDATE_ACTIVITY_STATUSES)[number]
+
+export const CANDIDATE_ACTIVITY_STATUS_LABELS: Record<CandidateActivityStatus, string> = {
+  open: 'Open',
+  inProgress: 'In Progress',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+}
+
+export const CANDIDATE_ACTIVITY_STATUS_OPTIONS = CANDIDATE_ACTIVITY_STATUSES.map((value) => ({
+  label: CANDIDATE_ACTIVITY_STATUS_LABELS[value],
+  value,
+}))
+
+export const CANDIDATE_ACTIVITY_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const
+export type CandidateActivityPriority = (typeof CANDIDATE_ACTIVITY_PRIORITIES)[number]
+
+export const CANDIDATE_ACTIVITY_PRIORITY_LABELS: Record<CandidateActivityPriority, string> = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  urgent: 'Urgent',
+}
+
+export const CANDIDATE_ACTIVITY_PRIORITY_OPTIONS = CANDIDATE_ACTIVITY_PRIORITIES.map((value) => ({
+  label: CANDIDATE_ACTIVITY_PRIORITY_LABELS[value],
+  value,
+}))

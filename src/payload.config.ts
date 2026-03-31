@@ -16,9 +16,13 @@ import { JobLeadAssignments } from './collections/JobLeadAssignments'
 import { RecruiterJobAssignments } from './collections/RecruiterJobAssignments'
 import { CandidateResumes } from './collections/CandidateResumes'
 import { Candidates } from './collections/Candidates'
+import { CandidateActivities } from './collections/CandidateActivities'
 import { Applications } from './collections/Applications'
 import { ApplicationStageHistory } from './collections/ApplicationStageHistory'
 import { CandidateInvites } from './collections/CandidateInvites'
+import { JobTemplates } from './collections/JobTemplates'
+import { Interviews } from './collections/Interviews'
+import { Placements } from './collections/Placements'
 import { env } from './lib/env'
 
 const filename = fileURLToPath(import.meta.url)
@@ -43,9 +47,13 @@ export default buildConfig({
     RecruiterJobAssignments,
     CandidateResumes,
     Candidates,
+    CandidateActivities,
     Applications,
     ApplicationStageHistory,
     CandidateInvites,
+    JobTemplates,
+    Interviews,
+    Placements,
     Media,
   ],
   cors: [appURL],

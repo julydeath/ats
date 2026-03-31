@@ -155,6 +155,49 @@ export const applicationsUpdateAccess: Access = ({ req }) =>
 export const applicationsDeleteAccess: Access = ({ req }) =>
   hasInternalRole(req.user as InternalUserLike, ['admin'])
 
+export const jobTemplatesReadAccess: Access = ({ req }) =>
+  Boolean(toVisibilityUser(req.user as InternalUserLike))
+
+export const jobTemplatesManageAccess: Access = ({ req }) =>
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])
+
+export const interviewsReadAccess: Access = ({ req }) =>
+  Boolean(toVisibilityUser(req.user as InternalUserLike))
+
+export const interviewsManageAccess: Access = ({ req }) =>
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])
+
+export const placementsReadAccess: Access = ({ req }) =>
+  Boolean(toVisibilityUser(req.user as InternalUserLike))
+
+export const placementsManageAccess: Access = ({ req }) =>
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])
+
+export const candidateActivitiesReadAccess: Access = ({ req }) => {
+  const user = toVisibilityUser(req.user as InternalUserLike)
+
+  if (user) {
+    return true
+  }
+
+  const candidateUser = toCandidateVisibilityUser(req.user as CandidateUserLike)
+
+  if (!candidateUser) {
+    return false
+  }
+
+  return buildCandidateApplicationWhere(candidateUser)
+}
+
+export const candidateActivitiesCreateAccess: Access = ({ req }) =>
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter'])
+
+export const candidateActivitiesUpdateAccess: Access = ({ req }) =>
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter'])
+
+export const candidateActivitiesDeleteAccess: Access = ({ req }) =>
+  hasInternalRole(req.user as InternalUserLike, ['admin'])
+
 export const applicationHistoryReadAccess: Access = ({ req }) => {
   const user = toVisibilityUser(req.user as InternalUserLike)
 

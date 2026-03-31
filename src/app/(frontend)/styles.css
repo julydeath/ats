@@ -7987,6 +7987,93 @@ ul {
   font-weight: 700;
 }
 
+.candidate-profile-activity-form {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0.55rem;
+}
+
+.candidate-profile-activity-form label {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.candidate-profile-activity-form label span {
+  color: #6f809b;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.candidate-profile-activity-form input,
+.candidate-profile-activity-form select,
+.candidate-profile-activity-form textarea {
+  background: #fbfdff;
+  border: 1px solid #d5dfef;
+  border-radius: 10px;
+  color: #243550;
+  font-size: 0.76rem;
+  min-height: 2.1rem;
+  padding: 0.5rem 0.58rem;
+}
+
+.candidate-profile-activity-form textarea {
+  min-height: 5.1rem;
+  resize: vertical;
+}
+
+.candidate-profile-activity-form input:focus,
+.candidate-profile-activity-form select:focus,
+.candidate-profile-activity-form textarea:focus {
+  border-color: #0f5ec9;
+  outline: 2px solid rgba(15, 94, 201, 0.16);
+}
+
+.candidate-profile-activity-form button {
+  align-items: center;
+  background: #0f5ec9;
+  border: 1px solid #0f5ec9;
+  border-radius: 10px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  height: 2.15rem;
+  justify-content: center;
+  margin-top: 0.08rem;
+  padding: 0 0.7rem;
+}
+
+.candidate-profile-activity-form-span-2 {
+  grid-column: span 2;
+}
+
+.candidate-profile-activity-list {
+  display: grid;
+  gap: 0.38rem;
+  margin-top: 0.56rem;
+}
+
+.candidate-profile-activity-item {
+  background: #f9fbff;
+  border: 1px solid #e2ebf7;
+  border-radius: 10px;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.46rem 0.52rem;
+}
+
+.candidate-profile-activity-item p {
+  color: #1a2a47;
+  font-size: 0.79rem;
+  font-weight: 700;
+}
+
+.candidate-profile-activity-item small {
+  color: #6f809d;
+  font-size: 0.68rem;
+}
+
 .candidate-profile-resume-card {
   display: grid;
   gap: 0;
@@ -8879,6 +8966,517 @@ ul {
   color: #7d8ea9;
 }
 
+.jobs-workspace-breadcrumb,
+.placements-workspace-breadcrumb {
+  color: #7f90aa;
+  font-size: 0.71rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.jobs-workspace-create,
+.placements-workspace-main-action {
+  align-items: center;
+  background: #0f5ec9;
+  border: 1px solid #0f5ec9;
+  border-radius: 10px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  height: 2.15rem;
+  justify-content: center;
+  min-width: 8rem;
+  padding: 0 0.75rem;
+}
+
+.jobs-workspace-feedback,
+.schedule-workspace-feedback,
+.placements-workspace-feedback {
+  border-radius: 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.5rem 0.62rem;
+}
+
+.jobs-workspace-feedback-success,
+.schedule-workspace-feedback-success,
+.placements-workspace-feedback-success {
+  background: #e8f9ef;
+  border: 1px solid #b8e8c8;
+  color: #0f7840;
+}
+
+.jobs-workspace-feedback-error,
+.schedule-workspace-feedback-error,
+.placements-workspace-feedback-error {
+  background: #ffecec;
+  border: 1px solid #f0bcbc;
+  color: #b42318;
+}
+
+.jobs-workspace-search,
+.schedule-workspace-header-actions .schedule-workspace-search,
+.placements-workspace-search {
+  align-items: center;
+  display: flex;
+  gap: 0.34rem;
+}
+
+.jobs-workspace-search input,
+.schedule-workspace-header-actions .schedule-workspace-search input,
+.placements-workspace-search input,
+.schedule-workspace-header-actions .schedule-workspace-search select,
+.placements-workspace-search select {
+  background: #fbfdff;
+  border: 1px solid #d5dfef;
+  border-radius: 10px;
+  color: #243550;
+  font-size: 0.79rem;
+  height: 2.16rem;
+  padding: 0 0.62rem;
+}
+
+.jobs-workspace-search input {
+  min-width: 220px;
+}
+
+.schedule-workspace-header-actions .schedule-workspace-search input {
+  min-width: 260px;
+}
+
+.placements-workspace-search input {
+  min-width: 230px;
+}
+
+.jobs-workspace-search button,
+.schedule-workspace-header-actions .schedule-workspace-search button,
+.placements-workspace-search button {
+  align-items: center;
+  background: #0f5ec9;
+  border: 1px solid #0f5ec9;
+  border-radius: 10px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 700;
+  height: 2.16rem;
+  justify-content: center;
+  min-width: 4.8rem;
+  padding: 0 0.62rem;
+}
+
+.jobs-workspace-table-card,
+.schedule-workspace-table-card,
+.placements-workspace-table-card {
+  background: #fff;
+  border: 1px solid #dbe4f2;
+  border-radius: 15px;
+  padding: 0.58rem 0.62rem;
+}
+
+.jobs-workspace-table,
+.schedule-workspace-table,
+.placements-workspace-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.jobs-workspace-table th,
+.schedule-workspace-table th,
+.placements-workspace-table th {
+  border-bottom: 1px solid #e5ecf7;
+  color: #71829d;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  padding: 0.58rem 0.45rem;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.jobs-workspace-table td,
+.schedule-workspace-table td,
+.placements-workspace-table td {
+  border-bottom: 1px solid #edf2f9;
+  color: #273853;
+  font-size: 0.79rem;
+  padding: 0.56rem 0.45rem;
+  vertical-align: middle;
+}
+
+.jobs-workspace-cell-title,
+.schedule-workspace-cell-title,
+.placements-workspace-cell-title,
+.jobs-workspace-cell-meta,
+.schedule-workspace-cell-meta,
+.placements-workspace-cell-meta {
+  display: grid;
+  gap: 0.16rem;
+}
+
+.jobs-workspace-cell-title strong,
+.schedule-workspace-cell-title strong,
+.placements-workspace-cell-title strong,
+.jobs-workspace-cell-meta span,
+.schedule-workspace-cell-meta span,
+.placements-workspace-cell-meta span {
+  color: #172742;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.jobs-workspace-cell-title small,
+.schedule-workspace-cell-title small,
+.placements-workspace-cell-title small,
+.jobs-workspace-cell-meta small,
+.schedule-workspace-cell-meta small,
+.placements-workspace-cell-meta small {
+  color: #6f809b;
+  font-size: 0.68rem;
+}
+
+.jobs-workspace-status,
+.schedule-workspace-status,
+.placements-workspace-status {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.22rem 0.45rem;
+}
+
+.jobs-workspace-status-open,
+.schedule-workspace-status-scheduled,
+.schedule-workspace-status-rescheduled,
+.placements-workspace-status-active {
+  background: #e9f8ef;
+  border: 1px solid #b8e8c8;
+  color: #0f7840;
+}
+
+.jobs-workspace-status-closed,
+.schedule-workspace-status-cancelled,
+.schedule-workspace-status-noShow,
+.placements-workspace-status-cancelled,
+.placements-workspace-status-inactive {
+  background: #fff3e0;
+  border: 1px solid #f5d3a0;
+  color: #ab6a12;
+}
+
+.schedule-workspace-status-completed,
+.placements-workspace-status-completed {
+  background: #eaf1ff;
+  border: 1px solid #c8daf8;
+  color: #1a58b3;
+}
+
+.jobs-workspace-empty,
+.schedule-workspace-empty,
+.placements-workspace-empty {
+  color: #7d8ea8;
+  font-size: 0.8rem;
+  padding: 0.92rem;
+  text-align: center;
+}
+
+.jobs-workspace-pagination,
+.schedule-workspace-pagination,
+.placements-workspace-pagination {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding-top: 0.58rem;
+}
+
+.jobs-workspace-pagination span,
+.schedule-workspace-pagination span,
+.placements-workspace-pagination span {
+  color: #667892;
+  font-size: 0.74rem;
+}
+
+.jobs-workspace-pagination div,
+.schedule-workspace-pagination div,
+.placements-workspace-pagination div {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.jobs-workspace-page-btn,
+.schedule-workspace-page-btn,
+.placements-workspace-page-btn {
+  align-items: center;
+  background: #f8fbff;
+  border: 1px solid #d6e0ef;
+  border-radius: 8px;
+  color: #52647f;
+  display: inline-flex;
+  font-size: 0.73rem;
+  font-weight: 700;
+  height: 1.92rem;
+  justify-content: center;
+  min-width: 1.92rem;
+  padding: 0 0.48rem;
+}
+
+.jobs-workspace-page-btn-disabled,
+.schedule-workspace-page-btn-disabled,
+.placements-workspace-page-btn-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.schedule-workspace-inline-form,
+.placements-workspace-inline-form {
+  align-items: center;
+  display: flex;
+  gap: 0.3rem;
+}
+
+.schedule-workspace-inline-form select,
+.placements-workspace-inline-form select {
+  background: #fbfdff;
+  border: 1px solid #d5dfef;
+  border-radius: 8px;
+  color: #253650;
+  font-size: 0.73rem;
+  height: 1.95rem;
+  padding: 0 0.45rem;
+}
+
+.schedule-workspace-inline-form button,
+.placements-workspace-inline-form button {
+  align-items: center;
+  background: #0f5ec9;
+  border: 1px solid #0f5ec9;
+  border-radius: 8px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.71rem;
+  font-weight: 700;
+  height: 1.95rem;
+  justify-content: center;
+  min-width: 3.8rem;
+  padding: 0 0.48rem;
+}
+
+.jobs-workspace-modal-wrap,
+.schedule-workspace-modal-wrap,
+.placements-workspace-modal-wrap {
+  inset: 0;
+  position: fixed;
+  z-index: 70;
+}
+
+.jobs-workspace-modal-backdrop,
+.schedule-workspace-modal-backdrop,
+.placements-workspace-modal-backdrop {
+  background: rgba(9, 21, 40, 0.42);
+  inset: 0;
+  position: absolute;
+}
+
+.jobs-workspace-modal,
+.schedule-workspace-modal,
+.placements-workspace-modal {
+  background: #fff;
+  border: 1px solid #dbe4f2;
+  border-radius: 16px;
+  inset: 50% auto auto 50%;
+  max-height: min(88vh, 820px);
+  overflow-y: auto;
+  padding: 0.75rem;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: min(760px, calc(100vw - 2rem));
+}
+
+.jobs-workspace-modal header,
+.schedule-workspace-modal header,
+.placements-workspace-modal header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.58rem;
+}
+
+.jobs-workspace-modal header h2,
+.schedule-workspace-modal header h2,
+.placements-workspace-modal header h2 {
+  color: #16253f;
+  font-size: 1.15rem;
+}
+
+.jobs-workspace-modal header a,
+.schedule-workspace-modal header a,
+.placements-workspace-modal header a {
+  color: #5c6f8c;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.jobs-workspace-modal-grid,
+.schedule-workspace-modal-grid,
+.placements-workspace-modal-grid {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.jobs-workspace-modal-grid label,
+.schedule-workspace-modal-grid label,
+.placements-workspace-modal-grid label {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.jobs-workspace-modal-grid label span,
+.schedule-workspace-modal-grid label span,
+.placements-workspace-modal-grid label span {
+  color: #6f809b;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.jobs-workspace-modal-grid input,
+.jobs-workspace-modal-grid select,
+.jobs-workspace-modal-grid textarea,
+.schedule-workspace-modal-grid input,
+.schedule-workspace-modal-grid select,
+.schedule-workspace-modal-grid textarea,
+.placements-workspace-modal-grid input,
+.placements-workspace-modal-grid select,
+.placements-workspace-modal-grid textarea {
+  background: #fbfdff;
+  border: 1px solid #d5dfef;
+  border-radius: 10px;
+  color: #253650;
+  font-size: 0.78rem;
+  min-height: 2.14rem;
+  padding: 0.5rem 0.6rem;
+}
+
+.jobs-workspace-modal-grid textarea,
+.schedule-workspace-modal-grid textarea,
+.placements-workspace-modal-grid textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.jobs-workspace-modal-grid input:focus,
+.jobs-workspace-modal-grid select:focus,
+.jobs-workspace-modal-grid textarea:focus,
+.schedule-workspace-modal-grid input:focus,
+.schedule-workspace-modal-grid select:focus,
+.schedule-workspace-modal-grid textarea:focus,
+.placements-workspace-modal-grid input:focus,
+.placements-workspace-modal-grid select:focus,
+.placements-workspace-modal-grid textarea:focus {
+  border-color: #0f5ec9;
+  outline: 2px solid rgba(15, 94, 201, 0.16);
+}
+
+.jobs-workspace-modal-span-2,
+.schedule-workspace-modal-span-2,
+.placements-workspace-modal-span-2 {
+  grid-column: span 2;
+}
+
+.jobs-workspace-modal footer,
+.schedule-workspace-modal footer,
+.placements-workspace-modal footer {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+  margin-top: 0.62rem;
+}
+
+.jobs-workspace-modal footer a,
+.schedule-workspace-modal footer a,
+.placements-workspace-modal footer a {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #d6e0ef;
+  border-radius: 10px;
+  color: #304968;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  height: 2.12rem;
+  justify-content: center;
+  min-width: 5rem;
+  padding: 0 0.62rem;
+}
+
+.jobs-workspace-modal footer button,
+.schedule-workspace-modal footer button,
+.placements-workspace-modal footer button {
+  align-items: center;
+  background: #0f5ec9;
+  border: 1px solid #0f5ec9;
+  border-radius: 10px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  height: 2.12rem;
+  justify-content: center;
+  min-width: 6.3rem;
+  padding: 0 0.68rem;
+}
+
+.placements-workspace-page {
+  display: grid;
+  gap: 0.76rem;
+}
+
+.placements-workspace-header {
+  align-items: center;
+  background: #f8fbff;
+  border: 1px solid #dbe4f2;
+  border-radius: 16px;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.9rem 1rem;
+}
+
+.placements-workspace-header h1 {
+  color: #131f34;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-top: 0.22rem;
+}
+
+.placements-workspace-header p {
+  color: #5f708c;
+  font-size: 0.86rem;
+  margin-top: 0.2rem;
+}
+
+.placements-workspace-header-actions,
+.schedule-workspace-header-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.schedule-workspace-capacity-track {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  height: 0.34rem;
+  margin-top: 0.42rem;
+  overflow: hidden;
+}
+
+.schedule-workspace-capacity-track span {
+  background: #65d090;
+  display: block;
+  height: 100%;
+}
+
 @media (max-width: 1280px) {
   .candidate-profile-grid,
   .schedule-workspace-grid {
@@ -8889,13 +9487,18 @@ ul {
 @media (max-width: 980px) {
   .candidate-profile-hero,
   .lead-queue-header,
-  .schedule-workspace-header {
+  .schedule-workspace-header,
+  .placements-workspace-header,
+  .jobs-workspace-header {
     display: grid;
     gap: 0.6rem;
   }
 
   .candidate-profile-hero-actions,
-  .lead-queue-head-links {
+  .lead-queue-head-links,
+  .schedule-workspace-header-actions,
+  .placements-workspace-header-actions,
+  .jobs-workspace-header-actions {
     flex-wrap: wrap;
   }
 
@@ -8906,6 +9509,45 @@ ul {
   .lead-queue-filters,
   .schedule-workspace-filter-row {
     grid-template-columns: 1fr;
+  }
+
+  .candidate-profile-activity-form,
+  .jobs-workspace-modal-grid,
+  .schedule-workspace-modal-grid,
+  .placements-workspace-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .candidate-profile-activity-form-span-2,
+  .jobs-workspace-modal-span-2,
+  .schedule-workspace-modal-span-2,
+  .placements-workspace-modal-span-2 {
+    grid-column: span 1;
+  }
+
+  .jobs-workspace-search,
+  .schedule-workspace-header-actions .schedule-workspace-search,
+  .placements-workspace-search {
+    flex-wrap: wrap;
+  }
+
+  .jobs-workspace-search input,
+  .schedule-workspace-header-actions .schedule-workspace-search input,
+  .placements-workspace-search input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .jobs-workspace-table-card,
+  .schedule-workspace-table-card,
+  .placements-workspace-table-card {
+    overflow-x: auto;
+  }
+
+  .jobs-workspace-table,
+  .schedule-workspace-table,
+  .placements-workspace-table {
+    min-width: 760px;
   }
 
   .lead-queue-action-form {

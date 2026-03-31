@@ -15,6 +15,8 @@ export const APP_ROUTES = {
       assigned: '/internal/jobs/assigned',
       create: '/internal/jobs/create',
       detailBase: '/internal/jobs/assigned',
+      templates: '/internal/jobs/templates',
+      templatesCreate: '/internal/jobs/templates/create',
     },
     clients: {
       create: '/internal/clients/create',
@@ -22,6 +24,7 @@ export const APP_ROUTES = {
       list: '/internal/clients',
     },
     candidates: {
+      activityCreate: '/internal/candidates/activity/create',
       create: '/internal/candidates/create',
       detailBase: '/internal/candidates',
       list: '/internal/candidates',
@@ -36,6 +39,18 @@ export const APP_ROUTES = {
       review: '/internal/applications/review',
       reviewQueue: '/internal/applications/review-queue',
       submit: '/internal/applications/submit',
+    },
+    interviews: {
+      create: '/internal/interviews/create',
+      detailBase: '/internal/interviews',
+      list: '/internal/interviews',
+      updateStatus: '/internal/interviews/update-status',
+    },
+    placements: {
+      create: '/internal/placements/create',
+      detailBase: '/internal/placements',
+      list: '/internal/placements',
+      updateStatus: '/internal/placements/update-status',
     },
   },
   candidate: {

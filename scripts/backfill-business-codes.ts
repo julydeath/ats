@@ -27,8 +27,12 @@ const TARGETS: BackfillTarget[] = [
   { collection: 'clients', field: 'clientCode', label: 'Clients', prefix: 'CLT' },
   { collection: 'jobs', field: 'jobCode', label: 'Jobs', prefix: 'JOB' },
   { collection: 'candidates', field: 'candidateCode', label: 'Candidates', prefix: 'CAN' },
+  { collection: 'candidate-activities', field: 'activityCode', label: 'Candidate Activities', prefix: 'ACT' },
   { collection: 'applications', field: 'applicationCode', label: 'Applications', prefix: 'APP' },
   { collection: 'job-requests', field: 'jobRequestCode', label: 'Job Requests', prefix: 'JREQ' },
+  { collection: 'job-templates', field: 'templateCode', label: 'Job Templates', prefix: 'JTPL' },
+  { collection: 'interviews', field: 'interviewCode', label: 'Interviews', prefix: 'INT' },
+  { collection: 'placements', field: 'placementCode', label: 'Placements', prefix: 'PLC' },
 ]
 
 const pad = (value: number, size: number): string => String(value).padStart(size, '0')

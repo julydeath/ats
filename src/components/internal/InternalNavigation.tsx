@@ -16,10 +16,12 @@ const ICON_TEXT: Record<string, string> = {
   candidates: 'C',
   clients: 'L',
   dashboard: 'D',
+  interviews: 'I',
   jobs: 'J',
+  placements: 'P',
   review: 'R',
   schedule: 'S',
-  settings: 'P',
+  settings: 'T',
 }
 
 export const InternalNavigation = ({ role }: InternalNavigationProps) => {

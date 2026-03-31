@@ -272,6 +272,10 @@ export const CandidateCreateForm = ({
                   <input name="email" ref={emailRef} type="email" />
                 </label>
                 <label>
+                  <span>Alternate Email</span>
+                  <input name="alternateEmail" type="email" />
+                </label>
+                <label>
                   <span>Phone</span>
                   <input name="phone" ref={phoneRef} type="tel" />
                 </label>
@@ -374,12 +378,24 @@ export const CandidateCreateForm = ({
                   <input min={0} name="expectedSalary" type="number" />
                 </label>
                 <label>
+                  <span>Expected Pay Min</span>
+                  <input min={0} name="expectedPayMin" type="number" />
+                </label>
+                <label>
+                  <span>Expected Pay Max</span>
+                  <input min={0} name="expectedPayMax" type="number" />
+                </label>
+                <label>
                   <span>Expected Pay Currency</span>
                   <input name="expectedPayCurrency" placeholder="INR / USD / AED" type="text" />
                 </label>
                 <label>
                   <span>Expected Pay Type</span>
                   <input name="expectedPayType" placeholder="Monthly / Yearly / Hourly" type="text" />
+                </label>
+                <label>
+                  <span>Expected Pay Unit</span>
+                  <input name="expectedPayUnit" placeholder="Per hour / Per month / Per annum" type="text" />
                 </label>
                 <label>
                   <span>Notice Period (Days)</span>
@@ -441,8 +457,28 @@ export const CandidateCreateForm = ({
                   <input name="referenceID" type="text" />
                 </label>
                 <label>
+                  <span>Aadhaar / National ID</span>
+                  <input name="aadhaarNumber" type="text" />
+                </label>
+                <label>
                   <span>GPA</span>
                   <input name="gpa" type="text" />
+                </label>
+                <label>
+                  <span>Gender</span>
+                  <input name="gender" placeholder="Optional EEO field" type="text" />
+                </label>
+                <label>
+                  <span>Race / Ethnicity</span>
+                  <input name="raceEthnicity" placeholder="Optional EEO field" type="text" />
+                </label>
+                <label>
+                  <span>Veteran Status</span>
+                  <input name="veteranStatus" placeholder="Optional EEO field" type="text" />
+                </label>
+                <label>
+                  <span>Disability Status</span>
+                  <input name="disabilityStatus" placeholder="Optional EEO field" type="text" />
                 </label>
                 <label className="candidate-intake-checkbox">
                   <input name="relocation" type="checkbox" />
@@ -460,6 +496,10 @@ export const CandidateCreateForm = ({
               <label className="candidate-intake-notes">
                 <span>Notes</span>
                 <textarea name="notes" ref={notesRef} rows={4} />
+              </label>
+              <label className="candidate-intake-notes">
+                <span>Additional Comments</span>
+                <textarea name="additionalComments" rows={3} />
               </label>
             </section>
           </div>

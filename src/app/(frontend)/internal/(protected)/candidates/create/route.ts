@@ -95,6 +95,7 @@ export async function POST(request: Request) {
   const lastName = readString(formData.get('lastName')) || undefined
   const nickName = readString(formData.get('nickName')) || undefined
   const email = readString(formData.get('email')) || undefined
+  const alternateEmail = readString(formData.get('alternateEmail')) || undefined
   const phone = readString(formData.get('phone')) || undefined
   const alternatePhone = readString(formData.get('alternatePhone')) || undefined
   const homePhone = readString(formData.get('homePhone')) || undefined
@@ -128,8 +129,11 @@ export async function POST(request: Request) {
   const totalExperienceYears = parseOptionalNumber(formData.get('totalExperienceYears'))
   const totalExperienceMonths = parseOptionalNumber(formData.get('totalExperienceMonths'))
   const expectedSalary = parseOptionalNumber(formData.get('expectedSalary'))
+  const expectedPayMin = parseOptionalNumber(formData.get('expectedPayMin'))
+  const expectedPayMax = parseOptionalNumber(formData.get('expectedPayMax'))
   const expectedPayCurrency = readString(formData.get('expectedPayCurrency')) || undefined
   const expectedPayType = readString(formData.get('expectedPayType')) || undefined
+  const expectedPayUnit = readString(formData.get('expectedPayUnit')) || undefined
   const noticePeriodDays = parseOptionalNumber(formData.get('noticePeriodDays'))
   const noticePeriodLabel = readString(formData.get('noticePeriodLabel')) || undefined
   const relocation = parseBoolean(formData.get('relocation'))
@@ -143,7 +147,13 @@ export async function POST(request: Request) {
   const referredBy = readString(formData.get('referredBy')) || undefined
   const nationality = readString(formData.get('nationality')) || undefined
   const referenceID = readString(formData.get('referenceID')) || undefined
+  const aadhaarNumber = readString(formData.get('aadhaarNumber')) || undefined
   const gpa = readString(formData.get('gpa')) || undefined
+  const gender = readString(formData.get('gender')) || undefined
+  const raceEthnicity = readString(formData.get('raceEthnicity')) || undefined
+  const veteranStatus = readString(formData.get('veteranStatus')) || undefined
+  const disabilityStatus = readString(formData.get('disabilityStatus')) || undefined
+  const additionalComments = readString(formData.get('additionalComments')) || undefined
   const currentUserID = toNumericID(internalUser?.id)
   const skills = parseList(skillsInput).slice(0, 30)
   const primarySkills = parseList(primarySkillsInput).slice(0, 20)
@@ -157,6 +167,16 @@ export async function POST(request: Request) {
   if (!email && !phone) {
     const failureURL = buildCreateRedirectURL(request)
     failureURL.searchParams.set('error', 'Provide at least one contact method: email or phone.')
+    return NextResponse.redirect(failureURL, 303)
+  }
+
+  if (
+    expectedPayMin !== undefined &&
+    expectedPayMax !== undefined &&
+    expectedPayMin > expectedPayMax
+  ) {
+    const failureURL = buildCreateRedirectURL(request)
+    failureURL.searchParams.set('error', 'Expected pay min cannot be greater than expected pay max.')
     return NextResponse.redirect(failureURL, 303)
   }
 
@@ -196,6 +216,9 @@ export async function POST(request: Request) {
     const candidate = await payload.create({
       collection: 'candidates',
       data: {
+        aadhaarNumber,
+        additionalComments,
+        alternateEmail,
         alternatePhone,
         applicantGroup,
         applicantStatus,
@@ -206,13 +229,18 @@ export async function POST(request: Request) {
         currentCompany,
         currentLocation,
         currentRole,
+        disabilityStatus,
         email,
+        expectedPayMax,
+        expectedPayMin,
         expectedPayCurrency,
         expectedPayType,
+        expectedPayUnit,
         expectedSalary,
         facebookProfileURL,
         firstName,
         fullName,
+        gender,
         gpa,
         homePhone,
         jobTitle,
@@ -234,6 +262,7 @@ export async function POST(request: Request) {
         referredBy,
         relocation,
         resume: uploadedResumeID ?? undefined,
+        raceEthnicity,
         skypeID,
         state,
         source,
@@ -247,6 +276,7 @@ export async function POST(request: Request) {
         totalExperienceYears,
         twitterProfileURL,
         videoReference,
+        veteranStatus,
         workAuthorization,
         workAuthorizationExpiry,
         workPhone,

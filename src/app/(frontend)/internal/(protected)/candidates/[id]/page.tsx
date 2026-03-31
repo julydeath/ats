@@ -126,6 +126,7 @@ type CandidateDetailPageProps = {
     id: string
   }>
   searchParams?: Promise<{
+    error?: string
     success?: string
   }>
 }
@@ -143,7 +144,7 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
   }
 
   try {
-    const [candidate, applicationsForCandidate] = await Promise.all([
+    const [candidate, applicationsForCandidate, candidateActivities] = await Promise.all([
       payload.findByID({
         collection: 'candidates',
         depth: 1,
@@ -212,6 +213,29 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
           },
         },
       }),
+      payload.find({
+        collection: 'candidate-activities',
+        depth: 1,
+        limit: 20,
+        overrideAccess: false,
+        pagination: false,
+        select: {
+          dueAt: true,
+          id: true,
+          priority: true,
+          status: true,
+          title: true,
+          type: true,
+          updatedAt: true,
+        },
+        sort: '-updatedAt',
+        user,
+        where: {
+          candidate: {
+            equals: candidateID,
+          },
+        },
+      }),
     ])
 
     const resumeMeta = getResumeMeta(candidate.resume)
@@ -220,6 +244,20 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
     const latestApplication = applicationsForCandidate.docs[0] || null
     const latestStage = (latestApplication?.stage as ApplicationStage | undefined) || null
     const latestStageLabel = latestStage ? APPLICATION_STAGE_LABELS[latestStage] : 'Profile Created'
+    const activityByType = candidateActivities.docs.reduce(
+      (acc, item) => {
+        const type = String(item.type || 'activity')
+        if (type === 'note') acc.notes += 1
+        if (type === 'task') acc.tasks += 1
+        if (type === 'message') acc.messages += 1
+        return acc
+      },
+      {
+        messages: 0,
+        notes: 0,
+        tasks: 0,
+      },
+    )
     const skillTags = getSkillTags([
       ...(Array.isArray(candidate.skills) ? candidate.skills : []),
       ...(Array.isArray(candidate.primarySkills) ? candidate.primarySkills : []),
@@ -260,7 +298,14 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
               {candidate.candidateCode || `CAN-${candidate.id}`} · {candidate.currentRole || 'Role not specified'} · {candidate.currentLocation || 'Location not provided'} ·{' '}
               {candidate.totalExperienceYears ?? 'N/A'} years experience
             </p>
-            {resolvedSearchParams.success ? <p className="candidate-profile-success">Candidate profile saved successfully.</p> : null}
+            {resolvedSearchParams.success ? (
+              <p className="candidate-profile-success">
+                {resolvedSearchParams.success === 'activityCreated'
+                  ? 'Candidate activity added successfully.'
+                  : 'Candidate profile saved successfully.'}
+              </p>
+            ) : null}
+            {resolvedSearchParams.error ? <p className="error-text">{resolvedSearchParams.error}</p> : null}
           </div>
 
           <div className="candidate-profile-hero-actions">
@@ -377,6 +422,78 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
                     </article>
                   ))}
                 </div>
+              )}
+            </article>
+
+            <article className="candidate-profile-card">
+              <div className="candidate-profile-card-head">
+                <p className="candidate-profile-card-title">Notes · Tasks · Messages</p>
+                <span>
+                  {activityByType.notes}N / {activityByType.tasks}T / {activityByType.messages}M
+                </span>
+              </div>
+
+              <form action={APP_ROUTES.internal.candidates.activityCreate} className="candidate-profile-activity-form" method="post">
+                <input name="candidateId" type="hidden" value={candidate.id} />
+                {latestApplication ? <input name="applicationId" type="hidden" value={latestApplication.id} /> : null}
+                <label>
+                  <span>Title</span>
+                  <input name="title" placeholder="Add note or task title" required type="text" />
+                </label>
+                <label>
+                  <span>Type</span>
+                  <select defaultValue="note" name="type">
+                    <option value="note">Note</option>
+                    <option value="task">Task</option>
+                    <option value="message">Message</option>
+                    <option value="activity">Activity</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Priority</span>
+                  <select defaultValue="medium" name="priority">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Status</span>
+                  <select defaultValue="open" name="status">
+                    <option value="open">Open</option>
+                    <option value="inProgress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Due Date</span>
+                  <input name="dueAt" type="date" />
+                </label>
+                <label className="candidate-profile-activity-form-span-2">
+                  <span>Description</span>
+                  <textarea name="description" rows={3} />
+                </label>
+                <button type="submit">Add Activity</button>
+              </form>
+
+              {candidateActivities.docs.length > 0 ? (
+                <div className="candidate-profile-activity-list">
+                  {candidateActivities.docs.slice(0, 5).map((item) => (
+                    <article className="candidate-profile-activity-item" key={`activity-${item.id}`}>
+                      <p>{item.title}</p>
+                      <small>
+                        {String(item.type || 'activity')} · {String(item.priority || 'medium')} · {String(item.status || 'open')}
+                      </small>
+                      <small>
+                        {item.dueAt ? `Due ${formatDate(item.dueAt)}` : 'No due date'} · Updated {formatDateTime(item.updatedAt)}
+                      </small>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="candidate-profile-empty">No activity logs added yet.</p>
               )}
             </article>
           </aside>

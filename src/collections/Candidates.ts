@@ -72,6 +72,10 @@ export const Candidates: CollectionConfig = {
       index: true,
     },
     {
+      name: 'alternateEmail',
+      type: 'email',
+    },
+    {
       name: 'phone',
       type: 'text',
       index: true,
@@ -176,11 +180,25 @@ export const Candidates: CollectionConfig = {
       min: 0,
     },
     {
+      name: 'expectedPayMin',
+      type: 'number',
+      min: 0,
+    },
+    {
+      name: 'expectedPayMax',
+      type: 'number',
+      min: 0,
+    },
+    {
       name: 'expectedPayCurrency',
       type: 'text',
     },
     {
       name: 'expectedPayType',
+      type: 'text',
+    },
+    {
+      name: 'expectedPayUnit',
       type: 'text',
     },
     {
@@ -351,6 +369,10 @@ export const Candidates: CollectionConfig = {
       type: 'textarea',
     },
     {
+      name: 'additionalComments',
+      type: 'textarea',
+    },
+    {
       name: 'educationDetails',
       type: 'array',
       fields: [
@@ -426,6 +448,74 @@ export const Candidates: CollectionConfig = {
           name: 'isCurrent',
           type: 'checkbox',
           defaultValue: false,
+        },
+        {
+          name: 'summary',
+          type: 'textarea',
+        },
+      ],
+    },
+    {
+      name: 'employerDetails',
+      type: 'array',
+      fields: [
+        {
+          name: 'employerName',
+          type: 'text',
+        },
+        {
+          name: 'contactName',
+          type: 'text',
+        },
+        {
+          name: 'contactEmail',
+          type: 'email',
+        },
+        {
+          name: 'contactPhone',
+          type: 'text',
+        },
+        {
+          name: 'designation',
+          type: 'text',
+        },
+        {
+          name: 'startDate',
+          type: 'date',
+        },
+        {
+          name: 'endDate',
+          type: 'date',
+        },
+        {
+          name: 'reasonForLeaving',
+          type: 'textarea',
+        },
+      ],
+    },
+    {
+      name: 'employmentTestResults',
+      type: 'array',
+      fields: [
+        {
+          name: 'testName',
+          type: 'text',
+        },
+        {
+          name: 'score',
+          type: 'number',
+        },
+        {
+          name: 'maxScore',
+          type: 'number',
+        },
+        {
+          name: 'result',
+          type: 'text',
+        },
+        {
+          name: 'completedAt',
+          type: 'date',
         },
       ],
     },
@@ -513,9 +603,15 @@ export const Candidates: CollectionConfig = {
         const resumeID = extractRelationshipID(typedData.resume ?? typedOriginalDoc?.resume)
         const sourcedByID = extractRelationshipID(typedData.sourcedBy ?? typedOriginalDoc?.sourcedBy ?? user?.id)
         const signals = getCandidateSignals(typedData, typedOriginalDoc)
+        const expectedPayMin = Number(typedData.expectedPayMin ?? typedOriginalDoc?.expectedPayMin ?? NaN)
+        const expectedPayMax = Number(typedData.expectedPayMax ?? typedOriginalDoc?.expectedPayMax ?? NaN)
 
         if (!sourceJobID) {
           throw new APIError('Source job is required for recruiter sourcing.', 400)
+        }
+
+        if (!Number.isNaN(expectedPayMin) && !Number.isNaN(expectedPayMax) && expectedPayMin > expectedPayMax) {
+          throw new APIError('Expected pay min cannot be greater than expected pay max.', 400)
         }
 
         if (!signals.normalizedEmail && !signals.normalizedPhone) {
