@@ -69,10 +69,10 @@ export const clientReadAccess: Access = ({ req }) =>
   Boolean(toVisibilityUser(req.user as InternalUserLike))
 
 export const clientManageAccess: Access = ({ req }) =>
-  hasInternalRole(req.user as InternalUserLike, ['admin'])
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])
 
 export const clientCreateAccess: Access = ({ req }) =>
-  hasInternalRole(req.user as InternalUserLike, ['admin'])
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])
 
 export const jobsReadAccess: Access = ({ req }) =>
   Boolean(toVisibilityUser(req.user as InternalUserLike))
@@ -147,10 +147,10 @@ export const applicationsReadAccess: Access = ({ req }) => {
 }
 
 export const applicationsCreateAccess: Access = ({ req }) =>
-  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter'])
 
 export const applicationsUpdateAccess: Access = ({ req }) =>
-  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter'])
 
 export const applicationsDeleteAccess: Access = ({ req }) =>
   hasInternalRole(req.user as InternalUserLike, ['admin'])
@@ -165,7 +165,7 @@ export const interviewsReadAccess: Access = ({ req }) =>
   Boolean(toVisibilityUser(req.user as InternalUserLike))
 
 export const interviewsManageAccess: Access = ({ req }) =>
-  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter'])
 
 export const placementsReadAccess: Access = ({ req }) =>
   Boolean(toVisibilityUser(req.user as InternalUserLike))

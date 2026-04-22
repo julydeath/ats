@@ -12,13 +12,18 @@ type InternalNavigationProps = {
 
 const ICON_TEXT: Record<string, string> = {
   applications: 'A',
+  analytics: 'N',
+  attendance: 'T',
   assignments: 'M',
   candidates: 'C',
   clients: 'L',
   dashboard: 'D',
   interviews: 'I',
   jobs: 'J',
+  leave: 'V',
+  payroll: 'Y',
   placements: 'P',
+  performance: 'F',
   review: 'R',
   schedule: 'S',
   settings: 'T',

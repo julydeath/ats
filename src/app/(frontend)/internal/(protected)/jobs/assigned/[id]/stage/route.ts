@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const { user } = await payload.auth({ headers: request.headers })
   const internalUser = user as InternalUserLike
 
-  if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter'])) {
+  if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter', 'recruiter'])) {
     return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
   }
 

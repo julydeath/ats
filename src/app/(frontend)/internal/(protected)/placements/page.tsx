@@ -158,7 +158,7 @@ export default async function PlacementsPage({ searchParams }: PlacementsPagePro
           user,
           where: {
             stage: {
-              in: ['internalReviewApproved', 'candidateInvited', 'candidateApplied'],
+              in: ['offerReleased', 'joined'],
             },
           },
         })

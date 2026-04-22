@@ -39,7 +39,7 @@ type BoardCard = {
 type StageColumn = {
   key: ApplicationStage
   label: string
-  tone: 'gray' | 'orange' | 'teal' | 'purple' | 'green' | 'red'
+  tone: 'gray' | 'orange' | 'teal' | 'purple' | 'blue' | 'green' | 'red'
 }
 
 type JobApplicantsBoardProps = {
@@ -56,13 +56,14 @@ type MoveArgs = {
 }
 
 const STAGE_COLUMNS: readonly StageColumn[] = [
-  { key: 'sourcedByRecruiter', label: 'Applied', tone: 'gray' },
-  { key: 'internalReviewPending', label: 'Screening', tone: 'orange' },
-  { key: 'internalReviewApproved', label: 'Skill Test', tone: 'teal' },
-  { key: 'candidateInvited', label: 'Interview', tone: 'purple' },
-  { key: 'candidateApplied', label: 'Hired', tone: 'green' },
-  { key: 'sentBackForCorrection', label: 'Needs Fix', tone: 'purple' },
-  { key: 'internalReviewRejected', label: 'Rejected', tone: 'red' },
+  { key: 'sourced', label: 'Sourced', tone: 'gray' },
+  { key: 'screened', label: 'Screened', tone: 'orange' },
+  { key: 'submittedToClient', label: 'Submitted to Client', tone: 'teal' },
+  { key: 'interviewScheduled', label: 'Interview Scheduled', tone: 'purple' },
+  { key: 'interviewCleared', label: 'Interview Cleared', tone: 'blue' },
+  { key: 'offerReleased', label: 'Offer Released', tone: 'green' },
+  { key: 'joined', label: 'Joined', tone: 'green' },
+  { key: 'rejected', label: 'Rejected', tone: 'red' },
 ]
 
 const initializeBoard = (cards: BoardCard[]) =>
@@ -93,11 +94,24 @@ const getAllowedTransitionTargets = ({
   }
 
   if (boardRole === 'recruiter') {
+    if (fromStage === 'screened') return ['submittedToClient']
+    if (fromStage === 'submittedToClient') return ['interviewScheduled', 'rejected']
+    if (fromStage === 'interviewScheduled') return ['interviewCleared', 'rejected']
+    if (fromStage === 'interviewCleared') return ['offerReleased', 'rejected']
+    if (fromStage === 'offerReleased') return ['joined', 'rejected']
     return []
   }
 
-  if (boardRole === 'leadRecruiter' && fromStage === 'internalReviewPending') {
-    return ['internalReviewApproved', 'internalReviewRejected', 'sentBackForCorrection']
+  if (boardRole === 'leadRecruiter') {
+    if (fromStage === 'sourced') return ['screened', 'rejected']
+    if (fromStage === 'screened') return ['sourced', 'submittedToClient', 'rejected']
+
+    const recruiterTargets = getAllowedTransitionTargets({ boardRole: 'recruiter', fromStage })
+    if (fromStage !== 'rejected' && !recruiterTargets.includes('rejected')) {
+      return [...recruiterTargets, 'rejected']
+    }
+
+    return recruiterTargets
   }
 
   return []
@@ -125,10 +139,10 @@ const getRoleDragHint = (role: JobApplicantsBoardProps['boardRole']) => {
   }
 
   if (role === 'recruiter') {
-    return 'View-only board for recruiters. Stage movement is managed by lead recruiters and admins.'
+    return 'Recruiter can update downstream stages after lead screening and keep interview/offer status current.'
   }
 
-  return 'Review pending submissions and decide approve, reject, or send back for correction.'
+  return 'Lead screens sourced candidates and can also step in for full pipeline movement when needed.'
 }
 
 const getInitials = (name: string): string =>
@@ -485,9 +499,9 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
   const handleArchive = async () => {
     if (
       !selectedCard ||
-      selectedCard.stage === 'internalReviewRejected' ||
+      selectedCard.stage === 'rejected' ||
       pendingApplicationID === selectedCard.id ||
-      !selectedTransitionTargets.includes('internalReviewRejected')
+      !selectedTransitionTargets.includes('rejected')
     ) {
       return
     }
@@ -496,7 +510,7 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
       applicationId: selectedCard.id,
       fromStage: selectedCard.stage,
       latestComment: drawerComment.trim() || 'Moved to rejected',
-      toStage: 'internalReviewRejected',
+      toStage: 'rejected',
     })
     setDrawerComment('')
   }
@@ -593,8 +607,8 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
                 className="job-candidate-action-button job-candidate-action-ghost"
                 disabled={
                   pendingApplicationID === selectedCard.id ||
-                  selectedCard.stage === 'internalReviewRejected' ||
-                  !selectedTransitionTargets.includes('internalReviewRejected')
+                  selectedCard.stage === 'rejected' ||
+                  !selectedTransitionTargets.includes('rejected')
                 }
                 onClick={handleArchive}
                 type="button"

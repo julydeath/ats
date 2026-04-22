@@ -218,9 +218,8 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
     payload.find({
       collection: 'jobs',
       depth: 1,
-      limit: 160,
+      limit: 120,
       overrideAccess: false,
-      pagination: false,
       select: {
         businessUnit: true,
         client: true,
@@ -246,9 +245,8 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
     payload.find({
       collection: 'clients',
       depth: 0,
-      limit: 200,
+      limit: 120,
       overrideAccess: false,
-      pagination: false,
       select: {
         clientCode: true,
         id: true,
@@ -266,9 +264,8 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       ? payload.find({
           collection: 'users',
           depth: 0,
-          limit: 150,
+          limit: 80,
           overrideAccess: false,
-          pagination: false,
           select: {
             email: true,
             fullName: true,
@@ -296,9 +293,8 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       ? payload.find({
           collection: 'users',
           depth: 0,
-          limit: 250,
+          limit: 120,
           overrideAccess: false,
-          pagination: false,
           select: {
             email: true,
             fullName: true,
@@ -327,9 +323,8 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
     payload.find({
       collection: 'recruiter-job-assignments',
       depth: 1,
-      limit: 500,
+      limit: 300,
       overrideAccess: false,
-      pagination: false,
       select: {
         job: true,
         recruiter: true,
@@ -346,9 +341,8 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
     payload.find({
       collection: 'applications',
       depth: 0,
-      limit: 1500,
+      limit: 600,
       overrideAccess: false,
-      pagination: false,
       select: {
         id: true,
         job: true,
@@ -361,7 +355,6 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       depth: 1,
       limit: 6,
       overrideAccess: false,
-      pagination: false,
       select: {
         candidate: true,
         changedAt: true,
@@ -436,7 +429,6 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           depth: 0,
           limit: unresolvedClientIDs.length,
           overrideAccess: true,
-          pagination: false,
           select: {
             clientCode: true,
             id: true,
@@ -455,7 +447,6 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           depth: 0,
           limit: unresolvedLeadIDs.length,
           overrideAccess: true,
-          pagination: false,
           select: {
             email: true,
             fullName: true,

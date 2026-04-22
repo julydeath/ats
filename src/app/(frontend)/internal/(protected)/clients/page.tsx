@@ -135,7 +135,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       : ''
   const requestedPage = parsePage(resolvedSearchParams.page)
   const isCreateModalOpen = resolvedSearchParams.create === '1'
-  const canManageClients = user.role === 'admin'
+  const canManageClients = user.role === 'admin' || user.role === 'leadRecruiter'
 
   const whereConditions: Where[] = []
 
@@ -351,9 +351,11 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
         </div>
         {canManageClients ? (
           <div className="clients-grid-header-actions">
-            <Link className="clients-grid-header-btn" href={APP_ROUTES.internal.assignments.head}>
-              Assign Leads
-            </Link>
+            {user.role === 'admin' ? (
+              <Link className="clients-grid-header-btn" href={APP_ROUTES.internal.assignments.head}>
+                Assign Leads
+              </Link>
+            ) : null}
             <Link className="clients-grid-header-btn clients-grid-header-btn-primary" href={`${APP_ROUTES.internal.clients.list}?create=1`}>
               + Add Client
             </Link>

@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 
 import { EXTERNAL_CANDIDATE_ROLE } from '@/lib/constants/roles'
 import { APP_ROUTES } from '@/lib/constants/routes'
+import type { ApplicationStage } from '@/lib/constants/recruitment'
 import {
   buildCandidateDashboardLink,
   buildCandidateLoginLink,
@@ -120,14 +121,25 @@ export async function POST(
     ])
 
     if (
-      String(application.stage) !== 'candidateInvited' &&
-      String(application.stage) !== 'internalReviewApproved' &&
-      String(application.stage) !== 'candidateApplied'
+      String(application.stage) !== 'screened' &&
+      String(application.stage) !== 'submittedToClient' &&
+      String(application.stage) !== 'interviewScheduled' &&
+      String(application.stage) !== 'interviewCleared' &&
+      String(application.stage) !== 'offerReleased' &&
+      String(application.stage) !== 'joined'
     ) {
       const failureURL = buildInviteRedirectURL(request, token)
       failureURL.searchParams.set('error', 'Application is not in an invite-ready stage.')
       return NextResponse.redirect(failureURL)
     }
+
+    const nextApplicationStage: ApplicationStage =
+      String(application.stage) === 'interviewScheduled' ||
+      String(application.stage) === 'interviewCleared' ||
+      String(application.stage) === 'offerReleased' ||
+      String(application.stage) === 'joined'
+        ? (String(application.stage) as ApplicationStage)
+        : 'submittedToClient'
 
     const existingAccountID = toNumericID(extractRelationshipID(candidate.candidateAccount))
     let accountID = existingAccountID
@@ -239,7 +251,7 @@ export async function POST(
       data: {
         candidateAccount: accountID,
         latestComment: notes || 'Candidate submitted application through invite portal.',
-        stage: 'candidateApplied',
+        stage: nextApplicationStage,
       },
       id: applicationID,
       overrideAccess: true,

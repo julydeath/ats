@@ -302,7 +302,9 @@ export const Placements: CollectionConfig = {
         await req.payload.update({
           collection: 'applications',
           data: {
+            latestComment: `Placement ${String(doc.placementCode || `PLC-${doc.id}`)} recorded with ${status} status.`,
             placedAt: placementMoment,
+            stage: 'joined',
           },
           id: applicationID,
           overrideAccess: true,

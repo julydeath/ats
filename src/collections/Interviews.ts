@@ -3,6 +3,7 @@ import { APIError, type CollectionConfig } from 'payload'
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { interviewsManageAccess, interviewsReadAccess } from '@/access/visibility'
 import {
+  type ApplicationStage,
   INTERVIEW_MODE_OPTIONS,
   INTERVIEW_ROUND_OPTIONS,
   INTERVIEW_STATUS_OPTIONS,
@@ -38,6 +39,18 @@ const toISOOrNull = (value: unknown): string | null => {
 
 const isUpcomingStatus = (status: InterviewStatus): boolean =>
   status === 'scheduled' || status === 'rescheduled' || status === 'completed'
+
+const stageFromInterviewStatus = (status: InterviewStatus): ApplicationStage | null => {
+  if (status === 'scheduled' || status === 'rescheduled') {
+    return 'interviewScheduled'
+  }
+
+  if (status === 'completed') {
+    return 'interviewCleared'
+  }
+
+  return null
+}
 
 export const Interviews: CollectionConfig = {
   slug: 'interviews',
@@ -282,16 +295,24 @@ export const Interviews: CollectionConfig = {
         const applicationID = extractRelationshipID(doc.application)
         const status = String(doc.status || 'scheduled') as InterviewStatus
         const startTimeISO = toISOOrNull(String(doc.startTime || ''))
+        const transitionStage = stageFromInterviewStatus(status)
 
         if (!applicationID || !startTimeISO || !isUpcomingStatus(status)) {
           return doc
         }
 
+        const applicationUpdate: Record<string, unknown> = {
+          interviewAt: startTimeISO,
+        }
+
+        if (transitionStage) {
+          applicationUpdate.stage = transitionStage
+          applicationUpdate.latestComment = `Interview ${status} (${doc.interviewRound || 'screening'}) by ${doc.interviewerName || 'team'}.`
+        }
+
         await req.payload.update({
           collection: 'applications',
-          data: {
-            interviewAt: startTimeISO,
-          },
+          data: applicationUpdate,
           id: applicationID,
           overrideAccess: true,
           req,

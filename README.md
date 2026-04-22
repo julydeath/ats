@@ -8,6 +8,7 @@ Implemented through Phase 6:
 - Client/job intake and assignment hierarchy
 - Candidate sourcing and internal review workflow
 - External candidate invite + application portal
+- Internal HRMS layer (attendance, leave, performance, payroll)
 
 ## Stack
 
@@ -79,6 +80,13 @@ Candidate invite + email:
 - `RESEND_FROM_EMAIL`
 - `RESEND_TEST_TO_EMAIL`
 
+Payroll + RazorpayX:
+
+- `RAZORPAYX_KEY_ID`
+- `RAZORPAYX_KEY_SECRET`
+- `RAZORPAYX_ACCOUNT_NUMBER`
+- `RAZORPAYX_WEBHOOK_SECRET`
+
 Optional SMTP and storage placeholders are already in `.env.example`.
 
 ## Phase 6 Highlights
@@ -108,3 +116,11 @@ Use `.env` values:
 - `RESEND_FROM_EMAIL=onboarding@resend.dev`
 
 Replace `re_xxxxxxxxx` with your real Resend API key.
+
+## HRMS + Payroll Routes
+
+- Attendance: `/internal/hr/attendance`
+- Leave: `/internal/hr/leave`
+- Performance: `/internal/hr/performance`
+- Payroll (admin only): `/internal/hr/payroll`
+- Razorpay webhook: `/api/payroll/razorpay/webhook`

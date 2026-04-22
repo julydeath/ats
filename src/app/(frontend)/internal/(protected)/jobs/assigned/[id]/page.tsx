@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 
+import { ApplicationFlowProgress } from '@/components/internal/ApplicationFlowProgress'
 import { JobApplicantsBoard } from '@/components/internal/JobApplicantsBoard'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
@@ -113,13 +114,14 @@ const TAB_LABELS: Record<JobTab, string> = {
 }
 
 const STAGE_FILTER_OPTIONS: Array<{ label: string; value: string }> = [
-  { label: 'Applied', value: 'sourcedByRecruiter' },
-  { label: 'Screening', value: 'internalReviewPending' },
-  { label: 'Skill Test', value: 'internalReviewApproved' },
-  { label: 'Interview', value: 'candidateInvited' },
-  { label: 'Hired', value: 'candidateApplied' },
-  { label: 'Needs Correction', value: 'sentBackForCorrection' },
-  { label: 'Rejected', value: 'internalReviewRejected' },
+  { label: 'Sourced', value: 'sourced' },
+  { label: 'Screened', value: 'screened' },
+  { label: 'Submitted to Client', value: 'submittedToClient' },
+  { label: 'Interview Scheduled', value: 'interviewScheduled' },
+  { label: 'Interview Cleared', value: 'interviewCleared' },
+  { label: 'Offer Released', value: 'offerReleased' },
+  { label: 'Joined', value: 'joined' },
+  { label: 'Rejected', value: 'rejected' },
 ]
 
 const BOARD_ROLE: Record<InternalRole, 'admin' | 'leadRecruiter' | 'recruiter'> = {
@@ -143,11 +145,11 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
   const activeTab: JobTab = isJobTab(tabRaw) ? tabRaw : 'applicants'
   const searchQuery = (resolvedSearchParams.q || '').trim().toLowerCase()
   const stageFilter = (resolvedSearchParams.stage || '').trim()
-  const canAddApplicant = user.role === 'admin' || user.role === 'leadRecruiter'
+  const canAddApplicant = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
   const boardRole = BOARD_ROLE[user.role]
 
   try {
-    const [job, applications] = await Promise.all([
+    const [job, applications, interviews, stageHistory] = await Promise.all([
       payload.findByID({
         collection: 'jobs',
         id: jobID,
@@ -196,6 +198,7 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
         pagination: false,
         overrideAccess: false,
         select: {
+          applicationCode: true,
           candidate: true,
           id: true,
           job: true,
@@ -206,6 +209,50 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
           updatedAt: true,
         },
         sort: '-updatedAt',
+        user,
+        where: {
+          job: {
+            equals: jobID,
+          },
+        },
+      }),
+      payload.find({
+        collection: 'interviews',
+        depth: 1,
+        limit: 120,
+        pagination: false,
+        overrideAccess: false,
+        select: {
+          candidate: true,
+          id: true,
+          interviewRound: true,
+          interviewerName: true,
+          mode: true,
+          recruiter: true,
+          startTime: true,
+          status: true,
+        },
+        sort: 'startTime',
+        user,
+        where: {
+          job: {
+            equals: jobID,
+          },
+        },
+      }),
+      payload.find({
+        collection: 'application-stage-history',
+        depth: 1,
+        limit: 600,
+        pagination: false,
+        overrideAccess: false,
+        select: {
+          actor: true,
+          application: true,
+          changedAt: true,
+          toStage: true,
+        },
+        sort: '-changedAt',
         user,
         where: {
           job: {
@@ -302,15 +349,40 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
       new Set(applications.docs.map((application) => readLabel(application.recruiter)).filter(Boolean)),
     ).slice(0, 4)
 
+    const stageHistoryByApplication = new Map<
+      string,
+      Array<{
+        actor?: unknown
+        changedAt?: Date | string | null
+        toStage?: unknown
+      }>
+    >()
+
+    stageHistory.docs.forEach((entry) => {
+      const applicationKey = String(extractRelationshipID(entry.application) || '')
+      if (!applicationKey) {
+        return
+      }
+
+      const bucket = stageHistoryByApplication.get(applicationKey) || []
+      bucket.push({
+        actor: entry.actor,
+        changedAt: entry.changedAt,
+        toStage: entry.toStage,
+      })
+      stageHistoryByApplication.set(applicationKey, bucket)
+    })
+
+    const flowFocusApplication = filteredApplications[0] || applications.docs[0] || null
+    const flowFocusApplicationHistory = flowFocusApplication
+      ? stageHistoryByApplication.get(String(flowFocusApplication.id)) || []
+      : []
+
     const discussionItems = applications.docs
       .filter((application) => application.latestComment && application.latestComment.trim().length > 0)
       .slice(0, 25)
 
-    const scheduleItems = applications.docs
-      .filter((application) =>
-        ['internalReviewPending', 'candidateInvited', 'candidateApplied'].includes(application.stage),
-      )
-      .slice(0, 24)
+    const scheduleItems = interviews.docs.slice(0, 24)
 
     return (
       <section className="job-detail-page">
@@ -371,6 +443,22 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
             </Link>
           ))}
         </nav>
+
+        {flowFocusApplication ? (
+          <section className="job-detail-content-card">
+            <ApplicationFlowProgress
+              applicationCode={flowFocusApplication.applicationCode || `APP-${flowFocusApplication.id}`}
+              currentStage={flowFocusApplication.stage as ApplicationStage}
+              detailHref={`${APP_ROUTES.internal.applications.detailBase}/${flowFocusApplication.id}`}
+              entries={flowFocusApplicationHistory}
+              fallbackOwnerName={readLabel(flowFocusApplication.recruiter, 'Unassigned')}
+              fallbackOwnerRole="recruiter"
+              fallbackTimestamp={flowFocusApplication.updatedAt}
+              subtitle={`${readLabel(flowFocusApplication.candidate)} · Live job pipeline snapshot`}
+              title="Job Flow Snapshot"
+            />
+          </section>
+        ) : null}
 
         {activeTab === 'applicants' ? (
           <>
@@ -545,15 +633,17 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
               <p className="job-detail-empty">No upcoming schedule items for this job.</p>
             ) : (
               <div className="job-detail-schedule-list">
-                {scheduleItems.map((application) => (
-                  <article className="job-detail-schedule-item" key={`job-schedule-${application.id}`}>
+                {scheduleItems.map((interview) => (
+                  <article className="job-detail-schedule-item" key={`job-schedule-${interview.id}`}>
                     <div>
-                      <p className="job-detail-schedule-title">{readLabel(application.candidate)}</p>
+                      <p className="job-detail-schedule-title">{readLabel(interview.candidate)}</p>
                       <p className="job-detail-schedule-meta">
-                        {APPLICATION_STAGE_LABELS[application.stage as ApplicationStage]} · {readLabel(application.recruiter)}
+                        {String(interview.interviewRound || 'screening')} · {String(interview.status || 'scheduled')} ·{' '}
+                        {readLabel(interview.recruiter)} · {String(interview.mode || 'video')}
                       </p>
+                      <p className="job-detail-schedule-meta">{interview.interviewerName || 'Interviewer not set'}</p>
                     </div>
-                    <p className="job-detail-schedule-time">{formatDateTime(application.updatedAt)}</p>
+                    <p className="job-detail-schedule-time">{formatDateTime(interview.startTime)}</p>
                   </article>
                 ))}
               </div>

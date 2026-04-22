@@ -157,30 +157,54 @@ export const CANDIDATE_INVITE_STATUS_OPTIONS = CANDIDATE_INVITE_STATUSES.map((va
 }))
 
 export const APPLICATION_STAGES = [
-  'sourcedByRecruiter',
-  'internalReviewPending',
-  'internalReviewApproved',
-  'internalReviewRejected',
-  'sentBackForCorrection',
-  'candidateInvited',
-  'candidateApplied',
+  'sourced',
+  'screened',
+  'submittedToClient',
+  'interviewScheduled',
+  'interviewCleared',
+  'offerReleased',
+  'joined',
+  'rejected',
 ] as const
 export type ApplicationStage = (typeof APPLICATION_STAGES)[number]
 
 export const APPLICATION_STAGE_LABELS: Record<ApplicationStage, string> = {
-  sourcedByRecruiter: 'Sourced by Recruiter',
-  internalReviewPending: 'Internal Review Pending',
-  internalReviewApproved: 'Internal Review Approved',
-  internalReviewRejected: 'Internal Review Rejected',
-  sentBackForCorrection: 'Sent Back for Correction',
-  candidateInvited: 'Candidate Invited',
-  candidateApplied: 'Candidate Applied',
+  sourced: 'Sourced',
+  screened: 'Screened',
+  submittedToClient: 'Submitted to Client',
+  interviewScheduled: 'Interview Scheduled',
+  interviewCleared: 'Interview Cleared',
+  offerReleased: 'Offer Released',
+  joined: 'Joined',
+  rejected: 'Rejected',
 }
 
 export const APPLICATION_STAGE_OPTIONS = APPLICATION_STAGES.map((value) => ({
   label: APPLICATION_STAGE_LABELS[value],
   value,
 }))
+
+const LEGACY_APPLICATION_STAGE_MAP: Record<string, ApplicationStage> = {
+  candidateApplied: 'joined',
+  candidateInvited: 'interviewScheduled',
+  internalReviewApproved: 'screened',
+  internalReviewPending: 'sourced',
+  internalReviewRejected: 'rejected',
+  sentBackForCorrection: 'sourced',
+  sourcedByRecruiter: 'sourced',
+}
+
+export const normalizeApplicationStage = (value: unknown): ApplicationStage | null => {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  if (APPLICATION_STAGES.includes(value as ApplicationStage)) {
+    return value as ApplicationStage
+  }
+
+  return LEGACY_APPLICATION_STAGE_MAP[value] || null
+}
 
 export const INTERVIEW_ROUNDS = ['screening', 'technicalRound1', 'technicalRound2', 'managerial', 'hr', 'final'] as const
 export type InterviewRound = (typeof INTERVIEW_ROUNDS)[number]

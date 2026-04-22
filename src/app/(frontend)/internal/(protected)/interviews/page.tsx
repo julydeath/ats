@@ -90,7 +90,7 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
 
-  const canManageInterviews = user.role === 'admin' || user.role === 'leadRecruiter'
+  const canManageInterviews = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
   const search = String(resolvedSearchParams.q || '').trim().toLowerCase()
   const statusFilter = String(resolvedSearchParams.status || '').trim()
   const page = Math.max(Number.parseInt(String(resolvedSearchParams.page || '1'), 10) || 1, 1)
@@ -168,7 +168,7 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
           user,
           where: {
             stage: {
-              in: ['internalReviewApproved', 'candidateInvited', 'candidateApplied'],
+              in: ['submittedToClient', 'interviewScheduled', 'interviewCleared'],
             },
           },
         })

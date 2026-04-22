@@ -23,6 +23,24 @@ import { CandidateInvites } from './collections/CandidateInvites'
 import { JobTemplates } from './collections/JobTemplates'
 import { Interviews } from './collections/Interviews'
 import { Placements } from './collections/Placements'
+import { EmployeeProfiles } from './collections/EmployeeProfiles'
+import { EmployeeCompensation } from './collections/EmployeeCompensation'
+import { AttendanceShifts } from './collections/AttendanceShifts'
+import { HolidayCalendars } from './collections/HolidayCalendars'
+import { AttendanceLogs } from './collections/AttendanceLogs'
+import { AttendanceDailySummaries } from './collections/AttendanceDailySummaries'
+import { LeaveTypes } from './collections/LeaveTypes'
+import { LeaveBalances } from './collections/LeaveBalances'
+import { LeaveRequests } from './collections/LeaveRequests'
+import { PerformanceCycles } from './collections/PerformanceCycles'
+import { PerformanceSnapshots } from './collections/PerformanceSnapshots'
+import { PerformanceReviews } from './collections/PerformanceReviews'
+import { PayrollRuleSets } from './collections/PayrollRuleSets'
+import { PayrollCycles } from './collections/PayrollCycles'
+import { PayrollRuns } from './collections/PayrollRuns'
+import { PayrollLineItems } from './collections/PayrollLineItems'
+import { Payslips } from './collections/Payslips'
+import { PayrollPayoutTransactions } from './collections/PayrollPayoutTransactions'
 import { env } from './lib/env'
 
 const filename = fileURLToPath(import.meta.url)
@@ -54,6 +72,24 @@ export default buildConfig({
     JobTemplates,
     Interviews,
     Placements,
+    EmployeeProfiles,
+    EmployeeCompensation,
+    AttendanceShifts,
+    HolidayCalendars,
+    AttendanceLogs,
+    AttendanceDailySummaries,
+    LeaveTypes,
+    LeaveBalances,
+    LeaveRequests,
+    PerformanceCycles,
+    PerformanceSnapshots,
+    PerformanceReviews,
+    PayrollRuleSets,
+    PayrollCycles,
+    PayrollRuns,
+    PayrollLineItems,
+    Payslips,
+    PayrollPayoutTransactions,
     Media,
   ],
   cors: [appURL],

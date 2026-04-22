@@ -6,13 +6,18 @@ export type InternalNavItem = {
   href: string
   icon?:
     | 'applications'
+    | 'analytics'
+    | 'attendance'
     | 'assignments'
     | 'candidates'
     | 'clients'
     | 'dashboard'
     | 'interviews'
     | 'jobs'
+    | 'leave'
+    | 'payroll'
     | 'placements'
+    | 'performance'
     | 'review'
     | 'schedule'
     | 'settings'
@@ -35,6 +40,12 @@ const ADMIN_NAV: readonly InternalNavGroup[] = [
         icon: 'dashboard',
       },
       {
+        label: 'HR Analytics',
+        href: APP_ROUTES.internal.hr.analytics,
+        description: 'Org-wide attendance, performance, leave, and payroll insights.',
+        icon: 'analytics',
+      },
+      {
         label: 'Clients',
         href: APP_ROUTES.internal.clients.list,
         description: 'Create and manage client master records.',
@@ -53,9 +64,9 @@ const ADMIN_NAV: readonly InternalNavGroup[] = [
         icon: 'candidates',
       },
       {
-        label: 'Reports',
+        label: 'Applications',
         href: APP_ROUTES.internal.applications.list,
-        description: 'View reporting and workflow summaries.',
+        description: 'Track stage pipeline and candidate progress.',
         icon: 'applications',
       },
       {
@@ -65,10 +76,46 @@ const ADMIN_NAV: readonly InternalNavGroup[] = [
         icon: 'interviews',
       },
       {
+        label: 'Schedule',
+        href: APP_ROUTES.internal.schedule,
+        description: 'Calendar view for interviews and recruiter workload.',
+        icon: 'schedule',
+      },
+      {
         label: 'Placements',
         href: APP_ROUTES.internal.placements.list,
         description: 'Track confirmations, joins, and placement outcomes.',
         icon: 'placements',
+      },
+      {
+        label: 'Team',
+        href: APP_ROUTES.internal.team.base,
+        description: 'Create internal users, onboarding profiles, and salary setup.',
+        icon: 'assignments',
+      },
+      {
+        label: 'Attendance',
+        href: APP_ROUTES.internal.hr.attendance,
+        description: 'Track daily punch-in and punch-out logs.',
+        icon: 'attendance',
+      },
+      {
+        label: 'Leave',
+        href: APP_ROUTES.internal.hr.leave,
+        description: 'Review and approve employee leave requests.',
+        icon: 'leave',
+      },
+      {
+        label: 'Performance',
+        href: APP_ROUTES.internal.hr.performance,
+        description: 'Monitor monthly KPI and manager reviews.',
+        icon: 'performance',
+      },
+      {
+        label: 'Payroll',
+        href: APP_ROUTES.internal.hr.payroll,
+        description: 'Run monthly payroll and disburse via RazorpayX.',
+        icon: 'payroll',
       },
       {
         label: 'Settings',
@@ -127,6 +174,12 @@ const LEAD_RECRUITER_NAV: readonly InternalNavGroup[] = [
         icon: 'applications',
       },
       {
+        label: 'Schedule',
+        href: APP_ROUTES.internal.schedule,
+        description: 'Calendar view for interviews and team commitments.',
+        icon: 'schedule',
+      },
+      {
         label: 'Interviews',
         href: APP_ROUTES.internal.interviews.list,
         description: 'Manage interview schedule for active pipeline.',
@@ -137,6 +190,30 @@ const LEAD_RECRUITER_NAV: readonly InternalNavGroup[] = [
         href: APP_ROUTES.internal.placements.list,
         description: 'Track candidates moving into placement lifecycle.',
         icon: 'placements',
+      },
+      {
+        label: 'Attendance',
+        href: APP_ROUTES.internal.hr.attendance,
+        description: 'View attendance and punch records.',
+        icon: 'attendance',
+      },
+      {
+        label: 'Leave',
+        href: APP_ROUTES.internal.hr.leave,
+        description: 'Review recruiter leave requests and status.',
+        icon: 'leave',
+      },
+      {
+        label: 'Performance',
+        href: APP_ROUTES.internal.hr.performance,
+        description: 'Track team KPI snapshots and manager reviews.',
+        icon: 'performance',
+      },
+      {
+        label: 'Team',
+        href: APP_ROUTES.internal.team.base,
+        description: 'Add recruiters and maintain onboarding profiles.',
+        icon: 'assignments',
       },
     ],
   },
@@ -177,6 +254,12 @@ const RECRUITER_NAV: readonly InternalNavGroup[] = [
         icon: 'applications',
       },
       {
+        label: 'Schedule',
+        href: APP_ROUTES.internal.schedule,
+        description: 'Track interview calendar and upcoming sessions.',
+        icon: 'schedule',
+      },
+      {
         label: 'Interviews',
         href: APP_ROUTES.internal.interviews.list,
         description: 'View interview schedules and upcoming sessions.',
@@ -187,6 +270,24 @@ const RECRUITER_NAV: readonly InternalNavGroup[] = [
         href: APP_ROUTES.internal.placements.list,
         description: 'View placement status across assigned applications.',
         icon: 'placements',
+      },
+      {
+        label: 'Attendance',
+        href: APP_ROUTES.internal.hr.attendance,
+        description: 'Punch in/out and check daily attendance.',
+        icon: 'attendance',
+      },
+      {
+        label: 'Leave',
+        href: APP_ROUTES.internal.hr.leave,
+        description: 'Apply leave and monitor approval status.',
+        icon: 'leave',
+      },
+      {
+        label: 'Performance',
+        href: APP_ROUTES.internal.hr.performance,
+        description: 'View monthly KPI and manager review scores.',
+        icon: 'performance',
       },
     ],
   },

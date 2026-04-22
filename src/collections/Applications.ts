@@ -7,17 +7,23 @@ import {
   applicationsReadAccess,
   applicationsUpdateAccess,
 } from '@/access/visibility'
-import { buildCandidateInviteExpiryDate, generateCandidateInviteToken } from '@/lib/auth/candidate-invites'
-import { APPLICATION_STAGES, APPLICATION_STAGE_OPTIONS, type ApplicationStage } from '@/lib/constants/recruitment'
-import { buildCandidateInviteLink, sendCandidateInviteEmail } from '@/lib/email/resend'
+import {
+  APPLICATION_STAGES,
+  APPLICATION_STAGE_OPTIONS,
+  normalizeApplicationStage,
+  type ApplicationStage,
+} from '@/lib/constants/recruitment'
 import { resolveBusinessCode } from '@/lib/utils/business-codes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
-const DEFAULT_STAGE: ApplicationStage = 'sourcedByRecruiter'
-const INTERNAL_REVIEW_PENDING_STAGE: ApplicationStage = 'internalReviewPending'
-const INTERNAL_REVIEW_APPROVED_STAGE: ApplicationStage = 'internalReviewApproved'
-const CANDIDATE_INVITED_STAGE: ApplicationStage = 'candidateInvited'
-const CANDIDATE_APPLIED_STAGE: ApplicationStage = 'candidateApplied'
+const DEFAULT_STAGE: ApplicationStage = 'sourced'
+const SCREENED_STAGE: ApplicationStage = 'screened'
+const SUBMITTED_TO_CLIENT_STAGE: ApplicationStage = 'submittedToClient'
+const INTERVIEW_SCHEDULED_STAGE: ApplicationStage = 'interviewScheduled'
+const INTERVIEW_CLEARED_STAGE: ApplicationStage = 'interviewCleared'
+const OFFER_RELEASED_STAGE: ApplicationStage = 'offerReleased'
+const JOINED_STAGE: ApplicationStage = 'joined'
+const REJECTED_STAGE: ApplicationStage = 'rejected'
 
 const toNumericID = (value: unknown): number | null => {
   if (typeof value === 'number') {
@@ -35,11 +41,13 @@ const isApplicationStage = (value: unknown): value is ApplicationStage =>
   typeof value === 'string' && APPLICATION_STAGES.includes(value as ApplicationStage)
 
 const normalizeStage = (value: unknown): ApplicationStage => {
-  if (!isApplicationStage(value)) {
+  const normalized = normalizeApplicationStage(value)
+
+  if (!normalized || !isApplicationStage(normalized)) {
     throw new APIError('Invalid application stage.', 400)
   }
 
-  return value
+  return normalized
 }
 
 const canRecruiterTransition = (previousStage: ApplicationStage, nextStage: ApplicationStage): boolean => {
@@ -47,19 +55,15 @@ const canRecruiterTransition = (previousStage: ApplicationStage, nextStage: Appl
     return true
   }
 
-  if (
-    (previousStage === 'sourcedByRecruiter' || previousStage === 'sentBackForCorrection') &&
-    nextStage === 'internalReviewPending'
-  ) {
+  if (previousStage === SCREENED_STAGE && nextStage === SUBMITTED_TO_CLIENT_STAGE) return true
+  if (previousStage === SUBMITTED_TO_CLIENT_STAGE && (nextStage === INTERVIEW_SCHEDULED_STAGE || nextStage === REJECTED_STAGE))
     return true
-  }
-
-  if (
-    ['internalReviewApproved', 'candidateInvited', 'candidateApplied'].includes(previousStage) &&
-    ['internalReviewApproved', 'candidateInvited', 'candidateApplied'].includes(nextStage)
-  ) {
+  if (previousStage === INTERVIEW_SCHEDULED_STAGE && (nextStage === INTERVIEW_CLEARED_STAGE || nextStage === REJECTED_STAGE))
     return true
-  }
+  if (previousStage === INTERVIEW_CLEARED_STAGE && (nextStage === OFFER_RELEASED_STAGE || nextStage === REJECTED_STAGE))
+    return true
+  if (previousStage === OFFER_RELEASED_STAGE && (nextStage === JOINED_STAGE || nextStage === REJECTED_STAGE))
+    return true
 
   return false
 }
@@ -73,12 +77,15 @@ const canLeadTransition = (previousStage: ApplicationStage, nextStage: Applicati
     return true
   }
 
-  return (
-    previousStage === 'internalReviewPending' &&
-    (nextStage === 'internalReviewApproved' ||
-      nextStage === 'internalReviewRejected' ||
-      nextStage === 'sentBackForCorrection')
-  )
+  if (previousStage === DEFAULT_STAGE && (nextStage === SCREENED_STAGE || nextStage === REJECTED_STAGE)) {
+    return true
+  }
+
+  if (previousStage === SCREENED_STAGE && nextStage === DEFAULT_STAGE) {
+    return true
+  }
+
+  return false
 }
 
 const validateStageTransition = ({
@@ -97,15 +104,11 @@ const validateStageTransition = ({
   }
 
   if (operation === 'create') {
-    if (hasInternalRole(user, ['leadRecruiter'])) {
-      if (nextStage !== 'sourcedByRecruiter' && nextStage !== 'internalReviewPending') {
-        throw new APIError('Lead Recruiter can only create applications as sourced or pending review.', 403)
-      }
-
+    if (hasInternalRole(user, ['leadRecruiter', 'recruiter']) && nextStage === DEFAULT_STAGE) {
       return
     }
 
-    throw new APIError('Only lead recruiter or admin can create applications.', 403)
+    throw new APIError('Applications can only be created in Sourced stage.', 403)
   }
 
   if (!previousStage) {
@@ -115,7 +118,7 @@ const validateStageTransition = ({
   if (hasInternalRole(user, ['recruiter'])) {
     if (!canRecruiterTransition(previousStage, nextStage)) {
       throw new APIError(
-        'Recruiter can submit sourced/corrected applications for review and update post-approval pipeline stages.',
+        'Recruiter can move applications only after lead screening through client submission, interview, offer, join/reject flow.',
         403,
       )
     }
@@ -125,7 +128,7 @@ const validateStageTransition = ({
 
   if (hasInternalRole(user, ['leadRecruiter'])) {
     if (!canLeadTransition(previousStage, nextStage)) {
-      throw new APIError('Lead Recruiter can only review pending applications.', 403)
+      throw new APIError('Lead Recruiter can screen sourced candidates and manage full downstream application flow.', 403)
     }
 
     return
@@ -228,6 +231,62 @@ export const Applications: CollectionConfig = {
     },
     {
       name: 'submittedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'sourcedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'screenedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'submittedToClientAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'interviewScheduledAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'interviewClearedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'offerReleasedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'joinedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'rejectedAt',
       type: 'date',
       admin: {
         readOnly: true,
@@ -352,13 +411,6 @@ export const Applications: CollectionConfig = {
           throw new APIError('Candidate, job, and recruiter are required for application mapping.', 400)
         }
 
-        if (hasInternalRole(user, ['recruiter'])) {
-          throw new APIError(
-            'Recruiter can only manage candidate records. Application actions require Lead Recruiter or Admin.',
-            403,
-          )
-        }
-
         if (!req.context?.skipStageTransitionValidation) {
           validateStageTransition({
             nextStage,
@@ -366,24 +418,6 @@ export const Applications: CollectionConfig = {
             previousStage,
             user,
           })
-        }
-
-        if (stageChanged && nextStage === INTERNAL_REVIEW_APPROVED_STAGE) {
-          const candidate = await req.payload.findByID({
-            collection: 'candidates',
-            depth: 0,
-            id: candidateID,
-            overrideAccess: true,
-            req,
-          })
-          const candidateEmail = String(candidate.email || '').trim()
-
-          if (!candidateEmail) {
-            throw new APIError(
-              'Candidate email is required before internal approval so invite delivery can be completed.',
-              400,
-            )
-          }
         }
 
         const andConditions: Where[] = [
@@ -453,14 +487,16 @@ export const Applications: CollectionConfig = {
           }
         }
 
-        const isSubmission = stageChanged && nextStage === INTERNAL_REVIEW_PENDING_STAGE
+        const isSourced = stageChanged && nextStage === DEFAULT_STAGE
+        const isScreened = stageChanged && nextStage === SCREENED_STAGE
+        const isSubmittedToClient = stageChanged && nextStage === SUBMITTED_TO_CLIENT_STAGE
+        const isInterviewScheduled = stageChanged && nextStage === INTERVIEW_SCHEDULED_STAGE
+        const isInterviewCleared = stageChanged && nextStage === INTERVIEW_CLEARED_STAGE
+        const isOfferReleased = stageChanged && nextStage === OFFER_RELEASED_STAGE
+        const isJoined = stageChanged && nextStage === JOINED_STAGE
+        const isRejected = stageChanged && nextStage === REJECTED_STAGE
         const isLeadReviewDecision =
-          stageChanged &&
-          (nextStage === INTERNAL_REVIEW_APPROVED_STAGE ||
-            nextStage === 'internalReviewRejected' ||
-            nextStage === 'sentBackForCorrection')
-        const isCandidateInvited = stageChanged && nextStage === CANDIDATE_INVITED_STAGE
-        const isCandidateApplied = stageChanged && nextStage === CANDIDATE_APPLIED_STAGE
+          stageChanged && (nextStage === SCREENED_STAGE || nextStage === REJECTED_STAGE)
         const nowISO = new Date().toISOString()
 
         return {
@@ -468,17 +504,30 @@ export const Applications: CollectionConfig = {
           applicationCode: typedData.applicationCode ?? typedOriginalDoc?.applicationCode,
           candidate: candidateID,
           candidateAccount: candidateAccountID ?? undefined,
-          candidateAppliedAt: isCandidateApplied ? nowISO : typedOriginalDoc?.candidateAppliedAt,
-          candidateInvitedAt: isCandidateInvited ? nowISO : typedOriginalDoc?.candidateInvitedAt,
+          candidateAppliedAt: isJoined ? nowISO : typedOriginalDoc?.candidateAppliedAt,
+          candidateInvitedAt: isInterviewScheduled ? nowISO : typedOriginalDoc?.candidateInvitedAt,
           createdBy: typedData.createdBy ?? typedOriginalDoc?.createdBy ?? currentUserID ?? undefined,
+          clientSubmittedAt: isSubmittedToClient ? nowISO : typedOriginalDoc?.clientSubmittedAt,
+          confirmedAt: isInterviewCleared ? nowISO : typedOriginalDoc?.confirmedAt,
+          interviewAt: isInterviewScheduled ? nowISO : typedOriginalDoc?.interviewAt,
+          interviewClearedAt: isInterviewCleared ? nowISO : typedOriginalDoc?.interviewClearedAt,
+          interviewScheduledAt: isInterviewScheduled ? nowISO : typedOriginalDoc?.interviewScheduledAt,
           job: jobID,
+          joinedAt: isJoined ? nowISO : typedOriginalDoc?.joinedAt,
+          notJoinedAt: isRejected ? nowISO : typedOriginalDoc?.notJoinedAt,
+          offerReleasedAt: isOfferReleased ? nowISO : typedOriginalDoc?.offerReleasedAt,
+          placedAt: isJoined ? nowISO : typedOriginalDoc?.placedAt,
+          rejectedAt: isRejected ? nowISO : typedOriginalDoc?.rejectedAt,
           recruiter: recruiterID,
           reviewedAt: isLeadReviewDecision ? nowISO : typedOriginalDoc?.reviewedAt,
           reviewedBy: isLeadReviewDecision
             ? currentUserID ?? typedOriginalDoc?.reviewedBy
             : typedOriginalDoc?.reviewedBy,
+          screenedAt: isScreened ? nowISO : typedOriginalDoc?.screenedAt,
+          sourcedAt: isSourced ? nowISO : typedOriginalDoc?.sourcedAt,
           stage: nextStage,
-          submittedAt: isSubmission ? nowISO : typedOriginalDoc?.submittedAt,
+          submittedAt: isSubmittedToClient ? nowISO : typedOriginalDoc?.submittedAt,
+          submittedToClientAt: isSubmittedToClient ? nowISO : typedOriginalDoc?.submittedToClientAt,
         }
       },
     ],
@@ -522,119 +571,6 @@ export const Applications: CollectionConfig = {
             recruiter: recruiterID,
             toStage: stageTransition.toStage,
           },
-          overrideAccess: true,
-          req,
-        })
-
-        const shouldDispatchInvite =
-          operation === 'update' &&
-          stageTransition.toStage === INTERNAL_REVIEW_APPROVED_STAGE &&
-          !context.skipCandidateInviteDispatch
-
-        if (!shouldDispatchInvite) {
-          return doc
-        }
-
-        const [candidate, job] = await Promise.all([
-          req.payload.findByID({
-            collection: 'candidates',
-            depth: 0,
-            id: candidateID,
-            overrideAccess: true,
-            req,
-          }),
-          req.payload.findByID({
-            collection: 'jobs',
-            depth: 0,
-            id: jobID,
-            overrideAccess: true,
-            req,
-          }),
-        ])
-
-        const candidateName = String(candidate.fullName || '').trim() || 'Candidate'
-        const inviteEmail = String(candidate.email || '').trim()
-        const jobTitle = String(job.title || '').trim() || `Job #${jobID}`
-
-        if (!inviteEmail) {
-          throw new APIError('Candidate email is required for invite dispatch.', 400)
-        }
-
-        const nowISO = new Date().toISOString()
-
-        const pendingInvites = await req.payload.find({
-          collection: 'candidate-invites',
-          depth: 0,
-          limit: 100,
-          overrideAccess: true,
-          req,
-          where: {
-            and: [
-              {
-                application: {
-                  equals: applicationID,
-                },
-              },
-              {
-                status: {
-                  equals: 'pending',
-                },
-              },
-            ],
-          },
-        })
-
-        for (const pendingInvite of pendingInvites.docs) {
-          await req.payload.update({
-            collection: 'candidate-invites',
-            data: {
-              revokedAt: nowISO,
-              status: 'revoked',
-            },
-            id: pendingInvite.id,
-            overrideAccess: true,
-            req,
-          })
-        }
-
-        const { token, tokenHash } = generateCandidateInviteToken()
-        const expiresAt = buildCandidateInviteExpiryDate().toISOString()
-
-        await req.payload.create({
-          collection: 'candidate-invites',
-          data: {
-            application: applicationID,
-            candidate: candidateID,
-            expiresAt,
-            inviteEmail,
-            sentAt: nowISO,
-            sentBy: actorID ?? undefined,
-            status: 'pending',
-            tokenHash,
-          },
-          overrideAccess: true,
-          req,
-        })
-
-        await sendCandidateInviteEmail({
-          candidateName,
-          expiresAtISO: expiresAt,
-          inviteLink: buildCandidateInviteLink(token),
-          jobTitle,
-          to: inviteEmail,
-        })
-
-        await req.payload.update({
-          collection: 'applications',
-          context: {
-            applicationStageCommentOverride: 'Candidate invite email sent.',
-            skipCandidateInviteDispatch: true,
-            skipStageTransitionValidation: true,
-          },
-          data: {
-            stage: CANDIDATE_INVITED_STAGE,
-          },
-          id: applicationID,
           overrideAccess: true,
           req,
         })

@@ -9,6 +9,7 @@
     "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
     "devsafe": "rm -rf .next && cross-env NODE_OPTIONS=--no-deprecation next dev",
     "backfill:business-codes": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/backfill-business-codes.ts",
+    "migrate:application-stages": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/migrate-application-stages.ts",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
     "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
     "lint": "cross-env NODE_OPTIONS=--no-deprecation next lint",
@@ -36,6 +37,7 @@
     "pdf-parse": "^2.4.5",
     "react": "19.2.1",
     "react-dom": "19.2.1",
+    "recharts": "^3.8.1",
     "resend": "^6.9.4",
     "sharp": "0.34.2"
   },

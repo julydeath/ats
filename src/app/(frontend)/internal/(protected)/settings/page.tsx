@@ -34,6 +34,11 @@ export default async function InternalSettingsPage() {
           <Link className="button button-secondary" href={APP_ROUTES.internal.dashboard}>
             Dashboard
           </Link>
+          {(user.role === 'admin' || user.role === 'leadRecruiter') ? (
+            <Link className="button button-secondary" href={APP_ROUTES.internal.team.base}>
+              Team Management
+            </Link>
+          ) : null}
           <Link className="button button-secondary" href={APP_ROUTES.internal.jobs.assigned}>
             Jobs
           </Link>

@@ -2,10 +2,12 @@ import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
 
+import { AdminWeeklyLoadChart, LeadVelocityChart } from '@/components/internal/charts/ATSCharts'
 import type { Application, ApplicationStageHistory } from '@/payload-types'
 import { requireInternalUser } from '@/lib/auth/internal-auth'
 import { APPLICATION_STAGE_LABELS } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
+import { getHRAnalyticsSummary, normalizeHRAnalyticsFilters } from '@/lib/hr/analytics'
 
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   if (!value) {
@@ -174,7 +176,7 @@ const buildRecruiterPerformance = (
     const recruiterName = readLabel(item.recruiter)
     const existing = map.get(recruiterName)
     const reviewedIncrement = 1
-    const approvalsIncrement = item.toStage === 'internalReviewApproved' ? 1 : 0
+    const approvalsIncrement = item.toStage === 'screened' ? 1 : 0
 
     if (existing) {
       existing.reviewed += reviewedIncrement
@@ -200,9 +202,9 @@ const buildRecruiterPerformance = (
 }
 
 const REVIEW_STAGE_TONE_CLASS: Record<string, 'green' | 'red' | 'blue'> = {
-  internalReviewApproved: 'green',
-  internalReviewRejected: 'red',
-  sentBackForCorrection: 'blue',
+  screened: 'green',
+  rejected: 'red',
+  sourced: 'blue',
 }
 
 export default async function InternalDashboardPage() {
@@ -244,15 +246,14 @@ export default async function InternalDashboardPage() {
         user,
         where: {
           stage: {
-            equals: 'internalReviewPending',
+            equals: 'sourced',
           },
         },
       }),
       payload.find({
         collection: 'application-stage-history',
         depth: 1,
-        limit: 250,
-        pagination: false,
+        limit: 120,
         overrideAccess: false,
         select: {
           candidate: true,
@@ -268,7 +269,7 @@ export default async function InternalDashboardPage() {
           and: [
             {
               toStage: {
-                in: ['internalReviewApproved', 'internalReviewRejected', 'sentBackForCorrection'],
+                in: ['screened', 'rejected', 'sourced'],
               },
             },
             {
@@ -298,7 +299,7 @@ export default async function InternalDashboardPage() {
       })),
     )
     const reviewedCount = typedReviewHistory.length
-    const approvalsCount = typedReviewHistory.filter((item) => item.toStage === 'internalReviewApproved').length
+    const approvalsCount = typedReviewHistory.filter((item) => item.toStage === 'screened').length
     const approvalRate = reviewedCount > 0 ? Math.round((approvalsCount / reviewedCount) * 100) : 0
     const averagePendingReviewHours =
       typedPendingReviews.length > 0
@@ -307,8 +308,6 @@ export default async function InternalDashboardPage() {
             return sum + ageHours
           }, 0) / typedPendingReviews.length
         : 0
-    const maxVelocityCount = Math.max(...velocitySeries.map((point) => point.count), 1)
-
     return (
       <section className="role-dashboard-page role-dashboard-page-lead">
         <header className="role-dashboard-header">
@@ -370,20 +369,7 @@ export default async function InternalDashboardPage() {
                 <h2>Operational Velocity</h2>
                 <span>{typedPendingReviews.length} pending</span>
               </div>
-              <div className="role-dashboard-velocity">
-                {velocitySeries.map((point) => {
-                  const heightPercent = Math.max(Math.round((point.count / maxVelocityCount) * 100), 8)
-                  return (
-                    <div className="role-dashboard-velocity-col" key={point.dayLabel}>
-                      <span
-                        className={`role-dashboard-velocity-bar ${point.isHighlighted ? 'role-dashboard-velocity-bar-active' : ''}`}
-                        style={{ height: `${heightPercent}%` }}
-                      />
-                      <p>{point.dayLabel}</p>
-                    </div>
-                  )
-                })}
-              </div>
+              <LeadVelocityChart data={velocitySeries} />
             </article>
 
             <article className="role-dashboard-card">
@@ -455,7 +441,6 @@ export default async function InternalDashboardPage() {
         collection: 'jobs',
         depth: 1,
         limit: 24,
-        pagination: false,
         overrideAccess: false,
         select: {
           employmentType: true,
@@ -478,12 +463,11 @@ export default async function InternalDashboardPage() {
       payload.find({
         collection: 'applications',
         depth: 1,
-        limit: 300,
-        pagination: false,
+        limit: 180,
         overrideAccess: false,
         select: {
           candidate: true,
-          candidateInvitedAt: true,
+          interviewScheduledAt: true,
           id: true,
           job: true,
           latestComment: true,
@@ -498,22 +482,22 @@ export default async function InternalDashboardPage() {
     const typedJobs = assignedJobs.docs
     const typedApplications = recruiterApplications.docs as Pick<
       Application,
-      'candidate' | 'candidateInvitedAt' | 'id' | 'job' | 'latestComment' | 'stage' | 'updatedAt'
+      'candidate' | 'id' | 'interviewScheduledAt' | 'job' | 'latestComment' | 'stage' | 'updatedAt'
     >[]
 
     const activeApplicationsCount = typedApplications.filter(
-      (app) => app.stage !== 'internalReviewRejected',
+      (app) => app.stage !== 'joined' && app.stage !== 'rejected',
     ).length
-    const placementsCount = typedApplications.filter((app) => app.stage === 'candidateApplied').length
+    const placementsCount = typedApplications.filter((app) => app.stage === 'joined').length
     const sentBackItems = typedApplications
-      .filter((app) => app.stage === 'sentBackForCorrection')
+      .filter((app) => app.stage === 'sourced')
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .slice(0, 2)
     const invitedCandidates = typedApplications
-      .filter((app) => app.stage === 'candidateInvited')
+      .filter((app) => app.stage === 'interviewScheduled')
       .sort((a, b) => {
-        const aTime = new Date(a.candidateInvitedAt || a.updatedAt).getTime()
-        const bTime = new Date(b.candidateInvitedAt || b.updatedAt).getTime()
+        const aTime = new Date(a.interviewScheduledAt || a.updatedAt).getTime()
+        const bTime = new Date(b.interviewScheduledAt || b.updatedAt).getTime()
         return aTime - bTime
       })
       .slice(0, 4)
@@ -533,9 +517,9 @@ export default async function InternalDashboardPage() {
       const jobID = String(job.id)
       const jobApplications = applicationsByJob.get(jobID) || []
       const inReviewCount = jobApplications.filter((app) =>
-        ['internalReviewPending', 'internalReviewApproved', 'candidateInvited', 'candidateApplied'].includes(app.stage),
+        ['sourced', 'screened', 'submittedToClient', 'interviewScheduled', 'interviewCleared', 'offerReleased'].includes(app.stage),
       ).length
-      const placedCount = jobApplications.filter((app) => app.stage === 'candidateApplied').length
+      const placedCount = jobApplications.filter((app) => app.stage === 'joined').length
       const progressPercent =
         job.openings > 0 ? Math.min(Math.round((placedCount / job.openings) * 100), 100) : 0
       const candidatePreview = jobApplications.slice(0, 4).map((app) => readLabel(app.candidate, 'CD'))
@@ -650,7 +634,7 @@ export default async function InternalDashboardPage() {
               ) : (
                 <div className="role-dashboard-interview-list">
                   {invitedCandidates.map((application) => {
-                    const interviewDate = toMonthDay(application.candidateInvitedAt || application.updatedAt)
+                    const interviewDate = toMonthDay(application.interviewScheduledAt || application.updatedAt)
                     return (
                       <article className="role-dashboard-interview-row" key={`interview-${application.id}`}>
                         <span>
@@ -745,8 +729,7 @@ export default async function InternalDashboardPage() {
     payload.find({
       collection: 'applications',
       depth: 1,
-      limit: 200,
-      pagination: false,
+      limit: 120,
       overrideAccess: false,
       select: {
         candidate: true,
@@ -761,8 +744,7 @@ export default async function InternalDashboardPage() {
     payload.find({
       collection: 'recruiter-job-assignments',
       depth: 1,
-      limit: 300,
-      pagination: false,
+      limit: 120,
       overrideAccess: false,
       select: {
         recruiter: true,
@@ -794,28 +776,29 @@ export default async function InternalDashboardPage() {
   ])
 
   const dateRangeLabel = `${toDayMonth(weekStart)} - ${toDayMonth(new Date())}`
-  const pendingReviews = applications.docs.filter((application) => application.stage === 'internalReviewPending').length
+  const pendingReviews = applications.docs.filter((application) => application.stage === 'sourced').length
   const stageTitleByKey: Record<string, string> = {
-    candidateApplied: 'Job Placement Successful',
-    candidateInvited: 'Interview Scheduled',
-    internalReviewApproved: 'Candidate Approved',
-    internalReviewPending: 'New Candidate Registered',
-    internalReviewRejected: 'Candidate Rejected',
-    sentBackForCorrection: 'Submission Sent Back',
-    sourcedByRecruiter: 'Candidate Sourced',
+    interviewCleared: 'Interview Cleared',
+    interviewScheduled: 'Interview Scheduled',
+    joined: 'Candidate Joined',
+    offerReleased: 'Offer Released',
+    rejected: 'Candidate Rejected',
+    screened: 'Candidate Screened',
+    sourced: 'New Candidate Sourced',
+    submittedToClient: 'Submitted To Client',
   }
 
   const recentActivity = applications.docs.slice(0, 4).map((item) => ({
     id: String(item.id),
-    subtitle: `${readLabel(item.candidate)} applied for ${readLabel(item.job)}`,
+    subtitle: `${readLabel(item.candidate)} for ${readLabel(item.job)}`,
     time: toRelativeTime(item.updatedAt),
     title: stageTitleByKey[item.stage] || 'Application Updated',
     tone:
-      item.stage === 'candidateApplied'
+      item.stage === 'joined'
         ? 'green'
-        : item.stage === 'internalReviewPending'
+        : item.stage === 'sourced'
           ? 'blue'
-          : item.stage === 'sentBackForCorrection' || item.stage === 'internalReviewRejected'
+          : item.stage === 'rejected'
             ? 'orange'
             : 'slate',
   }))
@@ -847,6 +830,22 @@ export default async function InternalDashboardPage() {
     .slice(0, 4)
 
   const maxRecruiterLoad = Math.max(...recruiterLoad.map((item) => item.count), 1)
+  const hrAnalytics = await getHRAnalyticsSummary({
+    filters: normalizeHRAnalyticsFilters({
+      from: weekStart.toISOString(),
+      role: 'all',
+      to: new Date().toISOString(),
+    }),
+    payload,
+    user,
+  })
+  const weeklyTrend = hrAnalytics.trend.slice(-7)
+  const weeklyTrendChartData = weeklyTrend.map((point) => ({
+    attendance: point.present + point.halfDay + point.leave,
+    label: point.label,
+    workflow: point.applications + point.interviews + point.placements,
+  }))
+  const topPerformers = hrAnalytics.employeeRows.slice(0, 4)
 
   return (
     <section className="role-dashboard-page role-dashboard-page-admin">
@@ -950,6 +949,82 @@ export default async function InternalDashboardPage() {
                     </article>
                   )
                 })}
+              </div>
+            )}
+          </article>
+        </div>
+      </section>
+
+      <section className="role-dashboard-main-grid" style={{ marginTop: 12 }}>
+        <article className="role-dashboard-card role-dashboard-card-main">
+          <div className="role-dashboard-card-head">
+            <h2>Attendance and Performance Graph</h2>
+            <Link href={APP_ROUTES.internal.hr.analytics}>Open Full Analytics</Link>
+          </div>
+          {weeklyTrend.length === 0 ? (
+            <p className="role-dashboard-empty">No attendance trend records available.</p>
+          ) : (
+            <AdminWeeklyLoadChart data={weeklyTrendChartData} />
+          )}
+        </article>
+
+        <div className="role-dashboard-side-grid">
+          <article className="role-dashboard-card">
+            <div className="role-dashboard-card-head">
+              <h2>HR KPIs (7 Days)</h2>
+              <span>{hrAnalytics.kpis.workforce} employees</span>
+            </div>
+            <div className="role-dashboard-kpi-stack">
+              <article>
+                <p>Attendance Compliance</p>
+                <strong>{hrAnalytics.kpis.attendanceCompliancePct}%</strong>
+              </article>
+              <article>
+                <p>Average Performance Score</p>
+                <strong>{hrAnalytics.kpis.avgPerformanceScore}/100</strong>
+              </article>
+              <article>
+                <p>Leave and LOP</p>
+                <strong>
+                  {hrAnalytics.kpis.approvedLeaveDays} leave · {hrAnalytics.kpis.lopDays} LOP
+                </strong>
+              </article>
+              <article>
+                <p>Payroll Net (Current Range)</p>
+                <strong>
+                  {new Intl.NumberFormat('en-IN', {
+                    currency: 'INR',
+                    maximumFractionDigits: 0,
+                    style: 'currency',
+                  }).format(hrAnalytics.kpis.payrollNet)}
+                </strong>
+              </article>
+            </div>
+          </article>
+
+          <article className="role-dashboard-card">
+            <div className="role-dashboard-card-head">
+              <h2>Top Performers</h2>
+              <Link href={APP_ROUTES.internal.hr.analytics}>Filter Team</Link>
+            </div>
+            {topPerformers.length === 0 ? (
+              <p className="role-dashboard-empty">No employee performance data yet.</p>
+            ) : (
+              <div className="role-dashboard-performance-list">
+                {topPerformers.map((item) => (
+                  <article className="role-dashboard-performance-row" key={`top-performer-${item.employeeId}`}>
+                    <div>
+                      <p>{item.name}</p>
+                      <small>
+                        {item.role} · {item.state}
+                      </small>
+                    </div>
+                    <div className="role-dashboard-progress">
+                      <span style={{ width: `${Math.max(item.score, 8)}%` }} />
+                    </div>
+                    <span className="role-dashboard-row-meta">{item.score}/100</span>
+                  </article>
+                ))}
               </div>
             )}
           </article>

@@ -9,11 +9,11 @@ type ReviewAction = 'approve' | 'reject' | 'sendBack'
 
 const STAGE_BY_ACTION: Record<
   ReviewAction,
-  'internalReviewApproved' | 'internalReviewRejected' | 'sentBackForCorrection'
+  'screened' | 'rejected' | 'sourced'
 > = {
-  approve: 'internalReviewApproved',
-  reject: 'internalReviewRejected',
-  sendBack: 'sentBackForCorrection',
+  approve: 'screened',
+  reject: 'rejected',
+  sendBack: 'sourced',
 }
 
 const readString = (value: FormDataEntryValue | null): string => {

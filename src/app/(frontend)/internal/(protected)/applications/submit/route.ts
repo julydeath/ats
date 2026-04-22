@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       id: applicationID,
       data: {
         latestComment,
-        stage: 'internalReviewPending',
+        stage: 'screened',
       },
       overrideAccess: false,
       user: internalUser,
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     const failureURL = buildListRedirectURL(request)
     failureURL.searchParams.set(
       'error',
-      error instanceof Error ? error.message : 'Unable to submit application for review.',
+      error instanceof Error ? error.message : 'Unable to mark application as screened.',
     )
     return NextResponse.redirect(failureURL, 303)
   }

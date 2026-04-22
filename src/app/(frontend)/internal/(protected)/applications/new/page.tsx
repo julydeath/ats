@@ -32,12 +32,12 @@ type ApplicationsNewPageProps = {
 }
 
 export default async function ApplicationsNewPage({ searchParams }: ApplicationsNewPageProps) {
-  const user = await requireInternalRole(['admin', 'leadRecruiter'])
+  const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
   const selectedCandidateID = String(resolvedSearchParams.candidateId || '')
   const selectedJobID = String(resolvedSearchParams.jobId || '')
-  const canSelectRecruiter = true
+  const canSelectRecruiter = user.role !== 'recruiter'
 
   const [jobsResult, candidatesResult, recruitersResult] = await Promise.all([
     payload.find({
@@ -83,34 +83,38 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
       sort: '-updatedAt',
       user,
     }),
-    payload.find({
-      collection: 'users',
-      depth: 0,
-      limit: 120,
-      pagination: false,
-      overrideAccess: false,
-      select: {
-        email: true,
-        fullName: true,
-        id: true,
-      },
-      sort: 'fullName',
-      user,
-      where: {
-        and: [
-          {
-            role: {
-              equals: 'recruiter',
-            },
+    canSelectRecruiter
+      ? payload.find({
+          collection: 'users',
+          depth: 0,
+          limit: 120,
+          pagination: false,
+          overrideAccess: false,
+          select: {
+            email: true,
+            fullName: true,
+            id: true,
           },
-          {
-            isActive: {
-              equals: true,
-            },
+          sort: 'fullName',
+          user,
+          where: {
+            and: [
+              {
+                role: {
+                  equals: 'recruiter',
+                },
+              },
+              {
+                isActive: {
+                  equals: true,
+                },
+              },
+            ],
           },
-        ],
-      },
-    }),
+        })
+      : Promise.resolve({
+          docs: [] as Array<{ email?: string; fullName?: string; id: number | string }>,
+        }),
   ])
 
   const unresolvedClientIDs = Array.from(

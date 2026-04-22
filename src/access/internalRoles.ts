@@ -25,7 +25,7 @@ export const isInternalAuthenticated = (user: InternalUserLike): boolean =>
   hasInternalRole(user, INTERNAL_ROLES)
 
 export const canManageInternalUsers = (user: InternalUserLike): boolean =>
-  hasInternalRole(user, ['admin'])
+  hasInternalRole(user, ['admin', 'leadRecruiter'])
 
 export const internalUserAccess: Access = ({ req: { user } }) =>
   isInternalAuthenticated(user as InternalUserLike)
@@ -37,7 +37,7 @@ export const adminOnlyAccess: Access = ({ req: { user } }) =>
   hasInternalRole(user as InternalUserLike, ['admin'])
 
 export const adminLeadershipAccess: Access = ({ req: { user } }) =>
-  hasInternalRole(user as InternalUserLike, ['admin'])
+  hasInternalRole(user as InternalUserLike, ['admin', 'leadRecruiter'])
 
 export const adminLeadershipAdminAccess = ({
   req: { user },
@@ -70,7 +70,7 @@ export const selfOrAdminAccess: Access = ({ req: { user } }) => {
     return false
   }
 
-  if (hasInternalRole(internalUser, ['admin'])) {
+  if (hasInternalRole(internalUser, ['admin', 'leadRecruiter'])) {
     return true
   }
 

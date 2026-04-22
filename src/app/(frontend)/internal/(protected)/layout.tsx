@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { FormUXEnhancer } from '@/components/internal/FormUXEnhancer'
 import { InternalNavigation } from '@/components/internal/InternalNavigation'
 import { InternalLogoutButton } from '@/components/internal/InternalLogoutButton'
+import { InternalTopTabs } from '@/components/internal/InternalTopTabs'
 import { InternalUXToasts } from '@/components/internal/InternalUXToasts'
 import { requireInternalUser } from '@/lib/auth/internal-auth'
 import type { InternalRole } from '@/lib/constants/roles'
@@ -23,11 +24,21 @@ const ROLE_BADGE_LABEL: Readonly<Record<InternalRole, string>> = {
 const TOP_TABS: Readonly<Record<InternalRole, Array<{ href: string; label: string }>>> = {
   admin: [
     { href: APP_ROUTES.internal.dashboard, label: 'Dashboard' },
-    { href: APP_ROUTES.internal.jobs.assigned, label: 'Analytics' },
+    { href: APP_ROUTES.internal.hr.analytics, label: 'Analytics' },
     { href: APP_ROUTES.internal.candidates.list, label: 'Directory' },
   ],
-  leadRecruiter: [],
-  recruiter: [],
+  leadRecruiter: [
+    { href: APP_ROUTES.internal.dashboard, label: 'Dashboard' },
+    { href: APP_ROUTES.internal.hr.attendance, label: 'Attendance' },
+    { href: APP_ROUTES.internal.hr.leave, label: 'Leave' },
+    { href: APP_ROUTES.internal.schedule, label: 'Schedule' },
+  ],
+  recruiter: [
+    { href: APP_ROUTES.internal.dashboard, label: 'Dashboard' },
+    { href: APP_ROUTES.internal.hr.attendance, label: 'Attendance' },
+    { href: APP_ROUTES.internal.hr.leave, label: 'Leave' },
+    { href: APP_ROUTES.internal.schedule, label: 'Schedule' },
+  ],
 }
 
 export default async function InternalProtectedLayout({ children }: InternalProtectedLayoutProps) {
@@ -52,13 +63,7 @@ export default async function InternalProtectedLayout({ children }: InternalProt
         </div>
 
         {topTabs.length > 0 ? (
-          <nav aria-label="Dashboard tabs" className="ops-top-tabs">
-            {topTabs.map((tab, index) => (
-              <Link className={`ops-top-tab ${index === 0 ? 'ops-top-tab-active' : ''}`} href={tab.href} key={tab.label}>
-                {tab.label}
-              </Link>
-            ))}
-          </nav>
+          <InternalTopTabs tabs={[...topTabs]} />
         ) : (
           <div />
         )}

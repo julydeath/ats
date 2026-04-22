@@ -7,6 +7,36 @@ export const APP_ROUTES = {
     dashboard: '/internal/dashboard',
     schedule: '/internal/schedule',
     settings: '/internal/settings',
+    team: {
+      base: '/internal/settings/team',
+      addHolidayToCalendar: '/internal/settings/team/add-holiday-to-calendar',
+      createCompensation: '/internal/settings/team/create-compensation',
+      createHolidayCalendar: '/internal/settings/team/create-holiday-calendar',
+      createShift: '/internal/settings/team/create-shift',
+      createUser: '/internal/settings/team/create-user',
+      deleteHolidayFromCalendar: '/internal/settings/team/delete-holiday-from-calendar',
+      deleteShift: '/internal/settings/team/delete-shift',
+      toggleActive: '/internal/settings/team/toggle-active',
+    },
+    hr: {
+      analytics: '/internal/hr/analytics',
+      attendance: '/internal/hr/attendance',
+      attendancePunchIn: '/internal/hr/attendance/punch-in',
+      attendancePunchOut: '/internal/hr/attendance/punch-out',
+      leave: '/internal/hr/leave',
+      leaveApply: '/internal/hr/leave/apply',
+      leaveAction: '/internal/hr/leave/action',
+      leaveApprove: '/internal/hr/leave/approve',
+      leaveReject: '/internal/hr/leave/reject',
+      performance: '/internal/hr/performance',
+      performanceGenerate: '/internal/hr/performance/generate',
+      performanceReview: '/internal/hr/performance/review',
+      payroll: '/internal/hr/payroll',
+      payrollGenerate: '/internal/hr/payroll/generate',
+      payrollLock: '/internal/hr/payroll/lock',
+      payrollApprove: '/internal/hr/payroll/approve',
+      payrollDisburse: '/internal/hr/payroll/disburse',
+    },
     assignments: {
       head: '/internal/assignments/head',
       lead: '/internal/assignments/lead',
@@ -38,6 +68,7 @@ export const APP_ROUTES = {
       new: '/internal/applications/new',
       review: '/internal/applications/review',
       reviewQueue: '/internal/applications/review-queue',
+      stage: '/internal/applications/stage',
       submit: '/internal/applications/submit',
     },
     interviews: {
@@ -51,6 +82,13 @@ export const APP_ROUTES = {
       detailBase: '/internal/placements',
       list: '/internal/placements',
       updateStatus: '/internal/placements/update-status',
+    },
+  },
+  api: {
+    internal: {
+      hr: {
+        analyticsSummary: '/api/internal/hr/analytics/summary',
+      },
     },
   },
   candidate: {

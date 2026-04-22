@@ -176,7 +176,7 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
       user,
       where: {
         stage: {
-          equals: 'internalReviewPending',
+          equals: 'sourced',
         },
       },
     }),
@@ -194,7 +194,7 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
       user,
       where: {
         toStage: {
-          in: ['internalReviewApproved', 'internalReviewRejected', 'sentBackForCorrection'],
+          in: ['screened', 'rejected', 'sourced'],
         },
       },
     }),
@@ -264,7 +264,7 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
 
   const actionWindowStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
   const actionWindow = recentReviewActions.docs.filter((entry) => new Date(entry.changedAt) >= actionWindowStart)
-  const approvedCount = actionWindow.filter((entry) => entry.toStage === 'internalReviewApproved').length
+  const approvedCount = actionWindow.filter((entry) => entry.toStage === 'screened').length
   const approvalRate = actionWindow.length > 0 ? Math.round((approvedCount / actionWindow.length) * 100) : 0
 
   const totalRows = filteredApplications.length

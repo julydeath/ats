@@ -85,6 +85,24 @@ export interface Config {
     'job-templates': JobTemplate;
     interviews: Interview;
     placements: Placement;
+    'employee-profiles': EmployeeProfile;
+    'employee-compensation': EmployeeCompensation;
+    'attendance-shifts': AttendanceShift;
+    'holiday-calendars': HolidayCalendar;
+    'attendance-logs': AttendanceLog;
+    'attendance-daily-summaries': AttendanceDailySummary;
+    'leave-types': LeaveType;
+    'leave-balances': LeaveBalance;
+    'leave-requests': LeaveRequest;
+    'performance-cycles': PerformanceCycle;
+    'performance-snapshots': PerformanceSnapshot;
+    'performance-reviews': PerformanceReview;
+    'payroll-rule-sets': PayrollRuleSet;
+    'payroll-cycles': PayrollCycle;
+    'payroll-runs': PayrollRun;
+    'payroll-line-items': PayrollLineItem;
+    payslips: Payslip;
+    'payroll-payout-transactions': PayrollPayoutTransaction;
     media: Media;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -110,6 +128,24 @@ export interface Config {
     'job-templates': JobTemplatesSelect<false> | JobTemplatesSelect<true>;
     interviews: InterviewsSelect<false> | InterviewsSelect<true>;
     placements: PlacementsSelect<false> | PlacementsSelect<true>;
+    'employee-profiles': EmployeeProfilesSelect<false> | EmployeeProfilesSelect<true>;
+    'employee-compensation': EmployeeCompensationSelect<false> | EmployeeCompensationSelect<true>;
+    'attendance-shifts': AttendanceShiftsSelect<false> | AttendanceShiftsSelect<true>;
+    'holiday-calendars': HolidayCalendarsSelect<false> | HolidayCalendarsSelect<true>;
+    'attendance-logs': AttendanceLogsSelect<false> | AttendanceLogsSelect<true>;
+    'attendance-daily-summaries': AttendanceDailySummariesSelect<false> | AttendanceDailySummariesSelect<true>;
+    'leave-types': LeaveTypesSelect<false> | LeaveTypesSelect<true>;
+    'leave-balances': LeaveBalancesSelect<false> | LeaveBalancesSelect<true>;
+    'leave-requests': LeaveRequestsSelect<false> | LeaveRequestsSelect<true>;
+    'performance-cycles': PerformanceCyclesSelect<false> | PerformanceCyclesSelect<true>;
+    'performance-snapshots': PerformanceSnapshotsSelect<false> | PerformanceSnapshotsSelect<true>;
+    'performance-reviews': PerformanceReviewsSelect<false> | PerformanceReviewsSelect<true>;
+    'payroll-rule-sets': PayrollRuleSetsSelect<false> | PayrollRuleSetsSelect<true>;
+    'payroll-cycles': PayrollCyclesSelect<false> | PayrollCyclesSelect<true>;
+    'payroll-runs': PayrollRunsSelect<false> | PayrollRunsSelect<true>;
+    'payroll-line-items': PayrollLineItemsSelect<false> | PayrollLineItemsSelect<true>;
+    payslips: PayslipsSelect<false> | PayslipsSelect<true>;
+    'payroll-payout-transactions': PayrollPayoutTransactionsSelect<false> | PayrollPayoutTransactionsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -648,13 +684,14 @@ export interface Application {
   recruiter: number | User;
   candidateAccount?: (number | null) | CandidateUser;
   stage:
-    | 'sourcedByRecruiter'
-    | 'internalReviewPending'
-    | 'internalReviewApproved'
-    | 'internalReviewRejected'
-    | 'sentBackForCorrection'
-    | 'candidateInvited'
-    | 'candidateApplied';
+    | 'sourced'
+    | 'screened'
+    | 'submittedToClient'
+    | 'interviewScheduled'
+    | 'interviewCleared'
+    | 'offerReleased'
+    | 'joined'
+    | 'rejected';
   notes?: string | null;
   latestComment?: string | null;
   pipelineSource?: string | null;
@@ -662,6 +699,14 @@ export interface Application {
   clientBillRate?: string | null;
   payRate?: string | null;
   submittedAt?: string | null;
+  sourcedAt?: string | null;
+  screenedAt?: string | null;
+  submittedToClientAt?: string | null;
+  interviewScheduledAt?: string | null;
+  interviewClearedAt?: string | null;
+  offerReleasedAt?: string | null;
+  joinedAt?: string | null;
+  rejectedAt?: string | null;
   clientSubmittedAt?: string | null;
   interviewAt?: string | null;
   confirmedAt?: string | null;
@@ -688,23 +733,25 @@ export interface ApplicationStageHistory {
   recruiter: number | User;
   fromStage?:
     | (
-        | 'sourcedByRecruiter'
-        | 'internalReviewPending'
-        | 'internalReviewApproved'
-        | 'internalReviewRejected'
-        | 'sentBackForCorrection'
-        | 'candidateInvited'
-        | 'candidateApplied'
+        | 'sourced'
+        | 'screened'
+        | 'submittedToClient'
+        | 'interviewScheduled'
+        | 'interviewCleared'
+        | 'offerReleased'
+        | 'joined'
+        | 'rejected'
       )
     | null;
   toStage:
-    | 'sourcedByRecruiter'
-    | 'internalReviewPending'
-    | 'internalReviewApproved'
-    | 'internalReviewRejected'
-    | 'sentBackForCorrection'
-    | 'candidateInvited'
-    | 'candidateApplied';
+    | 'sourced'
+    | 'screened'
+    | 'submittedToClient'
+    | 'interviewScheduled'
+    | 'interviewCleared'
+    | 'offerReleased'
+    | 'joined'
+    | 'rejected';
   comment?: string | null;
   actor?: (number | null) | User;
   changedAt: string;
@@ -827,6 +874,480 @@ export interface Placement {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "employee-profiles".
+ */
+export interface EmployeeProfile {
+  id: number;
+  employeeCode?: string | null;
+  user: number | User;
+  dateOfJoining: string;
+  employmentStatus: 'active' | 'inactive' | 'onNotice' | 'terminated';
+  designation: string;
+  department?: string | null;
+  workLocation: string;
+  workState: string;
+  workCountry?: string | null;
+  reportingManager?: (number | null) | User;
+  attendanceShift?: (number | null) | AttendanceShift;
+  holidayCalendar?: (number | null) | HolidayCalendar;
+  weeklyOffDays?: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[] | null;
+  isPayrollEligible?: boolean | null;
+  payoutReady?: boolean | null;
+  panNumber?: string | null;
+  aadhaarNumber?: string | null;
+  uanNumber?: string | null;
+  esicNumber?: string | null;
+  bankAccountName?: string | null;
+  bankAccountNumber?: string | null;
+  bankIFSC?: string | null;
+  bankName?: string | null;
+  razorpayContactID?: string | null;
+  razorpayFundAccountID?: string | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "attendance-shifts".
+ */
+export interface AttendanceShift {
+  id: number;
+  shiftCode?: string | null;
+  name: string;
+  shiftStartTime: string;
+  shiftEndTime: string;
+  graceMinutes: number;
+  halfDayThresholdMinutes: number;
+  fullDayThresholdMinutes: number;
+  overtimeThresholdMinutes: number;
+  weeklyOffDays: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[];
+  isDefault?: boolean | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "holiday-calendars".
+ */
+export interface HolidayCalendar {
+  id: number;
+  calendarCode?: string | null;
+  name: string;
+  state: string;
+  year: number;
+  holidays?:
+    | {
+        name: string;
+        date: string;
+        type: 'national' | 'festival' | 'company';
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "employee-compensation".
+ */
+export interface EmployeeCompensation {
+  id: number;
+  compensationCode?: string | null;
+  employee: number | EmployeeProfile;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  annualCTC: number;
+  monthlyGross: number;
+  basicMonthly: number;
+  hraMonthly?: number | null;
+  specialAllowanceMonthly?: number | null;
+  otherAllowanceMonthly?: number | null;
+  variableMonthly?: number | null;
+  reimbursementMonthly?: number | null;
+  customEarnings?:
+    | {
+        label: string;
+        amount: number;
+        id?: string | null;
+      }[]
+    | null;
+  customDeductions?:
+    | {
+        label: string;
+        amount: number;
+        id?: string | null;
+      }[]
+    | null;
+  taxRegime: 'old' | 'new';
+  pfEnabled?: boolean | null;
+  esiEnabled?: boolean | null;
+  professionalTaxEnabled?: boolean | null;
+  lwfEnabled?: boolean | null;
+  tdsEnabled?: boolean | null;
+  isActive?: boolean | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "attendance-logs".
+ */
+export interface AttendanceLog {
+  id: number;
+  attendanceLogCode?: string | null;
+  employee: number | EmployeeProfile;
+  punchDate: string;
+  punchInAt: string;
+  punchOutAt?: string | null;
+  source: 'web' | 'mobileWeb';
+  ipAddress?: string | null;
+  deviceInfo?: string | null;
+  geoLatitude?: number | null;
+  geoLongitude?: number | null;
+  tamperFlags?: string[] | null;
+  workedMinutes?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "attendance-daily-summaries".
+ */
+export interface AttendanceDailySummary {
+  id: number;
+  summaryCode?: string | null;
+  employee: number | EmployeeProfile;
+  date: string;
+  status: 'present' | 'absent' | 'halfDay' | 'leave' | 'holiday' | 'weekOff';
+  workedMinutes?: number | null;
+  lateMinutes?: number | null;
+  overtimeMinutes?: number | null;
+  lop?: boolean | null;
+  holidayName?: string | null;
+  attendanceLog?: (number | null) | AttendanceLog;
+  leaveRequest?: (number | null) | LeaveRequest;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leave-requests".
+ */
+export interface LeaveRequest {
+  id: number;
+  leaveRequestCode?: string | null;
+  employee: number | EmployeeProfile;
+  employeeRole?: string | null;
+  leaveType: number | LeaveType;
+  leaveUnit: 'fullDay' | 'halfDay';
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  reason: string;
+  status: 'pendingLeadApproval' | 'pendingAdminApproval' | 'approved' | 'rejected' | 'cancelled';
+  requestedBy?: (number | null) | User;
+  leadApprover?: (number | null) | User;
+  adminApprover?: (number | null) | User;
+  leadDecisionAt?: string | null;
+  adminDecisionAt?: string | null;
+  rejectionReason?: string | null;
+  comments?: string | null;
+  workflowTrail?:
+    | {
+        action: 'apply' | 'leadApprove' | 'adminApprove' | 'adminOverrideApprove' | 'reject' | 'cancel';
+        fromStatus?: ('pendingLeadApproval' | 'pendingAdminApproval' | 'approved' | 'rejected' | 'cancelled') | null;
+        toStatus: 'pendingLeadApproval' | 'pendingAdminApproval' | 'approved' | 'rejected' | 'cancelled';
+        comment?: string | null;
+        overrideReason?: string | null;
+        actedBy?: (number | null) | User;
+        actedAt: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leave-types".
+ */
+export interface LeaveType {
+  id: number;
+  leaveTypeCode?: string | null;
+  key: 'CL' | 'SL' | 'EL';
+  name: string;
+  paid?: boolean | null;
+  accrualPerMonth: number;
+  annualAllowance: number;
+  carryForwardLimit: number;
+  isEncashable?: boolean | null;
+  minUnit: 'fullDay' | 'halfDay';
+  maxConsecutiveDays: number;
+  isActive?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leave-balances".
+ */
+export interface LeaveBalance {
+  id: number;
+  balanceCode?: string | null;
+  employee: number | EmployeeProfile;
+  leaveType: number | LeaveType;
+  year: number;
+  openingBalance: number;
+  accrued: number;
+  used: number;
+  adjustments: number;
+  closingBalance: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "performance-cycles".
+ */
+export interface PerformanceCycle {
+  id: number;
+  cycleCode?: string | null;
+  title: string;
+  month: number;
+  year: number;
+  startDate: string;
+  endDate: string;
+  kpiWeight: number;
+  managerWeight: number;
+  status: 'open' | 'closed' | 'archived';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "performance-snapshots".
+ */
+export interface PerformanceSnapshot {
+  id: number;
+  snapshotCode?: string | null;
+  cycle: number | PerformanceCycle;
+  employee: number | EmployeeProfile;
+  generatedBy?: (number | null) | User;
+  generatedAt?: string | null;
+  submissionsCount?: number | null;
+  approvalsCount?: number | null;
+  rejectionCount?: number | null;
+  interviewCount?: number | null;
+  placementCount?: number | null;
+  avgTurnaroundHours?: number | null;
+  slaBreachesCount?: number | null;
+  kpiScore?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "performance-reviews".
+ */
+export interface PerformanceReview {
+  id: number;
+  reviewCode?: string | null;
+  cycle: number | PerformanceCycle;
+  employee: number | EmployeeProfile;
+  reviewer: number | User;
+  managerRating: number;
+  managerComments?: string | null;
+  kpiScore?: number | null;
+  finalScore?: number | null;
+  status: 'draft' | 'submitted' | 'finalized';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payroll-rule-sets".
+ */
+export interface PayrollRuleSet {
+  id: number;
+  ruleSetCode?: string | null;
+  name: string;
+  state: string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  isActive?: boolean | null;
+  pfEnabled?: boolean | null;
+  pfEmployeeRate?: number | null;
+  pfEmployerRate?: number | null;
+  pfWageCap?: number | null;
+  esiEnabled?: boolean | null;
+  esiEmployeeRate?: number | null;
+  esiEmployerRate?: number | null;
+  esiWageThreshold?: number | null;
+  professionalTaxEnabled?: boolean | null;
+  professionalTaxMonthly?: number | null;
+  lwfEnabled?: boolean | null;
+  lwfEmployeeMonthly?: number | null;
+  lwfEmployerMonthly?: number | null;
+  tdsEnabled?: boolean | null;
+  tdsRate?: number | null;
+  standardDeductionMonthly?: number | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payroll-cycles".
+ */
+export interface PayrollCycle {
+  id: number;
+  payrollCycleCode?: string | null;
+  title?: string | null;
+  month: number;
+  year: number;
+  startDate: string;
+  endDate: string;
+  payoutDate?: string | null;
+  status: 'draft' | 'open' | 'closed';
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payroll-runs".
+ */
+export interface PayrollRun {
+  id: number;
+  payrollRunCode?: string | null;
+  payrollCycle: number | PayrollCycle;
+  ruleSet?: (number | null) | PayrollRuleSet;
+  status: 'draft' | 'locked' | 'approved' | 'disbursing' | 'completed' | 'failed' | 'cancelled';
+  preparedBy?: (number | null) | User;
+  preparedAt?: string | null;
+  approvedBy?: (number | null) | User;
+  approvedAt?: string | null;
+  disbursedBy?: (number | null) | User;
+  disbursedAt?: string | null;
+  totalEmployees?: number | null;
+  totalGross?: number | null;
+  totalDeductions?: number | null;
+  totalNet?: number | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payroll-line-items".
+ */
+export interface PayrollLineItem {
+  id: number;
+  payrollLineItemCode?: string | null;
+  payrollRun: number | PayrollRun;
+  employee: number | EmployeeProfile;
+  compensation?: (number | null) | EmployeeCompensation;
+  grossEarnings: number;
+  totalDeductions: number;
+  netPayable: number;
+  lopDays?: number | null;
+  lopDeduction?: number | null;
+  pfEmployee?: number | null;
+  pfEmployer?: number | null;
+  esiEmployee?: number | null;
+  esiEmployer?: number | null;
+  professionalTax?: number | null;
+  lwfEmployee?: number | null;
+  lwfEmployer?: number | null;
+  tds?: number | null;
+  reimbursementTotal?: number | null;
+  customEarningsTotal?: number | null;
+  customDeductionsTotal?: number | null;
+  earningsBreakdown?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  deductionsBreakdown?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  status: 'created' | 'processing' | 'processed' | 'failed' | 'reversed' | 'cancelled';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payslips".
+ */
+export interface Payslip {
+  id: number;
+  payslipCode?: string | null;
+  employee: number | EmployeeProfile;
+  payrollRun: number | PayrollRun;
+  payrollLineItem?: (number | null) | PayrollLineItem;
+  month: number;
+  year: number;
+  issueDate: string;
+  pdfURL?: string | null;
+  snapshot?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  status: 'generated' | 'published' | 'cancelled';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payroll-payout-transactions".
+ */
+export interface PayrollPayoutTransaction {
+  id: number;
+  payoutTxnCode?: string | null;
+  payrollRun: number | PayrollRun;
+  lineItem: number | PayrollLineItem;
+  employee: number | EmployeeProfile;
+  provider?: string | null;
+  payoutStatus: 'created' | 'processing' | 'processed' | 'failed' | 'reversed' | 'cancelled';
+  payoutID?: string | null;
+  idempotencyKey: string;
+  attemptCount: number;
+  utr?: string | null;
+  responseLog?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  errorMessage?: string | null;
+  webhookEventID?: string | null;
+  initiatedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -916,6 +1437,78 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'placements';
         value: number | Placement;
+      } | null)
+    | ({
+        relationTo: 'employee-profiles';
+        value: number | EmployeeProfile;
+      } | null)
+    | ({
+        relationTo: 'employee-compensation';
+        value: number | EmployeeCompensation;
+      } | null)
+    | ({
+        relationTo: 'attendance-shifts';
+        value: number | AttendanceShift;
+      } | null)
+    | ({
+        relationTo: 'holiday-calendars';
+        value: number | HolidayCalendar;
+      } | null)
+    | ({
+        relationTo: 'attendance-logs';
+        value: number | AttendanceLog;
+      } | null)
+    | ({
+        relationTo: 'attendance-daily-summaries';
+        value: number | AttendanceDailySummary;
+      } | null)
+    | ({
+        relationTo: 'leave-types';
+        value: number | LeaveType;
+      } | null)
+    | ({
+        relationTo: 'leave-balances';
+        value: number | LeaveBalance;
+      } | null)
+    | ({
+        relationTo: 'leave-requests';
+        value: number | LeaveRequest;
+      } | null)
+    | ({
+        relationTo: 'performance-cycles';
+        value: number | PerformanceCycle;
+      } | null)
+    | ({
+        relationTo: 'performance-snapshots';
+        value: number | PerformanceSnapshot;
+      } | null)
+    | ({
+        relationTo: 'performance-reviews';
+        value: number | PerformanceReview;
+      } | null)
+    | ({
+        relationTo: 'payroll-rule-sets';
+        value: number | PayrollRuleSet;
+      } | null)
+    | ({
+        relationTo: 'payroll-cycles';
+        value: number | PayrollCycle;
+      } | null)
+    | ({
+        relationTo: 'payroll-runs';
+        value: number | PayrollRun;
+      } | null)
+    | ({
+        relationTo: 'payroll-line-items';
+        value: number | PayrollLineItem;
+      } | null)
+    | ({
+        relationTo: 'payslips';
+        value: number | Payslip;
+      } | null)
+    | ({
+        relationTo: 'payroll-payout-transactions';
+        value: number | PayrollPayoutTransaction;
       } | null)
     | ({
         relationTo: 'media';
@@ -1410,6 +2003,14 @@ export interface ApplicationsSelect<T extends boolean = true> {
   clientBillRate?: T;
   payRate?: T;
   submittedAt?: T;
+  sourcedAt?: T;
+  screenedAt?: T;
+  submittedToClientAt?: T;
+  interviewScheduledAt?: T;
+  interviewClearedAt?: T;
+  offerReleasedAt?: T;
+  joinedAt?: T;
+  rejectedAt?: T;
   clientSubmittedAt?: T;
   interviewAt?: T;
   confirmedAt?: T;
@@ -1548,6 +2149,430 @@ export interface PlacementsSelect<T extends boolean = true> {
   status?: T;
   createdBy?: T;
   notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "employee-profiles_select".
+ */
+export interface EmployeeProfilesSelect<T extends boolean = true> {
+  employeeCode?: T;
+  user?: T;
+  dateOfJoining?: T;
+  employmentStatus?: T;
+  designation?: T;
+  department?: T;
+  workLocation?: T;
+  workState?: T;
+  workCountry?: T;
+  reportingManager?: T;
+  attendanceShift?: T;
+  holidayCalendar?: T;
+  weeklyOffDays?: T;
+  isPayrollEligible?: T;
+  payoutReady?: T;
+  panNumber?: T;
+  aadhaarNumber?: T;
+  uanNumber?: T;
+  esicNumber?: T;
+  bankAccountName?: T;
+  bankAccountNumber?: T;
+  bankIFSC?: T;
+  bankName?: T;
+  razorpayContactID?: T;
+  razorpayFundAccountID?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "employee-compensation_select".
+ */
+export interface EmployeeCompensationSelect<T extends boolean = true> {
+  compensationCode?: T;
+  employee?: T;
+  effectiveFrom?: T;
+  effectiveTo?: T;
+  annualCTC?: T;
+  monthlyGross?: T;
+  basicMonthly?: T;
+  hraMonthly?: T;
+  specialAllowanceMonthly?: T;
+  otherAllowanceMonthly?: T;
+  variableMonthly?: T;
+  reimbursementMonthly?: T;
+  customEarnings?:
+    | T
+    | {
+        label?: T;
+        amount?: T;
+        id?: T;
+      };
+  customDeductions?:
+    | T
+    | {
+        label?: T;
+        amount?: T;
+        id?: T;
+      };
+  taxRegime?: T;
+  pfEnabled?: T;
+  esiEnabled?: T;
+  professionalTaxEnabled?: T;
+  lwfEnabled?: T;
+  tdsEnabled?: T;
+  isActive?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "attendance-shifts_select".
+ */
+export interface AttendanceShiftsSelect<T extends boolean = true> {
+  shiftCode?: T;
+  name?: T;
+  shiftStartTime?: T;
+  shiftEndTime?: T;
+  graceMinutes?: T;
+  halfDayThresholdMinutes?: T;
+  fullDayThresholdMinutes?: T;
+  overtimeThresholdMinutes?: T;
+  weeklyOffDays?: T;
+  isDefault?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "holiday-calendars_select".
+ */
+export interface HolidayCalendarsSelect<T extends boolean = true> {
+  calendarCode?: T;
+  name?: T;
+  state?: T;
+  year?: T;
+  holidays?:
+    | T
+    | {
+        name?: T;
+        date?: T;
+        type?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "attendance-logs_select".
+ */
+export interface AttendanceLogsSelect<T extends boolean = true> {
+  attendanceLogCode?: T;
+  employee?: T;
+  punchDate?: T;
+  punchInAt?: T;
+  punchOutAt?: T;
+  source?: T;
+  ipAddress?: T;
+  deviceInfo?: T;
+  geoLatitude?: T;
+  geoLongitude?: T;
+  tamperFlags?: T;
+  workedMinutes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "attendance-daily-summaries_select".
+ */
+export interface AttendanceDailySummariesSelect<T extends boolean = true> {
+  summaryCode?: T;
+  employee?: T;
+  date?: T;
+  status?: T;
+  workedMinutes?: T;
+  lateMinutes?: T;
+  overtimeMinutes?: T;
+  lop?: T;
+  holidayName?: T;
+  attendanceLog?: T;
+  leaveRequest?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leave-types_select".
+ */
+export interface LeaveTypesSelect<T extends boolean = true> {
+  leaveTypeCode?: T;
+  key?: T;
+  name?: T;
+  paid?: T;
+  accrualPerMonth?: T;
+  annualAllowance?: T;
+  carryForwardLimit?: T;
+  isEncashable?: T;
+  minUnit?: T;
+  maxConsecutiveDays?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leave-balances_select".
+ */
+export interface LeaveBalancesSelect<T extends boolean = true> {
+  balanceCode?: T;
+  employee?: T;
+  leaveType?: T;
+  year?: T;
+  openingBalance?: T;
+  accrued?: T;
+  used?: T;
+  adjustments?: T;
+  closingBalance?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leave-requests_select".
+ */
+export interface LeaveRequestsSelect<T extends boolean = true> {
+  leaveRequestCode?: T;
+  employee?: T;
+  employeeRole?: T;
+  leaveType?: T;
+  leaveUnit?: T;
+  startDate?: T;
+  endDate?: T;
+  totalDays?: T;
+  reason?: T;
+  status?: T;
+  requestedBy?: T;
+  leadApprover?: T;
+  adminApprover?: T;
+  leadDecisionAt?: T;
+  adminDecisionAt?: T;
+  rejectionReason?: T;
+  comments?: T;
+  workflowTrail?:
+    | T
+    | {
+        action?: T;
+        fromStatus?: T;
+        toStatus?: T;
+        comment?: T;
+        overrideReason?: T;
+        actedBy?: T;
+        actedAt?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "performance-cycles_select".
+ */
+export interface PerformanceCyclesSelect<T extends boolean = true> {
+  cycleCode?: T;
+  title?: T;
+  month?: T;
+  year?: T;
+  startDate?: T;
+  endDate?: T;
+  kpiWeight?: T;
+  managerWeight?: T;
+  status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "performance-snapshots_select".
+ */
+export interface PerformanceSnapshotsSelect<T extends boolean = true> {
+  snapshotCode?: T;
+  cycle?: T;
+  employee?: T;
+  generatedBy?: T;
+  generatedAt?: T;
+  submissionsCount?: T;
+  approvalsCount?: T;
+  rejectionCount?: T;
+  interviewCount?: T;
+  placementCount?: T;
+  avgTurnaroundHours?: T;
+  slaBreachesCount?: T;
+  kpiScore?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "performance-reviews_select".
+ */
+export interface PerformanceReviewsSelect<T extends boolean = true> {
+  reviewCode?: T;
+  cycle?: T;
+  employee?: T;
+  reviewer?: T;
+  managerRating?: T;
+  managerComments?: T;
+  kpiScore?: T;
+  finalScore?: T;
+  status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payroll-rule-sets_select".
+ */
+export interface PayrollRuleSetsSelect<T extends boolean = true> {
+  ruleSetCode?: T;
+  name?: T;
+  state?: T;
+  effectiveFrom?: T;
+  effectiveTo?: T;
+  isActive?: T;
+  pfEnabled?: T;
+  pfEmployeeRate?: T;
+  pfEmployerRate?: T;
+  pfWageCap?: T;
+  esiEnabled?: T;
+  esiEmployeeRate?: T;
+  esiEmployerRate?: T;
+  esiWageThreshold?: T;
+  professionalTaxEnabled?: T;
+  professionalTaxMonthly?: T;
+  lwfEnabled?: T;
+  lwfEmployeeMonthly?: T;
+  lwfEmployerMonthly?: T;
+  tdsEnabled?: T;
+  tdsRate?: T;
+  standardDeductionMonthly?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payroll-cycles_select".
+ */
+export interface PayrollCyclesSelect<T extends boolean = true> {
+  payrollCycleCode?: T;
+  title?: T;
+  month?: T;
+  year?: T;
+  startDate?: T;
+  endDate?: T;
+  payoutDate?: T;
+  status?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payroll-runs_select".
+ */
+export interface PayrollRunsSelect<T extends boolean = true> {
+  payrollRunCode?: T;
+  payrollCycle?: T;
+  ruleSet?: T;
+  status?: T;
+  preparedBy?: T;
+  preparedAt?: T;
+  approvedBy?: T;
+  approvedAt?: T;
+  disbursedBy?: T;
+  disbursedAt?: T;
+  totalEmployees?: T;
+  totalGross?: T;
+  totalDeductions?: T;
+  totalNet?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payroll-line-items_select".
+ */
+export interface PayrollLineItemsSelect<T extends boolean = true> {
+  payrollLineItemCode?: T;
+  payrollRun?: T;
+  employee?: T;
+  compensation?: T;
+  grossEarnings?: T;
+  totalDeductions?: T;
+  netPayable?: T;
+  lopDays?: T;
+  lopDeduction?: T;
+  pfEmployee?: T;
+  pfEmployer?: T;
+  esiEmployee?: T;
+  esiEmployer?: T;
+  professionalTax?: T;
+  lwfEmployee?: T;
+  lwfEmployer?: T;
+  tds?: T;
+  reimbursementTotal?: T;
+  customEarningsTotal?: T;
+  customDeductionsTotal?: T;
+  earningsBreakdown?: T;
+  deductionsBreakdown?: T;
+  status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payslips_select".
+ */
+export interface PayslipsSelect<T extends boolean = true> {
+  payslipCode?: T;
+  employee?: T;
+  payrollRun?: T;
+  payrollLineItem?: T;
+  month?: T;
+  year?: T;
+  issueDate?: T;
+  pdfURL?: T;
+  snapshot?: T;
+  status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payroll-payout-transactions_select".
+ */
+export interface PayrollPayoutTransactionsSelect<T extends boolean = true> {
+  payoutTxnCode?: T;
+  payrollRun?: T;
+  lineItem?: T;
+  employee?: T;
+  provider?: T;
+  payoutStatus?: T;
+  payoutID?: T;
+  idempotencyKey?: T;
+  attemptCount?: T;
+  utr?: T;
+  responseLog?: T;
+  errorMessage?: T;
+  webhookEventID?: T;
+  initiatedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

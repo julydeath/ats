@@ -1217,6 +1217,10 @@ ul {
   background: #2a9f63;
 }
 
+.stage-dot-teal {
+  background: #2a8f9f;
+}
+
 .stage-dot-slate {
   background: #8f99ad;
 }
@@ -1431,6 +1435,10 @@ ul {
 
 .job-stage-dot-purple {
   background: #7a61d8;
+}
+
+.job-stage-dot-blue {
+  background: #2f72de;
 }
 
 .job-stage-dot-green {
@@ -9693,6 +9701,16 @@ ul {
   font-size: 1.02rem;
 }
 
+.ops-chart-shell {
+  height: 220px;
+  margin-top: 0.35rem;
+  width: 100%;
+}
+
+.ops-chart-shell-lg {
+  height: 280px;
+}
+
 .role-dashboard-card-head {
   align-items: center;
   display: flex;
@@ -11529,14 +11547,22 @@ ul {
   text-transform: uppercase;
 }
 
+.application-detail-form input,
+.application-detail-form select,
 .application-detail-form textarea {
   background: #fff;
   border: 1px solid #d6e0ef;
   border-radius: 9px;
   color: #20314d;
   font-size: 0.76rem;
+  min-height: 2.1rem;
   line-height: 1.4;
   outline: none;
+  padding: 0 0.52rem;
+}
+
+.application-detail-form textarea {
+  min-height: 4.2rem;
   padding: 0.45rem 0.52rem;
   resize: vertical;
 }
@@ -11581,6 +11607,801 @@ ul {
   margin-top: 0.45rem;
 }
 
+.flow-progress-card {
+  background: #f9fbff;
+  border: 1px solid #dce5f2;
+  border-radius: 12px;
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.6rem;
+}
+
+.flow-progress-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.45rem;
+  justify-content: space-between;
+}
+
+.flow-progress-kicker {
+  color: #7a8ca6;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.flow-progress-head h3 {
+  color: #1c2e4b;
+  font-size: 0.98rem;
+  margin-top: 0.12rem;
+}
+
+.flow-progress-subtitle {
+  color: #607390;
+  font-size: 0.74rem;
+  margin-top: 0.16rem;
+}
+
+.flow-progress-head-meta {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: end;
+}
+
+.flow-progress-head-meta span {
+  color: #3f5678;
+  font-size: 0.71rem;
+  font-weight: 700;
+}
+
+.flow-progress-head-meta a {
+  color: #1f58bf;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.flow-progress-steps {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.flow-progress-step {
+  background: #fff;
+  border: 1px solid #dce5f2;
+  border-radius: 9px;
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.35rem 0.45rem;
+}
+
+.flow-progress-step-top {
+  align-items: center;
+  display: flex;
+  gap: 0.3rem;
+  justify-content: space-between;
+}
+
+.flow-progress-step-top p {
+  color: #1d3150;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.flow-progress-step-top span {
+  background: #e9f1ff;
+  border: 1px solid #d3e2fb;
+  border-radius: 999px;
+  color: #1a58b8;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.05rem 0.34rem;
+}
+
+.flow-progress-step-time {
+  color: #5d7291;
+  font-size: 0.7rem;
+}
+
+.flow-progress-step-owner {
+  color: #6b7f9d;
+  font-size: 0.67rem;
+}
+
+.flow-progress-step-current {
+  border-color: #9ec0f3;
+  box-shadow: inset 0 0 0 1px rgba(31, 93, 187, 0.18);
+}
+
+.flow-progress-step-done {
+  border-color: #cce4d4;
+}
+
+.flow-progress-step-done .flow-progress-step-top p {
+  color: #1d5a3b;
+}
+
+.flow-progress-step-pending {
+  opacity: 0.8;
+}
+
+.hr-analytics-page {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.hr-analytics-header {
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid #d8deea;
+  border-radius: 0.9rem;
+  display: flex;
+  gap: 0.85rem;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.hr-analytics-kicker {
+  color: #1e4d9d;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hr-analytics-header h1 {
+  color: #0f233f;
+  font-size: 1.35rem;
+  margin-top: 0.3rem;
+}
+
+.hr-analytics-header p {
+  color: #4e6282;
+  font-size: 0.84rem;
+  margin-top: 0.32rem;
+}
+
+.hr-analytics-filters {
+  align-items: end;
+  background: #fff;
+  border: 1px solid #d8deea;
+  border-radius: 0.9rem;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(5, minmax(130px, 1fr)) auto;
+  padding: 0.85rem;
+}
+
+.hr-analytics-filters label {
+  color: #3d5273;
+  display: grid;
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 0.28rem;
+}
+
+.hr-analytics-filter-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.hr-analytics-filter-actions .button {
+  min-height: 2.35rem;
+}
+
+.hr-analytics-kpi-grid {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.hr-analytics-kpi-card {
+  background: #fff;
+  border: 1px solid #d9e1ef;
+  border-radius: 0.8rem;
+  display: grid;
+  gap: 0.18rem;
+  min-height: 96px;
+  padding: 0.65rem 0.7rem;
+}
+
+.hr-analytics-kpi-card p {
+  color: #355173;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.hr-analytics-kpi-card strong {
+  color: #0f305f;
+  font-size: 1.28rem;
+  font-weight: 800;
+}
+
+.hr-analytics-kpi-card span {
+  color: #6a7d99;
+  font-size: 0.72rem;
+}
+
+.hr-analytics-main-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hr-analytics-card {
+  background: #fff;
+  border: 1px solid #d8deea;
+  border-radius: 0.85rem;
+  padding: 0.85rem;
+}
+
+.hr-analytics-card-span-2 {
+  grid-column: 1 / -1;
+}
+
+.hr-analytics-card-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.hr-analytics-card-head h2 {
+  color: #122f54;
+  font-size: 0.97rem;
+}
+
+.hr-analytics-card-head span {
+  color: #5d7392;
+  font-size: 0.73rem;
+  font-weight: 600;
+}
+
+.hr-analytics-empty {
+  color: #607590;
+  font-size: 0.82rem;
+  margin-top: 0.55rem;
+}
+
+.hr-analytics-trend-grid {
+  align-items: end;
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(auto-fit, minmax(34px, 1fr));
+  margin-top: 0.78rem;
+}
+
+.hr-analytics-trend-col {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: center;
+}
+
+.hr-analytics-trend-col p {
+  color: #3e5677;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.hr-analytics-trend-col small {
+  color: #6c829f;
+  font-size: 0.63rem;
+}
+
+.hr-analytics-trend-bars {
+  align-items: end;
+  display: flex;
+  gap: 0.14rem;
+  height: 92px;
+}
+
+.hr-analytics-trend-bar {
+  border-radius: 999px 999px 4px 4px;
+  display: inline-flex;
+  min-height: 2px;
+  width: 0.48rem;
+}
+
+.hr-analytics-trend-bar-attendance {
+  background: linear-gradient(180deg, #7fb0ff 0%, #2f72de 100%);
+}
+
+.hr-analytics-trend-bar-workflow {
+  background: linear-gradient(180deg, #6fd7ba 0%, #1f9f7c 100%);
+}
+
+.hr-analytics-list {
+  display: grid;
+  gap: 0.48rem;
+  margin-top: 0.7rem;
+}
+
+.hr-analytics-list-row {
+  align-items: center;
+  background: #f9fbff;
+  border: 1px solid #d8e2f2;
+  border-radius: 0.62rem;
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: minmax(120px, 1fr) minmax(90px, 1fr) auto;
+  padding: 0.48rem 0.55rem;
+}
+
+.hr-analytics-list-row p {
+  color: #203f6b;
+  font-size: 0.77rem;
+  font-weight: 700;
+}
+
+.hr-analytics-list-row small {
+  color: #5d7391;
+  font-size: 0.69rem;
+}
+
+.hr-analytics-list-row strong {
+  color: #13355f;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.hr-analytics-progress {
+  background: #e7edf8;
+  border-radius: 999px;
+  height: 0.44rem;
+  overflow: hidden;
+}
+
+.hr-analytics-progress span {
+  background: linear-gradient(90deg, #2d72de 0%, #4e91f0 100%);
+  border-radius: 999px;
+  display: block;
+  height: 100%;
+}
+
+.role-dashboard-hr-chart {
+  align-items: end;
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-top: 0.7rem;
+}
+
+.role-dashboard-hr-chart-col {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: center;
+}
+
+.role-dashboard-hr-chart-bars {
+  align-items: end;
+  display: flex;
+  gap: 0.16rem;
+  height: 90px;
+}
+
+.role-dashboard-hr-chart-bar {
+  border-radius: 999px 999px 4px 4px;
+  display: inline-flex;
+  width: 0.5rem;
+}
+
+.role-dashboard-hr-chart-bar-attendance {
+  background: linear-gradient(180deg, #72a8ff 0%, #1f67d3 100%);
+}
+
+.role-dashboard-hr-chart-bar-workflow {
+  background: linear-gradient(180deg, #79d2bf 0%, #198f6f 100%);
+}
+
+.role-dashboard-hr-chart-col p {
+  color: #465f83;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.role-dashboard-hr-chart-col small {
+  color: #6e839f;
+  font-size: 0.65rem;
+}
+
+.role-dashboard-hr-legend {
+  display: flex;
+  gap: 0.7rem;
+  margin-top: 0.62rem;
+}
+
+.role-dashboard-hr-legend span {
+  align-items: center;
+  color: #4d6486;
+  display: inline-flex;
+  font-size: 0.72rem;
+  gap: 0.3rem;
+}
+
+.role-dashboard-hr-dot {
+  border-radius: 999px;
+  display: inline-flex;
+  height: 0.48rem;
+  width: 0.48rem;
+}
+
+.role-dashboard-hr-dot-attendance {
+  background: #2a69d6;
+}
+
+.role-dashboard-hr-dot-workflow {
+  background: #1f8f71;
+}
+
+.role-dashboard-kpi-stack {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.role-dashboard-kpi-stack article {
+  background: #f8fbff;
+  border: 1px solid #dce4f3;
+  border-radius: 0.62rem;
+  display: grid;
+  gap: 0.14rem;
+  padding: 0.52rem 0.55rem;
+}
+
+.role-dashboard-kpi-stack p {
+  color: #4f6688;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.role-dashboard-kpi-stack strong {
+  color: #14355f;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.team-mgmt-page {
+  align-items: start;
+}
+
+.team-mgmt-hero {
+  background:
+    radial-gradient(circle at 94% 8%, rgba(118, 165, 245, 0.18) 0%, transparent 36%),
+    linear-gradient(180deg, #fbfdff 0%, #f7faff 100%);
+}
+
+.team-mgmt-header-row {
+  align-items: start;
+  display: flex;
+  gap: 0.8rem;
+  justify-content: space-between;
+}
+
+.team-mgmt-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.team-mgmt-feedback {
+  border-radius: 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 0.55rem;
+  padding: 0.48rem 0.64rem;
+}
+
+.team-mgmt-feedback-success {
+  background: #ecf9f1;
+  border: 1px solid #c6ebd2;
+  color: #167344;
+}
+
+.team-mgmt-feedback-error {
+  background: #fff1f1;
+  border: 1px solid #f0c6c6;
+  color: #b33232;
+}
+
+.team-mgmt-kpi-panel {
+  min-height: unset;
+}
+
+.team-mgmt-kpi-grid {
+  display: grid;
+  gap: 0.52rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.team-mgmt-kpi-card {
+  background: #fff;
+  border: 1px solid #dbe5f3;
+  border-radius: 0.68rem;
+  min-height: 94px;
+  padding: 0.62rem 0.68rem;
+}
+
+.team-mgmt-kpi-card p {
+  color: #637895;
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.team-mgmt-kpi-card strong {
+  color: #1a304f;
+  display: block;
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-top: 0.24rem;
+}
+
+.team-mgmt-kpi-card small {
+  color: #69809f;
+  display: block;
+  font-size: 0.7rem;
+  margin-top: 0.18rem;
+}
+
+.team-mgmt-panel {
+  min-height: unset;
+}
+
+.team-mgmt-form {
+  display: grid;
+  gap: 0.56rem;
+  margin-top: 0.52rem;
+}
+
+.team-mgmt-form-grid {
+  display: grid;
+  gap: 0.5rem 0.56rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.team-mgmt-field-span-2 {
+  grid-column: 1 / -1;
+}
+
+.team-mgmt-field {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.team-mgmt-field > span {
+  color: #5b708f;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.team-mgmt-checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.58rem 0.92rem;
+}
+
+.team-mgmt-checkbox {
+  align-items: center;
+  color: #2f4768;
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 700;
+  gap: 0.42rem;
+}
+
+.team-mgmt-checkbox input {
+  accent-color: #0f4cb7;
+}
+
+.team-mgmt-form-actions {
+  align-items: center;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.team-mgmt-checklist .workflow-step {
+  background: #f8fbff;
+  border-color: #dae5f3;
+}
+
+.team-mgmt-directory-head {
+  align-items: baseline;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.team-mgmt-directory-head p {
+  color: #647c9d;
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.team-mgmt-table-wrap {
+  margin-top: 0.52rem;
+}
+
+.team-mgmt-table {
+  min-width: 980px;
+}
+
+.team-mgmt-table th {
+  color: #6b7d97;
+  font-size: 0.67rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.team-mgmt-usercell {
+  align-items: center;
+  display: flex;
+  gap: 0.48rem;
+}
+
+.team-mgmt-user-avatar {
+  align-items: center;
+  background: #eaf1ff;
+  border: 1px solid #d2dff5;
+  border-radius: 999px;
+  color: #224f89;
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 800;
+  height: 1.9rem;
+  justify-content: center;
+  min-width: 1.9rem;
+}
+
+.team-mgmt-user-name {
+  color: #1f3352;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.team-mgmt-user-email {
+  color: #6e829f;
+  font-size: 0.69rem;
+  margin-top: 0.1rem;
+}
+
+.team-mgmt-stack {
+  display: grid;
+  gap: 0.04rem;
+}
+
+.team-mgmt-stack p {
+  color: #243a5b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.team-mgmt-stack small {
+  color: #6f82a0;
+  font-size: 0.68rem;
+}
+
+.team-mgmt-pill {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.21rem 0.52rem;
+}
+
+.team-mgmt-pill-role {
+  background: #edf4ff;
+  border: 1px solid #d4e2f8;
+  color: #2f5f9e;
+}
+
+.team-mgmt-pill-active {
+  background: #e9f8ef;
+  border: 1px solid #c7ecd6;
+  color: #157845;
+}
+
+.team-mgmt-pill-warning {
+  background: #fff7eb;
+  border: 1px solid #f3dfb9;
+  color: #9a6202;
+}
+
+.team-mgmt-pill-danger {
+  background: #fff0f0;
+  border: 1px solid #f2cccc;
+  color: #ab3636;
+}
+
+.team-mgmt-pill-muted {
+  background: #f2f5fa;
+  border: 1px solid #dfe5f0;
+  color: #617792;
+}
+
+.team-mgmt-toggle-button {
+  min-width: 92px;
+}
+
+.team-mgmt-setup-grid {
+  display: grid;
+  gap: 0.62rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0.54rem;
+}
+
+.team-mgmt-setup-card {
+  background: #fbfdff;
+  border: 1px solid #dce7f5;
+  border-radius: 0.68rem;
+  padding: 0.62rem;
+}
+
+.team-mgmt-setup-card h3 {
+  color: #1d3353;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.team-mgmt-setup-list {
+  border-top: 1px dashed #d9e4f3;
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.62rem;
+  padding-top: 0.52rem;
+}
+
+.team-mgmt-setup-list p {
+  color: #4d6485;
+  font-size: 0.71rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.team-mgmt-setup-list small {
+  color: #5f7594;
+  font-size: 0.71rem;
+}
+
+.team-mgmt-inline-row {
+  align-items: center;
+  display: flex;
+  gap: 0.42rem;
+  justify-content: space-between;
+}
+
+.team-mgmt-inline-row .button {
+  padding: 0.28rem 0.56rem;
+}
+
+.team-mgmt-calendar-card {
+  background: #ffffff;
+  border: 1px solid #dde8f7;
+  border-radius: 0.56rem;
+  padding: 0.46rem 0.56rem;
+}
+
+.team-mgmt-calendar-card summary {
+  color: #29496e;
+  cursor: pointer;
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.team-mgmt-holiday-list {
+  border-top: 1px dashed #d9e4f3;
+  display: grid;
+  gap: 0.24rem;
+  margin-top: 0.44rem;
+  padding-top: 0.44rem;
+}
+
 @media (max-width: 1280px) {
   .clients-grid-cards,
   .client-detail-jobs-grid {
@@ -11588,6 +12409,14 @@ ul {
   }
 
   .application-create-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-mgmt-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .team-mgmt-setup-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -11623,5 +12452,313 @@ ul {
   .clients-grid-toolbar,
   .clients-create-modal-grid {
     grid-template-columns: 1fr;
+  }
+
+  .hr-analytics-kpi-grid,
+  .hr-analytics-main-grid,
+  .hr-analytics-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hr-analytics-filter-actions {
+    grid-column: 1 / -1;
+  }
+
+  .role-dashboard-hr-chart {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .team-mgmt-header-row {
+    display: grid;
+    gap: 0.58rem;
+  }
+
+  .team-mgmt-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .hr-analytics-kpi-grid,
+  .hr-analytics-main-grid,
+  .hr-analytics-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .hr-analytics-header {
+    display: grid;
+  }
+
+  .hr-analytics-filter-actions {
+    flex-wrap: wrap;
+  }
+
+  .role-dashboard-hr-chart {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .team-mgmt-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-mgmt-header-actions {
+    width: 100%;
+  }
+}
+
+/* Shared form/filter consistency pass for internal operations UI */
+:is(.internal-shell, .ops-shell) {
+  --ops-control-bg: #ffffff;
+  --ops-control-border: #cfdced;
+  --ops-control-border-focus: #1f67d3;
+  --ops-control-height: 2.42rem;
+  --ops-control-radius: 0.62rem;
+  --ops-control-text: #1d314f;
+  --ops-label: #556b8d;
+}
+
+:is(.internal-shell, .ops-shell) :is(
+    .row-form,
+    .filter-toolbar,
+    .hr-analytics-filters,
+    .clients-grid-toolbar,
+    .jobs-toolbar,
+    .candidate-mgmt-filters,
+    .lead-queue-filters,
+    .schedule-workspace-filter-row
+  ) {
+  align-items: end;
+  gap: 0.65rem;
+}
+
+:is(.internal-shell, .ops-shell) :is(
+    .row-form,
+    .filter-toolbar,
+    .hr-analytics-filters,
+    .clients-grid-toolbar,
+    .jobs-toolbar,
+    .candidate-mgmt-filters,
+    .lead-queue-filters,
+    .schedule-workspace-filter-row
+  ) :is(label, .filter-field) {
+  color: var(--ops-label);
+  display: grid;
+  font-size: 0.73rem;
+  font-weight: 700;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+:is(.internal-shell, .ops-shell) .row-form {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+:is(.internal-shell, .ops-shell) .hr-analytics-filters {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+:is(.internal-shell, .ops-shell) :is(.row-form, .filter-toolbar) .button,
+:is(.internal-shell, .ops-shell) .hr-analytics-filter-actions .button,
+:is(.internal-shell, .ops-shell) .filter-actions .button,
+:is(.internal-shell, .ops-shell) .public-actions .button {
+  min-height: var(--ops-control-height);
+}
+
+:is(.internal-shell, .ops-shell) input:not([type='checkbox']):not([type='radio']):not([type='range']),
+:is(.internal-shell, .ops-shell) select,
+:is(.internal-shell, .ops-shell) textarea,
+:is(.internal-shell, .ops-shell) .input {
+  background: var(--ops-control-bg);
+  border: 1px solid var(--ops-control-border);
+  border-radius: var(--ops-control-radius);
+  color: var(--ops-control-text);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+:is(.internal-shell, .ops-shell) input:not([type='checkbox']):not([type='radio']):not([type='range']),
+:is(.internal-shell, .ops-shell) select,
+:is(.internal-shell, .ops-shell) .input {
+  min-height: var(--ops-control-height);
+  padding: 0 0.72rem;
+}
+
+:is(.internal-shell, .ops-shell) textarea {
+  min-height: 5.2rem;
+  padding: 0.62rem 0.72rem;
+  resize: vertical;
+}
+
+:is(.internal-shell, .ops-shell) select:not([multiple]) {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23637a9a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.68rem center;
+  background-repeat: no-repeat;
+  background-size: 0.86rem;
+  padding-right: 2rem;
+}
+
+:is(.internal-shell, .ops-shell) input::placeholder,
+:is(.internal-shell, .ops-shell) textarea::placeholder {
+  color: #91a3bc;
+}
+
+:is(.internal-shell, .ops-shell) input:focus,
+:is(.internal-shell, .ops-shell) select:focus,
+:is(.internal-shell, .ops-shell) textarea:focus,
+:is(.internal-shell, .ops-shell) .input:focus {
+  border-color: var(--ops-control-border-focus);
+  box-shadow: 0 0 0 3px rgba(31, 103, 211, 0.14);
+  outline: none;
+}
+
+:is(.internal-shell, .ops-shell) .table-wrap .row-form {
+  gap: 0.4rem;
+  grid-template-columns: 1fr;
+}
+
+:is(.internal-shell, .ops-shell) :is(.clients-grid-toolbar, .jobs-toolbar, .candidate-mgmt-filters, .lead-queue-filters, .schedule-workspace-filter-row) {
+  gap: 0.55rem;
+}
+
+:is(.internal-shell, .ops-shell) :is(
+    .application-create-card,
+    .application-detail-form,
+    .clients-create-modal-form,
+    .jobs-workspace-modal-grid,
+    .schedule-workspace-modal-grid,
+    .placements-workspace-modal-grid,
+    .team-mgmt-form
+  ) :is(label, .team-mgmt-field) {
+  gap: 0.28rem;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-shell {
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  border: 1px solid #d7e2f2;
+  border-radius: 0.9rem;
+  display: grid;
+  gap: 0.88rem;
+  padding: 0.9rem;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-grid {
+  display: grid;
+  gap: 0.68rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-grid-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-field {
+  color: #4f6485;
+  display: grid;
+  font-size: 0.76rem;
+  font-weight: 700;
+  gap: 0.34rem;
+  min-width: 0;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-field > span {
+  color: #4c6384;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-actions {
+  align-items: center;
+  border-top: 1px solid #e1e9f6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.56rem;
+  justify-content: flex-end;
+  padding-top: 0.74rem;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-actions .button {
+  min-width: 10.8rem;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-actions-left {
+  justify-content: flex-start;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-shell :is(input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea) {
+  background: #ffffff;
+  border: 1px solid #c6d5eb;
+  border-radius: 0.66rem;
+  color: #173154;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-shell :is(input:not([type='checkbox']):not([type='radio']):not([type='range']), select) {
+  min-height: 2.6rem;
+  padding: 0 0.78rem;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-shell textarea {
+  min-height: 5.6rem;
+  padding: 0.7rem 0.78rem;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-shell :is(input, select, textarea):focus {
+  border-color: #1f67d3;
+  box-shadow: 0 0 0 3px rgba(31, 103, 211, 0.16);
+  outline: none;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-shell select:not([multiple]) {
+  background-position: right 0.8rem center;
+  background-size: 0.9rem;
+  padding-right: 2.1rem;
+}
+
+:is(.internal-shell, .ops-shell) .ops-form-shell-strong {
+  border-color: #cedcf0;
+  box-shadow: 0 1px 0 rgba(12, 52, 112, 0.05), 0 8px 24px rgba(29, 78, 150, 0.06);
+}
+
+@media (max-width: 1200px) {
+  :is(.internal-shell, .ops-shell) .ops-form-grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  :is(.internal-shell, .ops-shell) .ops-form-grid-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  :is(.internal-shell, .ops-shell) .ops-form-grid-3,
+  :is(.internal-shell, .ops-shell) .ops-form-grid-2,
+  :is(.internal-shell, .ops-shell) .ops-form-grid-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  :is(.internal-shell, .ops-shell) .ops-form-grid-3,
+  :is(.internal-shell, .ops-shell) .ops-form-grid-2,
+  :is(.internal-shell, .ops-shell) .ops-form-grid-5 {
+    grid-template-columns: 1fr;
+  }
+
+  :is(.internal-shell, .ops-shell) .ops-form-actions .button {
+    min-width: unset;
+    width: 100%;
   }
 }

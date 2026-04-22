@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 
+import { ApplicationFlowProgress } from '@/components/internal/ApplicationFlowProgress'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
@@ -106,15 +107,15 @@ const stageToneClass = (stage: ApplicationStage | null): string => {
     return 'candidate-profile-status-neutral'
   }
 
-  if (stage === 'internalReviewApproved' || stage === 'candidateApplied') {
+  if (stage === 'interviewCleared' || stage === 'offerReleased' || stage === 'joined') {
     return 'candidate-profile-status-good'
   }
 
-  if (stage === 'internalReviewPending' || stage === 'candidateInvited') {
+  if (stage === 'sourced' || stage === 'screened' || stage === 'submittedToClient' || stage === 'interviewScheduled') {
     return 'candidate-profile-status-warn'
   }
 
-  if (stage === 'internalReviewRejected' || stage === 'sentBackForCorrection') {
+  if (stage === 'rejected') {
     return 'candidate-profile-status-bad'
   }
 
@@ -144,7 +145,7 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
   }
 
   try {
-    const [candidate, applicationsForCandidate, candidateActivities] = await Promise.all([
+    const [candidate, applicationsForCandidate, candidateActivities, stageHistory] = await Promise.all([
       payload.findByID({
         collection: 'candidates',
         depth: 1,
@@ -198,6 +199,7 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
         pagination: false,
         overrideAccess: false,
         select: {
+          applicationCode: true,
           id: true,
           job: true,
           latestComment: true,
@@ -236,6 +238,26 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
           },
         },
       }),
+      payload.find({
+        collection: 'application-stage-history',
+        depth: 1,
+        limit: 300,
+        pagination: false,
+        overrideAccess: false,
+        select: {
+          actor: true,
+          application: true,
+          changedAt: true,
+          toStage: true,
+        },
+        sort: '-changedAt',
+        user,
+        where: {
+          candidate: {
+            equals: candidateID,
+          },
+        },
+      }),
     ])
 
     const resumeMeta = getResumeMeta(candidate.resume)
@@ -244,6 +266,33 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
     const latestApplication = applicationsForCandidate.docs[0] || null
     const latestStage = (latestApplication?.stage as ApplicationStage | undefined) || null
     const latestStageLabel = latestStage ? APPLICATION_STAGE_LABELS[latestStage] : 'Profile Created'
+    const stageHistoryByApplication = new Map<
+      string,
+      Array<{
+        actor?: unknown
+        changedAt?: Date | string | null
+        toStage?: unknown
+      }>
+    >()
+
+    stageHistory.docs.forEach((entry) => {
+      const applicationKey = String(extractRelationshipID(entry.application) || '')
+      if (!applicationKey) {
+        return
+      }
+
+      const bucket = stageHistoryByApplication.get(applicationKey) || []
+      bucket.push({
+        actor: entry.actor,
+        changedAt: entry.changedAt,
+        toStage: entry.toStage,
+      })
+      stageHistoryByApplication.set(applicationKey, bucket)
+    })
+
+    const latestApplicationFlowHistory = latestApplication
+      ? stageHistoryByApplication.get(String(latestApplication.id)) || []
+      : []
     const activityByType = candidateActivities.docs.reduce(
       (acc, item) => {
         const type = String(item.type || 'activity')
@@ -499,6 +548,20 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
           </aside>
 
           <div className="candidate-profile-main-col">
+            {latestApplication ? (
+              <ApplicationFlowProgress
+                applicationCode={latestApplication.applicationCode || `APP-${latestApplication.id}`}
+                currentStage={latestApplication.stage as ApplicationStage}
+                detailHref={`${APP_ROUTES.internal.applications.detailBase}/${latestApplication.id}`}
+                entries={latestApplicationFlowHistory}
+                fallbackOwnerName={readLabel(latestApplication.recruiter, 'Unassigned')}
+                fallbackOwnerRole="recruiter"
+                fallbackTimestamp={latestApplication.updatedAt}
+                subtitle={`${readLabel(latestApplication.job)} · Latest mapped application`}
+                title="Latest Application Flow"
+              />
+            ) : null}
+
             <article className="candidate-profile-resume-card">
               <div className="candidate-profile-resume-head">
                 <p>{resumeMeta.filename}</p>
