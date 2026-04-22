@@ -1,4 +1,5 @@
 import configPromise from '@payload-config'
+import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
@@ -24,7 +25,7 @@ const toSessionUser = (user: AuthenticatedInternalUser): InternalSessionUser => 
 
 export async function GET(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const auth = await payload.auth({ headers: request.headers })
+  const auth = await payload.auth({ headers: await getHeaders() })
   const user = auth.user as AuthenticatedInternalUser | null | undefined
 
   if (!user || !hasInternalRole(user as InternalUserLike, ['admin'])) {

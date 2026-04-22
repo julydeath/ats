@@ -12692,6 +12692,29 @@ ul {
   min-width: 10.8rem;
 }
 
+:is(.internal-shell, .ops-shell) form.is-submitting {
+  opacity: 0.96;
+}
+
+:is(.internal-shell, .ops-shell) .button.is-pending,
+:is(.internal-shell, .ops-shell) input[type='submit'].is-pending {
+  opacity: 0.86;
+  position: relative;
+}
+
+:is(.internal-shell, .ops-shell) .button.is-pending::after {
+  animation: ops-spin 0.8s linear infinite;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  border-right-color: transparent;
+  content: '';
+  display: inline-block;
+  height: 12px;
+  margin-left: 8px;
+  vertical-align: -2px;
+  width: 12px;
+}
+
 :is(.internal-shell, .ops-shell) .ops-form-actions-left {
   justify-content: flex-start;
 }
@@ -12730,6 +12753,15 @@ ul {
 :is(.internal-shell, .ops-shell) .ops-form-shell-strong {
   border-color: #cedcf0;
   box-shadow: 0 1px 0 rgba(12, 52, 112, 0.05), 0 8px 24px rgba(29, 78, 150, 0.06);
+}
+
+@keyframes ops-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1200px) {

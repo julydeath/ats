@@ -88,6 +88,9 @@ export const APP_ROUTES = {
     internal: {
       hr: {
         analyticsSummary: '/api/internal/hr/analytics/summary',
+        attendanceMe: '/api/internal/hr/attendance/me',
+        attendancePunchIn: '/api/internal/hr/attendance/punch-in',
+        attendancePunchOut: '/api/internal/hr/attendance/punch-out',
       },
     },
   },

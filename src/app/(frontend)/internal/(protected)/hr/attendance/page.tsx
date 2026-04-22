@@ -2,6 +2,7 @@ import configPromise from '@payload-config'
 import { getPayload, type Where } from 'payload'
 
 import { SimpleBarChart, SimpleDonutChart } from '@/components/internal/charts/ATSCharts'
+import { AttendancePunchControls } from '@/components/internal/AttendancePunchControls'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { ATTENDANCE_STATUS_LABELS, type AttendanceStatus } from '@/lib/constants/hr'
@@ -283,8 +284,6 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
   const teamSummaries = teamSummariesResult.docs
   const openSessions = openSessionsResult.docs
 
-  const openOwnSession = selectedLogs.find((item) => !item.punchOutAt)
-
   const statusCounts = selectedSummaries.reduce(
     (acc, row) => {
       const status = String(row.status || 'absent') as AttendanceStatus
@@ -388,32 +387,7 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
       {(user.role === 'leadRecruiter' || user.role === 'recruiter') ? (
         <article className="panel">
           <h2>Punch Controls</h2>
-          {missingProfile ? (
-            <p className="panel-subtitle" style={{ color: '#b91c1c' }}>
-              Employee profile is missing. Ask admin to map your employee profile to enable punch in/out.
-            </p>
-          ) : (
-            <>
-              <p className="panel-subtitle">
-                {openOwnSession
-                  ? `Open session from ${formatDateTime(openOwnSession.punchInAt)}.`
-                  : 'No active session. Start your day using punch-in.'}
-              </p>
-              <div className="public-actions" style={{ marginTop: 12 }}>
-                <form action={APP_ROUTES.internal.hr.attendancePunchIn} method="post">
-                  <input name="source" type="hidden" value="web" />
-                  <button className="button" type="submit">
-                    Punch In
-                  </button>
-                </form>
-                <form action={APP_ROUTES.internal.hr.attendancePunchOut} method="post">
-                  <button className="button button-secondary" type="submit">
-                    Punch Out
-                  </button>
-                </form>
-              </div>
-            </>
-          )}
+          <AttendancePunchControls missingProfile={missingProfile} />
         </article>
       ) : (
         <article className="panel">

@@ -1,4 +1,5 @@
 import configPromise from '@payload-config'
+import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
@@ -11,7 +12,7 @@ const buildRedirectURL = (request: Request): URL =>
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const auth = await payload.auth({ headers: request.headers })
+  const auth = await payload.auth({ headers: await getHeaders() })
   const user = auth.user as InternalUserLike
 
   if (!user || !hasInternalRole(user, ['leadRecruiter', 'recruiter'])) {

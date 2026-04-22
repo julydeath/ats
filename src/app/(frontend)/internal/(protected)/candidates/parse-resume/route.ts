@@ -1,4 +1,5 @@
 import configPromise from '@payload-config'
+import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
@@ -9,7 +10,7 @@ const MAX_RESUME_SIZE_BYTES = 10 * 1024 * 1024
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const { user } = await payload.auth({ headers: request.headers })
+  const { user } = await payload.auth({ headers: await getHeaders() })
   const internalUser = user as InternalUserLike
 
   if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter', 'recruiter'])) {

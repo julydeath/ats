@@ -1,4 +1,5 @@
 import configPromise from '@payload-config'
+import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
@@ -55,7 +56,7 @@ const buildRedirectURL = (request: Request): URL => new URL(APP_ROUTES.internal.
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const { user } = await payload.auth({ headers: request.headers })
+  const { user } = await payload.auth({ headers: await getHeaders() })
   const internalUser = user as InternalUserLike
 
   if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter'])) {

@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { Manrope } from 'next/font/google'
 import type { ReactNode } from 'react'
 
+import { AppQueryProvider } from '@/components/providers/AppQueryProvider'
+
 import './styles.css'
 
 const manrope = Manrope({
@@ -23,7 +25,9 @@ export default function FrontendLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className={manrope.variable}>
-        <main className="app-root">{children}</main>
+        <AppQueryProvider>
+          <main className="app-root">{children}</main>
+        </AppQueryProvider>
       </body>
     </html>
   )

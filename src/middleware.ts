@@ -5,6 +5,13 @@ import { APP_ROUTES, PAYLOAD_AUTH_COOKIE_NAME } from '@/lib/constants/routes'
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl
+  const method = request.method.toUpperCase()
+
+  // Avoid intercepting mutation requests (POST/PATCH/PUT/DELETE),
+  // let route handlers perform auth checks and return contextual errors.
+  if (method !== 'GET' && method !== 'HEAD') {
+    return NextResponse.next()
+  }
 
   if (pathname === APP_ROUTES.internal.login) {
     return NextResponse.next()

@@ -1,4 +1,5 @@
 import configPromise from '@payload-config'
+import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { APIError, getPayload } from 'payload'
 
@@ -16,11 +17,13 @@ const toID = (value: FormDataEntryValue | null): number | string | null => {
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const auth = await payload.auth({ headers: request.headers })
+  const auth = await payload.auth({ headers: await getHeaders() })
   const user = auth.user as InternalUserLike
 
   if (!user || !hasInternalRole(user, ['admin', 'leadRecruiter'])) {
-    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
+    const redirectURL = buildRedirectURL(request)
+    redirectURL.searchParams.set('error', 'You are not allowed to perform this action.')
+    return NextResponse.redirect(redirectURL, 303)
   }
 
   try {
