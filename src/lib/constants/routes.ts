@@ -36,6 +36,7 @@ export const APP_ROUTES = {
       payrollLock: '/internal/hr/payroll/lock',
       payrollApprove: '/internal/hr/payroll/approve',
       payrollDisburse: '/internal/hr/payroll/disburse',
+      payrollPaymentStatus: '/internal/hr/payroll/payment-status',
     },
     assignments: {
       head: '/internal/assignments/head',

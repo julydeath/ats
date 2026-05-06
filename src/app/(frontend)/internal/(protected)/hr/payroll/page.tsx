@@ -5,14 +5,18 @@ import { HRPayrollBarChart, SimpleDonutChart } from '@/components/internal/chart
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import {
+  PAYROLL_PAYMENT_MODE_LABELS,
+  PAYROLL_PAYMENT_STATUS_LABELS,
   PAYROLL_RUN_STATUS_LABELS,
   PAYROLL_CYCLE_STATUS_LABELS,
   PAYOUT_STATUS_LABELS,
+  type PayrollPaymentStatus,
   type PayrollRunStatus,
   type PayrollCycleStatus,
   type PayoutStatus,
 } from '@/lib/constants/hr'
 import { isDateInGraphRange, resolveGraphDateRange, toDateInputValue } from '@/lib/hr/graph-filters'
+import { isRazorpayXConfigured } from '@/lib/payments/razorpayx'
 
 const formatDate = (value?: string | null): string => {
   if (!value) return '—'
@@ -32,6 +36,90 @@ const formatAmount = (value?: number | null): string =>
     style: 'currency',
   }).format(value || 0)
 
+const formatDateTime = (value?: string | null): string => {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : null
+
+const asString = (value: unknown): string =>
+  typeof value === 'string' ? value : ''
+
+const maskAccountNumber = (value: unknown): string => {
+  const digits = asString(value).replace(/\s+/g, '')
+  if (!digits) return '—'
+  if (digits.length <= 4) return digits
+  return `${'*'.repeat(Math.max(0, digits.length - 4))}${digits.slice(-4)}`
+}
+
+const normalizePaymentStatus = (value: unknown): PayrollPaymentStatus => {
+  if (value === 'paid' || value === 'notPaid') return value
+  return 'pending'
+}
+
+const payrollPaymentPillClassName = (status: PayrollPaymentStatus): string =>
+  `status-pill payroll-payment-pill payroll-payment-pill-${status}`
+
+const getEmployeeUser = (lineItem: Record<string, unknown>): Record<string, unknown> | null => {
+  const employee = asRecord(lineItem.employee)
+  return asRecord(employee?.user)
+}
+
+const getEmployeeName = (lineItem: Record<string, unknown>): string => {
+  const user = getEmployeeUser(lineItem)
+  return (
+    asString(user?.fullName) ||
+    asString(user?.email) ||
+    asString(asRecord(lineItem.employee)?.employeeCode) ||
+    'Employee'
+  )
+}
+
+const getEmployeeEmail = (lineItem: Record<string, unknown>): string =>
+  asString(getEmployeeUser(lineItem)?.email) || '—'
+
+const getEmployeeCode = (lineItem: Record<string, unknown>): string =>
+  asString(asRecord(lineItem.employee)?.employeeCode) || '—'
+
+const getEmployeeDesignation = (lineItem: Record<string, unknown>): string =>
+  asString(asRecord(lineItem.employee)?.designation) || '—'
+
+const getEmployeeBankLine = (lineItem: Record<string, unknown>): string => {
+  const employee = asRecord(lineItem.employee)
+  const bankName = asString(employee?.bankName)
+  const bankIFSC = asString(employee?.bankIFSC)
+  const account = maskAccountNumber(employee?.bankAccountNumber)
+
+  return [bankName, account !== '—' ? account : '', bankIFSC].filter(Boolean).join(' · ') || '—'
+}
+
+const getRunRecord = (lineItem: Record<string, unknown>): Record<string, unknown> | null =>
+  asRecord(lineItem.payrollRun)
+
+const getRunCode = (lineItem: Record<string, unknown>): string =>
+  asString(getRunRecord(lineItem)?.payrollRunCode) || '—'
+
+const getCycleLabel = (lineItem: Record<string, unknown>): string => {
+  const cycle = asRecord(getRunRecord(lineItem)?.payrollCycle)
+  const month = cycle?.month
+  const year = cycle?.year
+  if (typeof month === 'number' && typeof year === 'number') {
+    return `${String(month).padStart(2, '0')}/${year}`
+  }
+
+  return '—'
+}
+
 type PayrollPageProps = {
   searchParams?: Promise<{ error?: string; from?: string; month?: string; period?: string; success?: string; to?: string }>
 }
@@ -39,6 +127,7 @@ type PayrollPageProps = {
 export default async function InternalHRPayrollPage({ searchParams }: PayrollPageProps) {
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
+  const razorpayReady = isRazorpayXConfigured()
   const resolved = (await searchParams) || {}
   const range = resolveGraphDateRange({
     from: resolved.from || null,
@@ -94,8 +183,8 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
     }),
     payload.find({
       collection: 'payroll-line-items',
-      depth: 1,
-      limit: 200,
+      depth: 2,
+      limit: 500,
       overrideAccess: false,
       sort: '-updatedAt',
       user,
@@ -126,7 +215,13 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
 
   const filteredLineItems = lineItems.docs.filter((lineItem) =>
     isDateInGraphRange({
-      dateValue: lineItem.updatedAt,
+      dateValue:
+        typeof lineItem.payrollRun === 'object' &&
+        lineItem.payrollRun &&
+        typeof lineItem.payrollRun.payrollCycle === 'object' &&
+        lineItem.payrollRun.payrollCycle
+          ? lineItem.payrollRun.payrollCycle.startDate
+          : lineItem.updatedAt,
       range,
     }),
   )
@@ -178,13 +273,87 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
     value,
   }))
 
+  const manualPaymentSummary = filteredLineItems.reduce(
+    (acc, item) => {
+      const status = normalizePaymentStatus((item as unknown as Record<string, unknown>).paymentStatus)
+      const net = Number(item.netPayable || 0)
+
+      acc.totalAmount += net
+      acc.totalEmployees += 1
+
+      if (status === 'paid') {
+        acc.paidAmount += net
+        acc.paidCount += 1
+      } else if (status === 'notPaid') {
+        acc.notPaidAmount += net
+        acc.notPaidCount += 1
+      } else {
+        acc.pendingAmount += net
+        acc.pendingCount += 1
+      }
+
+      return acc
+    },
+    {
+      notPaidAmount: 0,
+      notPaidCount: 0,
+      paidAmount: 0,
+      paidCount: 0,
+      pendingAmount: 0,
+      pendingCount: 0,
+      totalAmount: 0,
+      totalEmployees: 0,
+    },
+  )
+
+  const runSettlementSummary = filteredLineItems.reduce<
+    Record<
+      string,
+      {
+        paidAmount: number
+        paidCount: number
+        pendingAmount: number
+        pendingCount: number
+        totalCount: number
+      }
+    >
+  >((acc, item) => {
+    const runKey =
+      typeof item.payrollRun === 'object' && item.payrollRun ? String(item.payrollRun.id) : String(item.payrollRun)
+
+    if (!acc[runKey]) {
+      acc[runKey] = {
+        paidAmount: 0,
+        paidCount: 0,
+        pendingAmount: 0,
+        pendingCount: 0,
+        totalCount: 0,
+      }
+    }
+
+    const status = normalizePaymentStatus((item as unknown as Record<string, unknown>).paymentStatus)
+    const net = Number(item.netPayable || 0)
+
+    acc[runKey].totalCount += 1
+
+    if (status === 'paid') {
+      acc[runKey].paidCount += 1
+      acc[runKey].paidAmount += net
+    } else {
+      acc[runKey].pendingCount += 1
+      acc[runKey].pendingAmount += net
+    }
+
+    return acc
+  }, {})
+
   return (
     <section className="dashboard-grid">
       <article className="panel panel-span-2">
         <p className="eyebrow">HRMS · Payroll</p>
         <h1>India Payroll Engine</h1>
         <p className="panel-intro">
-          Full cycle payroll operations with maker-checker approval and RazorpayX disbursement.
+          Manual monthly salary processing with employee-wise pay register, payout tracking, and future RazorpayX support.
         </p>
         <p className="panel-subtitle">
           Showing data from {formatDate(range.fromISO)} to {formatDate(range.toISO)}.
@@ -198,7 +367,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
         <ul>
           <li>Creates payroll cycle for month and payout date.</li>
           <li>Generates run from attendance + compensation data.</li>
-          <li>Supports lock, approve, and disburse states with audit trail.</li>
+          <li>Tracks manual payment status employee by employee with full salary history.</li>
         </ul>
       </article>
 
@@ -209,11 +378,46 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
           <li>Generate run</li>
           <li>Lock run</li>
           <li>Approve run</li>
-          <li>Disburse payouts</li>
+          <li>Transfer salary manually outside the app</li>
+          <li>Mark each employee as paid, pending, or not paid</li>
         </ol>
         <p className="panel-subtitle">
-          Maker-checker is currently bypass-enabled. Same-user approval is allowed and audit-noted automatically.
+          RazorpayX remains available for future automation. Manual settlement is the primary workflow right now.
         </p>
+      </article>
+
+      <article className="panel panel-span-2">
+        <h2>How Payroll Amount Is Calculated</h2>
+        <div className="ops-detail-grid">
+          <div className="ops-detail-card">
+            <p className="ops-detail-label">Step 1 · Salary Basis</p>
+            <p className="ops-detail-value">Effective employee compensation for the selected payroll cycle</p>
+            <p className="ops-detail-meta">
+              Basic + HRA + special allowance + variable + other allowance + reimbursements + custom earnings.
+            </p>
+          </div>
+          <div className="ops-detail-card">
+            <p className="ops-detail-label">Step 2 · Attendance Impact</p>
+            <p className="ops-detail-value">LOP is calculated from attendance daily summaries</p>
+            <p className="ops-detail-meta">
+              Any day marked as loss of pay reduces salary proportionally for that cycle.
+            </p>
+          </div>
+          <div className="ops-detail-card">
+            <p className="ops-detail-label">Step 3 · Statutory Deductions</p>
+            <p className="ops-detail-value">PF, ESI, Professional Tax, LWF, TDS</p>
+            <p className="ops-detail-meta">
+              Rates and caps come from the payroll rule set for the employee work state and effective date.
+            </p>
+          </div>
+          <div className="ops-detail-card">
+            <p className="ops-detail-label">Step 4 · Final Net Pay</p>
+            <p className="ops-detail-value">Gross earnings minus deductions</p>
+            <p className="ops-detail-meta">
+              A payroll line item is created per employee. That line item becomes the run snapshot used for payslip and payout.
+            </p>
+          </div>
+        </div>
       </article>
 
       <article className="panel panel-span-2">
@@ -273,7 +477,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
           </div>
           <div>
             <p className="panel-subtitle">Run Status Distribution</p>
-            <p className="graph-caption">How many runs are in draft, locked, approved, or disbursed stages.</p>
+            <p className="graph-caption">How many runs are in draft, approved, partially paid, completed, or payout stages.</p>
             {runStatusChartData.length === 0 ? (
               <p className="panel-subtitle">No payroll runs available.</p>
             ) : (
@@ -282,12 +486,43 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
           </div>
           <div>
             <p className="panel-subtitle">Payout Status Distribution</p>
-            <p className="graph-caption">Payout transaction mix for success, processing, and failed attempts.</p>
+            <p className="graph-caption">Optional RazorpayX payout transaction mix for success, processing, and failed attempts.</p>
             {payoutStatusChartData.length === 0 ? (
               <p className="panel-subtitle">No payout transactions available.</p>
             ) : (
               <SimpleDonutChart ariaLabel="Payout status distribution" data={payoutStatusChartData} />
             )}
+          </div>
+        </div>
+      </article>
+
+      <article className="panel panel-span-2">
+        <h2>Manual Salary Settlement Summary</h2>
+        <div className="ops-detail-grid">
+          <div className="ops-detail-card">
+            <p className="ops-detail-label">Employees In View</p>
+            <p className="ops-detail-value">{manualPaymentSummary.totalEmployees}</p>
+            <p className="ops-detail-meta">Employee salary rows in the filtered payroll history.</p>
+          </div>
+          <div className="ops-detail-card">
+            <p className="ops-detail-label">Total Net Amount</p>
+            <p className="ops-detail-value">{formatAmount(manualPaymentSummary.totalAmount)}</p>
+            <p className="ops-detail-meta">Total net payable across all visible payroll rows.</p>
+          </div>
+          <div className="ops-detail-card">
+            <p className="ops-detail-label">Paid</p>
+            <p className="ops-detail-value">
+              {manualPaymentSummary.paidCount} · {formatAmount(manualPaymentSummary.paidAmount)}
+            </p>
+            <p className="ops-detail-meta">Rows already settled manually.</p>
+          </div>
+          <div className="ops-detail-card">
+            <p className="ops-detail-label">Pending / Not Paid</p>
+            <p className="ops-detail-value">
+              {manualPaymentSummary.pendingCount + manualPaymentSummary.notPaidCount} ·{' '}
+              {formatAmount(manualPaymentSummary.pendingAmount + manualPaymentSummary.notPaidAmount)}
+            </p>
+            <p className="ops-detail-meta">Outstanding salary rows still requiring manual action.</p>
           </div>
         </div>
       </article>
@@ -375,48 +610,74 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                   <th>Cycle</th>
                   <th>Status</th>
                   <th>Employees</th>
+                  <th>Manual Settlement</th>
                   <th>Total Gross</th>
                   <th>Total Net</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredRuns.map((run) => (
-                  <tr key={`run-${run.id}`}>
-                    <td>{run.payrollRunCode}</td>
-                    <td>
-                      {typeof run.payrollCycle === 'object'
-                        ? `${run.payrollCycle.month}/${run.payrollCycle.year}`
-                        : run.payrollCycle}
-                    </td>
-                    <td>{PAYROLL_RUN_STATUS_LABELS[run.status as PayrollRunStatus] || run.status}</td>
-                    <td>{run.totalEmployees || 0}</td>
-                    <td>{formatAmount(run.totalGross)}</td>
-                    <td>{formatAmount(run.totalNet)}</td>
-                    <td>
-                      <div className="public-actions">
-                        <form action={APP_ROUTES.internal.hr.payrollLock} method="post">
-                          <input name="runId" type="hidden" value={run.id} />
-                          <button className="button button-secondary" type="submit">
-                            Lock
-                          </button>
-                        </form>
-                        <form action={APP_ROUTES.internal.hr.payrollApprove} method="post">
-                          <input name="runId" type="hidden" value={run.id} />
-                          <button className="button button-secondary" type="submit">
-                            Approve
-                          </button>
-                        </form>
-                        <form action={APP_ROUTES.internal.hr.payrollDisburse} method="post">
-                          <input name="runId" type="hidden" value={run.id} />
-                          <button className="button" type="submit">
-                            Disburse
-                          </button>
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filteredRuns.map((run) => {
+                  const settlement = runSettlementSummary[String(run.id)] || {
+                    paidAmount: 0,
+                    paidCount: 0,
+                    pendingAmount: 0,
+                    pendingCount: 0,
+                    totalCount: 0,
+                  }
+
+                  return (
+                    <tr key={`run-${run.id}`}>
+                      <td>{run.payrollRunCode}</td>
+                      <td>
+                        {typeof run.payrollCycle === 'object'
+                          ? `${run.payrollCycle.month}/${run.payrollCycle.year}`
+                          : run.payrollCycle}
+                      </td>
+                      <td>{PAYROLL_RUN_STATUS_LABELS[run.status as PayrollRunStatus] || run.status}</td>
+                      <td>{run.totalEmployees || 0}</td>
+                      <td>
+                        <div className="payroll-run-settlement">
+                          <strong>
+                            {settlement.paidCount}/{settlement.totalCount || run.totalEmployees || 0} paid
+                          </strong>
+                          <span>Paid: {formatAmount(settlement.paidAmount)}</span>
+                          <span>Outstanding: {formatAmount(settlement.pendingAmount)}</span>
+                        </div>
+                      </td>
+                      <td>{formatAmount(run.totalGross)}</td>
+                      <td>{formatAmount(run.totalNet)}</td>
+                      <td>
+                        <div className="public-actions">
+                          <form action={APP_ROUTES.internal.hr.payrollLock} method="post">
+                            <input name="runId" type="hidden" value={run.id} />
+                            <button className="button button-secondary" type="submit">
+                              Lock
+                            </button>
+                          </form>
+                          <form action={APP_ROUTES.internal.hr.payrollApprove} method="post">
+                            <input name="runId" type="hidden" value={run.id} />
+                            <button className="button button-secondary" type="submit">
+                              Approve
+                            </button>
+                          </form>
+                          {razorpayReady ? (
+                            <form action={APP_ROUTES.internal.hr.payrollDisburse} method="post">
+                              <input name="runId" type="hidden" value={run.id} />
+                              <button className="button" type="submit">
+                                Disburse via RazorpayX
+                              </button>
+                            </form>
+                          ) : (
+                            <span className="status-pill payroll-payment-pill payroll-payment-pill-pending">
+                              Manual mode
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -456,7 +717,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
       </article>
 
       <article className="panel panel-span-2">
-        <h2>Recent Line Items</h2>
+        <h2>Employee Salary Register & History</h2>
         {filteredLineItems.length === 0 ? (
           <p className="panel-subtitle">No payroll line items available.</p>
         ) : (
@@ -464,25 +725,84 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>Cycle</th>
                   <th>Run</th>
                   <th>Employee</th>
+                  <th>Bank Details</th>
                   <th>Gross</th>
                   <th>Deductions</th>
                   <th>Net</th>
-                  <th>Status</th>
+                  <th>Payment Status</th>
+                  <th>Paid At</th>
+                  <th>Reference</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredLineItems.map((line) => (
-                  <tr key={`line-item-${line.id}`}>
-                    <td>{typeof line.payrollRun === 'object' ? line.payrollRun.payrollRunCode : line.payrollRun}</td>
-                    <td>{typeof line.employee === 'object' ? line.employee.employeeCode : line.employee}</td>
-                    <td>{formatAmount(line.grossEarnings)}</td>
-                    <td>{formatAmount(line.totalDeductions)}</td>
-                    <td>{formatAmount(line.netPayable)}</td>
-                    <td>{line.status}</td>
-                  </tr>
-                ))}
+                {filteredLineItems.map((line) => {
+                  const lineRecord = line as unknown as Record<string, unknown>
+                  const paymentStatus = normalizePaymentStatus(lineRecord.paymentStatus)
+                  const paymentModeLabel =
+                    PAYROLL_PAYMENT_MODE_LABELS[
+                      (lineRecord.paymentMode === 'razorpayx' ? 'razorpayx' : 'manual')
+                    ]
+
+                  return (
+                    <tr key={`line-item-${line.id}`}>
+                      <td>{getCycleLabel(lineRecord)}</td>
+                      <td>{getRunCode(lineRecord)}</td>
+                      <td>
+                        <div className="payroll-employee-cell">
+                          <strong>{getEmployeeName(lineRecord)}</strong>
+                          <span>{getEmployeeCode(lineRecord)}</span>
+                          <span>{getEmployeeDesignation(lineRecord)}</span>
+                          <span>{getEmployeeEmail(lineRecord)}</span>
+                        </div>
+                      </td>
+                      <td>{getEmployeeBankLine(lineRecord)}</td>
+                      <td>{formatAmount(line.grossEarnings)}</td>
+                      <td>
+                        {formatAmount(line.totalDeductions)}
+                        <div className="payroll-cell-subtle">LOP: {line.lopDays || 0} day(s)</div>
+                      </td>
+                      <td>{formatAmount(line.netPayable)}</td>
+                      <td>
+                        <div className="payroll-status-stack">
+                          <span className={payrollPaymentPillClassName(paymentStatus)}>
+                            {PAYROLL_PAYMENT_STATUS_LABELS[paymentStatus]}
+                          </span>
+                          <span className="payroll-cell-subtle">{paymentModeLabel}</span>
+                        </div>
+                      </td>
+                      <td>{formatDateTime(line.paidAt)}</td>
+                      <td>{line.paymentReference || '—'}</td>
+                      <td>
+                        <form action={APP_ROUTES.internal.hr.payrollPaymentStatus} className="row-form payroll-payment-form" method="post">
+                          <input name="lineItemId" type="hidden" value={line.id} />
+                          <input name="paymentNotes" type="hidden" value={String(line.paymentNotes || '')} />
+                          <input
+                            className="table-input"
+                            defaultValue={String(line.paymentReference || '')}
+                            name="paymentReference"
+                            placeholder="Transfer ref / UTR"
+                            type="text"
+                          />
+                          <div className="public-actions">
+                            <button className="button" name="paymentStatus" type="submit" value="paid">
+                              Mark Paid
+                            </button>
+                            <button className="button button-secondary" name="paymentStatus" type="submit" value="pending">
+                              Pending
+                            </button>
+                            <button className="button button-secondary" name="paymentStatus" type="submit" value="notPaid">
+                              Not Paid
+                            </button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

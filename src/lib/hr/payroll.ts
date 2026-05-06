@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import { APIError, type PayloadRequest, type Where } from 'payload'
 
+import { type PayrollPaymentStatus } from '@/lib/constants/hr'
 import { createRazorpayXPayout, isRazorpayXConfigured, mapRazorpayPayoutStatus } from '@/lib/payments/razorpayx'
 import { readRelationID } from '@/lib/hr/common'
 import type {
@@ -395,6 +396,159 @@ const runTotalsFromItems = (
   totalNet: round(items.reduce((sum, item) => sum + item.netPayable, 0)),
 })
 
+const normalizePaymentStatus = (value: unknown): PayrollPaymentStatus => {
+  if (value === 'paid' || value === 'notPaid') {
+    return value
+  }
+
+  return 'pending'
+}
+
+const deriveRunStatusFromPaymentStatuses = (
+  statuses: PayrollPaymentStatus[],
+): PayrollRun['status'] => {
+  if (statuses.length === 0) {
+    return 'approved'
+  }
+
+  const paidCount = statuses.filter((status) => status === 'paid').length
+
+  if (paidCount === statuses.length) {
+    return 'completed'
+  }
+
+  if (paidCount > 0) {
+    return 'partiallyPaid'
+  }
+
+  return 'approved'
+}
+
+export const syncPayrollRunManualSettlementStatus = async ({
+  req,
+  runID,
+}: {
+  req: PayloadRequest
+  runID: number
+}) => {
+  const run: PayrollRun = await req.payload.findByID({
+    collection: 'payroll-runs',
+    depth: 0,
+    id: runID,
+    overrideAccess: true,
+    req,
+  })
+
+  if (run.status === 'cancelled' || run.status === 'draft' || run.status === 'locked') {
+    return run
+  }
+
+  const lineItems = await req.payload.find({
+    collection: 'payroll-line-items',
+    depth: 0,
+    limit: 1000,
+    overrideAccess: true,
+    pagination: false,
+    req,
+    where: {
+      payrollRun: {
+        equals: runID,
+      },
+    },
+  })
+
+  const nextStatus = deriveRunStatusFromPaymentStatuses(
+    (lineItems.docs as unknown as Array<Record<string, unknown>>).map((doc) =>
+      normalizePaymentStatus(doc.paymentStatus),
+    ),
+  )
+
+  if (nextStatus === run.status) {
+    return run
+  }
+
+  return req.payload.update({
+    collection: 'payroll-runs',
+    data: {
+      status: nextStatus,
+    },
+    id: runID,
+    overrideAccess: true,
+    req,
+  })
+}
+
+export const updatePayrollLineItemPaymentStatus = async ({
+  lineItemID,
+  paymentNotes,
+  paymentReference,
+  paymentStatus,
+  req,
+}: {
+  lineItemID: number
+  paymentNotes?: string | null
+  paymentReference?: string | null
+  paymentStatus: PayrollPaymentStatus
+  req: PayloadRequest
+}) => {
+  const lineItem: PayrollLineItem = await req.payload.findByID({
+    collection: 'payroll-line-items',
+    depth: 0,
+    id: lineItemID,
+    overrideAccess: true,
+    req,
+  })
+
+  const runID = readRelationID(lineItem.payrollRun)
+  if (!runID) {
+    throw new APIError('Payroll run not found for this salary entry.', 400)
+  }
+
+  const run: PayrollRun = await req.payload.findByID({
+    collection: 'payroll-runs',
+    depth: 0,
+    id: runID,
+    overrideAccess: true,
+    req,
+  })
+
+  if (!['approved', 'partiallyPaid', 'completed'].includes(String(run.status || ''))) {
+    throw new APIError('Salary payment status can only be updated after payroll approval.', 400)
+  }
+
+  const actorID = readRelationID(req.user?.id)
+  const trimmedReference = typeof paymentReference === 'string' ? paymentReference.trim() : ''
+  const trimmedNotes = typeof paymentNotes === 'string' ? paymentNotes.trim() : ''
+
+  const updatedLineItem = await req.payload.update({
+    collection: 'payroll-line-items',
+    data: {
+      paidAt: paymentStatus === 'paid' ? new Date().toISOString() : null,
+      paidBy: paymentStatus === 'paid' ? actorID || undefined : null,
+      paymentMode: 'manual',
+      paymentNotes: trimmedNotes || null,
+      paymentReference: trimmedReference || null,
+      paymentStatus,
+      status:
+        paymentStatus === 'paid'
+          ? 'processed'
+          : paymentStatus === 'notPaid'
+            ? 'failed'
+            : 'created',
+    },
+    id: lineItemID,
+    overrideAccess: true,
+    req,
+  })
+
+  await syncPayrollRunManualSettlementStatus({
+    req,
+    runID,
+  })
+
+  return updatedLineItem
+}
+
 export const generatePayrollRun = async ({
   cycleID,
   req,
@@ -574,6 +728,12 @@ export const generatePayrollRun = async ({
         payrollRun: runID,
         pfEmployee: line.employeeDeductions.pf,
         pfEmployer: line.employerContributions.pf,
+        paidAt: undefined,
+        paidBy: undefined,
+        paymentMode: 'manual',
+        paymentNotes: undefined,
+        paymentReference: undefined,
+        paymentStatus: 'pending',
         professionalTax: line.employeeDeductions.professionalTax,
         reimbursementTotal: line.reimbursements,
         status: 'created',
@@ -741,7 +901,7 @@ export const disbursePayrollRun = async ({
     req,
   })
 
-  if (run.status !== 'approved') {
+  if (!['approved', 'partiallyPaid'].includes(String(run.status || ''))) {
     throw new APIError('Only approved payroll runs can be disbursed.', 400)
   }
 
@@ -902,6 +1062,10 @@ export const disbursePayrollRun = async ({
       await req.payload.update({
         collection: 'payroll-line-items',
         data: {
+          paidAt: mappedStatus === 'processed' ? new Date().toISOString() : null,
+          paidBy: mappedStatus === 'processed' ? readRelationID(req.user?.id) || undefined : null,
+          paymentMode: 'razorpayx',
+          paymentStatus: mappedStatus === 'processed' ? 'paid' : 'pending',
           status: mappedStatus === 'processed' ? 'processed' : 'processing',
         },
         id: lineItemID,
@@ -927,6 +1091,8 @@ export const disbursePayrollRun = async ({
       await req.payload.update({
         collection: 'payroll-line-items',
         data: {
+          paymentMode: 'razorpayx',
+          paymentStatus: 'notPaid',
           status: 'failed',
         },
         id: lineItemID,

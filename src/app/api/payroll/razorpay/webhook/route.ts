@@ -84,6 +84,14 @@ export async function POST(request: Request) {
     await payload.update({
       collection: 'payroll-line-items',
       data: {
+        paidAt: mappedStatus === 'processed' ? new Date().toISOString() : null,
+        paymentMode: 'razorpayx',
+        paymentStatus:
+          mappedStatus === 'processed'
+            ? 'paid'
+            : mappedStatus === 'failed' || mappedStatus === 'reversed' || mappedStatus === 'cancelled'
+              ? 'notPaid'
+              : 'pending',
         status: mappedStatus,
       },
       id: lineItemID,

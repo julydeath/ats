@@ -1,9 +1,8 @@
 import configPromise from '@payload-config'
-import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
-import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
+import { readCurrentInternalUser } from '@/lib/auth/internal-auth'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { generatePayrollRun } from '@/lib/hr/payroll'
 
@@ -59,16 +58,16 @@ const dropLegacyPayrollCycleMonthYearUniqueIndexes = async (payload: Awaited<Ret
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const auth = await payload.auth({ headers: await getHeaders() })
-  const user = auth.user as InternalUserLike
+  const user = await readCurrentInternalUser()
 
-  if (!user || !hasInternalRole(user, ['admin'])) {
+  if (!user || !user.isActive || user.role !== 'admin') {
     const redirectURL = buildRedirectURL(request)
     redirectURL.searchParams.set('error', 'You are not allowed to perform this action.')
     return NextResponse.redirect(redirectURL, 303)
   }
 
   try {
+    const reqLike = { payload, user } as any
     const formData = await request.formData()
     const actionType = String(formData.get('actionType') || 'generateRun')
 
@@ -100,8 +99,8 @@ export async function POST(request: Request) {
           collection: 'payroll-cycles',
           data: cycleData,
           draft: false,
-          overrideAccess: false,
-          user,
+          overrideAccess: true,
+          req: reqLike,
         })
       } catch (error) {
         if (!isLegacyPayrollCycleUniqueViolation(error)) {
@@ -118,8 +117,8 @@ export async function POST(request: Request) {
           collection: 'payroll-cycles',
           data: cycleData,
           draft: false,
-          overrideAccess: false,
-          user,
+          overrideAccess: true,
+          req: reqLike,
         })
       }
 
@@ -139,7 +138,7 @@ export async function POST(request: Request) {
 
     const run = await generatePayrollRun({
       cycleID: Number(cycleId),
-      req: { payload, user } as any,
+      req: reqLike,
       ruleSetID: /^\d+$/.test(ruleSetId) ? Number(ruleSetId) : undefined,
     })
 

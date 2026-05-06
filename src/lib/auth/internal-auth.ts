@@ -34,7 +34,7 @@ const toInternalSessionUser = (user: RawAuthenticatedUser): InternalSessionUser 
   }
 }
 
-export const getCurrentInternalUser = cache(async (): Promise<InternalSessionUser | null> => {
+export const readCurrentInternalUser = async (): Promise<InternalSessionUser | null> => {
   const headers = await getHeaders()
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers })
@@ -44,7 +44,9 @@ export const getCurrentInternalUser = cache(async (): Promise<InternalSessionUse
   }
 
   return toInternalSessionUser(user as unknown as RawAuthenticatedUser)
-})
+}
+
+export const getCurrentInternalUser = cache(readCurrentInternalUser)
 
 export const requireInternalUser = async (): Promise<InternalSessionUser> => {
   const user = await getCurrentInternalUser()

@@ -169,6 +169,7 @@ export const PAYROLL_RUN_STATUSES = [
   'draft',
   'locked',
   'approved',
+  'partiallyPaid',
   'disbursing',
   'completed',
   'failed',
@@ -180,6 +181,7 @@ export const PAYROLL_RUN_STATUS_LABELS: Record<PayrollRunStatus, string> = {
   draft: 'Draft',
   locked: 'Locked',
   approved: 'Approved',
+  partiallyPaid: 'Partially Paid',
   disbursing: 'Disbursing',
   completed: 'Completed',
   failed: 'Failed',
@@ -212,6 +214,33 @@ export const PAYOUT_STATUS_LABELS: Record<PayoutStatus, string> = {
 
 export const PAYOUT_STATUS_OPTIONS = PAYOUT_STATUSES.map((value) => ({
   label: PAYOUT_STATUS_LABELS[value],
+  value,
+}))
+
+export const PAYROLL_PAYMENT_STATUSES = ['pending', 'paid', 'notPaid'] as const
+export type PayrollPaymentStatus = (typeof PAYROLL_PAYMENT_STATUSES)[number]
+
+export const PAYROLL_PAYMENT_STATUS_LABELS: Record<PayrollPaymentStatus, string> = {
+  pending: 'Pending',
+  paid: 'Paid',
+  notPaid: 'Not Paid',
+}
+
+export const PAYROLL_PAYMENT_STATUS_OPTIONS = PAYROLL_PAYMENT_STATUSES.map((value) => ({
+  label: PAYROLL_PAYMENT_STATUS_LABELS[value],
+  value,
+}))
+
+export const PAYROLL_PAYMENT_MODES = ['manual', 'razorpayx'] as const
+export type PayrollPaymentMode = (typeof PAYROLL_PAYMENT_MODES)[number]
+
+export const PAYROLL_PAYMENT_MODE_LABELS: Record<PayrollPaymentMode, string> = {
+  manual: 'Manual Transfer',
+  razorpayx: 'RazorpayX',
+}
+
+export const PAYROLL_PAYMENT_MODE_OPTIONS = PAYROLL_PAYMENT_MODES.map((value) => ({
+  label: PAYROLL_PAYMENT_MODE_LABELS[value],
   value,
 }))
 

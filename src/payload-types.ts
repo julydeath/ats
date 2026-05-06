@@ -1229,7 +1229,7 @@ export interface PayrollRun {
   payrollRunCode?: string | null;
   payrollCycle: number | PayrollCycle;
   ruleSet?: (number | null) | PayrollRuleSet;
-  status: 'draft' | 'locked' | 'approved' | 'disbursing' | 'completed' | 'failed' | 'cancelled';
+  status: 'draft' | 'locked' | 'approved' | 'partiallyPaid' | 'disbursing' | 'completed' | 'failed' | 'cancelled';
   preparedBy?: (number | null) | User;
   preparedAt?: string | null;
   approvedBy?: (number | null) | User;
@@ -1289,6 +1289,12 @@ export interface PayrollLineItem {
     | boolean
     | null;
   status: 'created' | 'processing' | 'processed' | 'failed' | 'reversed' | 'cancelled';
+  paymentStatus: 'pending' | 'paid' | 'notPaid';
+  paymentMode: 'manual' | 'razorpayx';
+  paidAt?: string | null;
+  paidBy?: (number | null) | User;
+  paymentReference?: string | null;
+  paymentNotes?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2538,6 +2544,12 @@ export interface PayrollLineItemsSelect<T extends boolean = true> {
   earningsBreakdown?: T;
   deductionsBreakdown?: T;
   status?: T;
+  paymentStatus?: T;
+  paymentMode?: T;
+  paidAt?: T;
+  paidBy?: T;
+  paymentReference?: T;
+  paymentNotes?: T;
   updatedAt?: T;
   createdAt?: T;
 }

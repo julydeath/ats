@@ -2,7 +2,11 @@ import { type CollectionConfig } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { payrollAdminManageAccess, payrollAdminReadAccess } from '@/access/hr'
-import { PAYOUT_STATUS_OPTIONS } from '@/lib/constants/hr'
+import {
+  PAYOUT_STATUS_OPTIONS,
+  PAYROLL_PAYMENT_MODE_OPTIONS,
+  PAYROLL_PAYMENT_STATUS_OPTIONS,
+} from '@/lib/constants/hr'
 import { resolveBusinessCode } from '@/lib/utils/business-codes'
 
 export const PayrollLineItems: CollectionConfig = {
@@ -15,7 +19,16 @@ export const PayrollLineItems: CollectionConfig = {
     delete: payrollAdminManageAccess,
   },
   admin: {
-    defaultColumns: ['payrollLineItemCode', 'payrollRun', 'employee', 'grossEarnings', 'totalDeductions', 'netPayable', 'status'],
+    defaultColumns: [
+      'payrollLineItemCode',
+      'payrollRun',
+      'employee',
+      'grossEarnings',
+      'totalDeductions',
+      'netPayable',
+      'paymentStatus',
+      'status',
+    ],
     group: 'Payroll',
     useAsTitle: 'payrollLineItemCode',
   },
@@ -161,6 +174,42 @@ export const PayrollLineItems: CollectionConfig = {
       options: PAYOUT_STATUS_OPTIONS.map((option) => ({ ...option })),
       index: true,
     },
+    {
+      name: 'paymentStatus',
+      type: 'select',
+      required: true,
+      defaultValue: 'pending',
+      options: PAYROLL_PAYMENT_STATUS_OPTIONS.map((option) => ({ ...option })),
+      index: true,
+    },
+    {
+      name: 'paymentMode',
+      type: 'select',
+      required: true,
+      defaultValue: 'manual',
+      options: PAYROLL_PAYMENT_MODE_OPTIONS.map((option) => ({ ...option })),
+      index: true,
+    },
+    {
+      name: 'paidAt',
+      type: 'date',
+      index: true,
+    },
+    {
+      name: 'paidBy',
+      type: 'relationship',
+      relationTo: 'users',
+      index: true,
+    },
+    {
+      name: 'paymentReference',
+      type: 'text',
+      index: true,
+    },
+    {
+      name: 'paymentNotes',
+      type: 'textarea',
+    },
   ],
   hooks: {
     beforeValidate: [
@@ -192,6 +241,9 @@ export const PayrollLineItems: CollectionConfig = {
     {
       fields: ['payrollRun', 'employee'],
       unique: true,
+    },
+    {
+      fields: ['payrollRun', 'paymentStatus'],
     },
   ],
 }

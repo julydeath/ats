@@ -6,13 +6,14 @@ import { PAYROLL_RUN_STATUS_OPTIONS } from '@/lib/constants/hr'
 import { resolveBusinessCode } from '@/lib/utils/business-codes'
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-  approved: ['disbursing', 'cancelled'],
+  approved: ['partiallyPaid', 'completed', 'disbursing', 'cancelled'],
   cancelled: [],
-  completed: [],
-  disbursing: ['completed', 'failed'],
+  completed: ['partiallyPaid', 'approved'],
+  disbursing: ['completed', 'failed', 'partiallyPaid'],
   draft: ['locked', 'cancelled'],
-  failed: ['disbursing', 'cancelled'],
+  failed: ['approved', 'partiallyPaid', 'disbursing', 'cancelled'],
   locked: ['approved', 'cancelled'],
+  partiallyPaid: ['approved', 'completed', 'disbursing', 'cancelled'],
 }
 
 export const PayrollRuns: CollectionConfig = {

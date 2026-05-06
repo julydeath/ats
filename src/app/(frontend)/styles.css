@@ -12780,6 +12780,98 @@ ul {
   box-shadow: 0 1px 0 rgba(12, 52, 112, 0.05), 0 8px 24px rgba(29, 78, 150, 0.06);
 }
 
+:is(.internal-shell, .ops-shell) .ops-detail-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+:is(.internal-shell, .ops-shell) .ops-detail-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+  border: 1px solid #d7e2f2;
+  border-radius: 0.9rem;
+  display: grid;
+  gap: 0.34rem;
+  min-width: 0;
+  padding: 0.95rem 1rem;
+}
+
+:is(.internal-shell, .ops-shell) .ops-detail-label {
+  color: #5f7392;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+:is(.internal-shell, .ops-shell) .ops-detail-value {
+  color: #10284a;
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 0;
+}
+
+:is(.internal-shell, .ops-shell) .ops-detail-meta {
+  color: #647896;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-run-settlement,
+:is(.internal-shell, .ops-shell) .payroll-employee-cell,
+:is(.internal-shell, .ops-shell) .payroll-status-stack {
+  display: grid;
+  gap: 0.16rem;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-run-settlement strong,
+:is(.internal-shell, .ops-shell) .payroll-employee-cell strong {
+  color: #112f56;
+  font-size: 0.84rem;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-run-settlement span,
+:is(.internal-shell, .ops-shell) .payroll-employee-cell span,
+:is(.internal-shell, .ops-shell) .payroll-cell-subtle {
+  color: #647896;
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-payment-form {
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-payment-form .public-actions {
+  justify-content: flex-start;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-payment-pill {
+  width: fit-content;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-payment-pill-paid {
+  background: #e8f8ef;
+  border-color: #b9e4ca;
+  color: #177245;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-payment-pill-pending {
+  background: #eef4ff;
+  border-color: #cfddf7;
+  color: #20528e;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-payment-pill-notPaid {
+  background: #fff1f1;
+  border-color: #f3c8c8;
+  color: #b42318;
+}
+
 @keyframes ops-spin {
   from {
     transform: rotate(0deg);
