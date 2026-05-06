@@ -3,6 +3,8 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 
+import { beginInternalRoutePending } from '@/lib/ui/internal-route-feedback'
+
 type ToolbarOption = {
   label: string
   value: string
@@ -92,6 +94,7 @@ export const FilterToolbar = ({ fields, storageKey, title }: FilterToolbarProps)
     params.delete('page')
 
     const query = params.toString()
+    beginInternalRoutePending()
     router.push(query ? `${pathname}?${query}` : pathname)
   }
 

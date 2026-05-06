@@ -844,6 +844,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
               <form
                 action={APP_ROUTES.internal.jobs.create}
                 className="jobs-modal-form"
+                encType="multipart/form-data"
                 method="post"
               >
                 <div className="jobs-modal-grid">
@@ -1121,6 +1122,16 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                 <label className="jobs-modal-field" htmlFor="create-job-description">
                   <span>Description</span>
                   <textarea id="create-job-description" name="description" required rows={4} />
+                </label>
+
+                <label className="jobs-modal-field" htmlFor="create-job-jd-file">
+                  <span>JD Attachment (Optional)</span>
+                  <input
+                    accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                    id="create-job-jd-file"
+                    name="jobDescriptionFile"
+                    type="file"
+                  />
                 </label>
 
                 <label className="jobs-modal-field" htmlFor="create-job-skills">

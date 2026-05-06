@@ -61,7 +61,12 @@ export const CandidateCreateForm = ({
   const emailRef = useRef<HTMLInputElement>(null)
   const phoneRef = useRef<HTMLInputElement>(null)
   const currentCompanyRef = useRef<HTMLInputElement>(null)
+  const currentLocationRef = useRef<HTMLInputElement>(null)
   const currentRoleRef = useRef<HTMLInputElement>(null)
+  const jobTitleRef = useRef<HTMLInputElement>(null)
+  const technologyRef = useRef<HTMLInputElement>(null)
+  const skillsRef = useRef<HTMLInputElement>(null)
+  const primarySkillsRef = useRef<HTMLInputElement>(null)
   const totalExperienceYearsRef = useRef<HTMLInputElement>(null)
   const linkedInURLRef = useRef<HTMLInputElement>(null)
   const portfolioURLRef = useRef<HTMLInputElement>(null)
@@ -110,7 +115,12 @@ export const CandidateCreateForm = ({
     setInputValue(emailRef, data.email)
     setInputValue(phoneRef, data.phone)
     setInputValue(currentCompanyRef, data.currentCompany)
+    setInputValue(currentLocationRef, data.currentLocation)
     setInputValue(currentRoleRef, data.currentRole)
+    setInputValue(jobTitleRef, data.jobTitle || data.currentRole)
+    setInputValue(technologyRef, data.technology)
+    setInputValue(skillsRef, data.skills)
+    setInputValue(primarySkillsRef, data.primarySkills)
     setInputValue(totalExperienceYearsRef, parseNumber(data.totalExperienceYears))
     setInputValue(linkedInURLRef, data.linkedInURL)
     setInputValue(portfolioURLRef, data.portfolioURL)
@@ -297,7 +307,7 @@ export const CandidateCreateForm = ({
                 </label>
                 <label className="candidate-intake-field-span-2">
                   <span>Current Location</span>
-                  <input name="currentLocation" type="text" />
+                  <input name="currentLocation" ref={currentLocationRef} type="text" />
                 </label>
                 <label>
                   <span>City</span>
@@ -351,19 +361,19 @@ export const CandidateCreateForm = ({
                 </label>
                 <label>
                   <span>Job Title</span>
-                  <input name="jobTitle" placeholder="Current designation" type="text" />
+                  <input name="jobTitle" placeholder="Current designation" ref={jobTitleRef} type="text" />
                 </label>
                 <label>
                   <span>Technology</span>
-                  <input name="technology" placeholder="Stack or domain" type="text" />
+                  <input name="technology" placeholder="Stack or domain" ref={technologyRef} type="text" />
                 </label>
                 <label className="candidate-intake-field-span-2">
                   <span>Skills</span>
-                  <input name="skills" placeholder="e.g. React, Node.js, Figma" type="text" />
+                  <input name="skills" placeholder="e.g. React, Node.js, Figma" ref={skillsRef} type="text" />
                 </label>
                 <label className="candidate-intake-field-span-2">
                   <span>Primary Skills</span>
-                  <input name="primarySkills" placeholder="Top 3-5 strengths" type="text" />
+                  <input name="primarySkills" placeholder="Top 3-5 strengths" ref={primarySkillsRef} type="text" />
                 </label>
                 <label>
                   <span>Total Experience (Years)</span>

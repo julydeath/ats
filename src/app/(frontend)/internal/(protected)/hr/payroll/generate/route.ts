@@ -10,6 +10,53 @@ import { generatePayrollRun } from '@/lib/hr/payroll'
 const buildRedirectURL = (request: Request): URL =>
   new URL(APP_ROUTES.internal.hr.payroll, request.url)
 
+const isLegacyPayrollCycleUniqueViolation = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const typed = error as { code?: string; message?: string }
+  const message = String(typed.message || '').toLowerCase()
+
+  return (
+    typed.code === '23505' &&
+    message.includes('payroll_cycles') &&
+    message.includes('month') &&
+    message.includes('year')
+  )
+}
+
+const dropLegacyPayrollCycleMonthYearUniqueIndexes = async (payload: Awaited<ReturnType<typeof getPayload>>) => {
+  const db = payload.db as { pool?: { query?: (sql: string, params?: unknown[]) => Promise<{ rows?: Array<{ indexname?: string }> }> } } | undefined
+
+  if (!db?.pool?.query) return false
+
+  const indexesResult = await db.pool.query(
+    `
+      SELECT indexname
+      FROM pg_indexes
+      WHERE schemaname = ANY (current_schemas(false))
+        AND tablename = 'payroll_cycles'
+        AND indexdef ILIKE '%UNIQUE%'
+        AND indexdef ILIKE '%month%'
+        AND indexdef ILIKE '%year%'
+    `,
+  )
+
+  const indexNames = (indexesResult.rows || [])
+    .map((row) => (row?.indexname ? String(row.indexname) : ''))
+    .filter(Boolean)
+
+  if (indexNames.length === 0) return false
+
+  for (const indexName of indexNames) {
+    const safeIdentifier = indexName.replace(/"/g, '""')
+    await db.pool.query(`DROP INDEX IF EXISTS "${safeIdentifier}"`)
+  }
+
+  return true
+}
+
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
   const auth = await payload.auth({ headers: await getHeaders() })
@@ -38,21 +85,43 @@ export async function POST(request: Request) {
         return NextResponse.redirect(redirectURL, 303)
       }
 
-      await payload.create({
-        collection: 'payroll-cycles',
-        data: {
-          endDate,
-          month,
-          payoutDate: payoutDate || undefined,
-          startDate,
-          status: 'open',
-          title: `Payroll ${month}/${year}`,
-          year,
-        },
-        draft: false,
-        overrideAccess: false,
-        user,
-      })
+      const cycleData = {
+        endDate,
+        month,
+        payoutDate: payoutDate || undefined,
+        startDate,
+        status: 'open',
+        title: `Payroll ${month}/${year}`,
+        year,
+      } as const
+
+      try {
+        await payload.create({
+          collection: 'payroll-cycles',
+          data: cycleData,
+          draft: false,
+          overrideAccess: false,
+          user,
+        })
+      } catch (error) {
+        if (!isLegacyPayrollCycleUniqueViolation(error)) {
+          throw error
+        }
+
+        const droppedLegacyIndex = await dropLegacyPayrollCycleMonthYearUniqueIndexes(payload)
+
+        if (!droppedLegacyIndex) {
+          throw error
+        }
+
+        await payload.create({
+          collection: 'payroll-cycles',
+          data: cycleData,
+          draft: false,
+          overrideAccess: false,
+          user,
+        })
+      }
 
       const redirectURL = buildRedirectURL(request)
       redirectURL.searchParams.set('success', 'Payroll cycle created.')

@@ -6,6 +6,7 @@ import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { LEAVE_REQUEST_STATUS_LABELS, type LeaveRequestStatus } from '@/lib/constants/hr'
 import { ensureDefaultLeaveTypes } from '@/lib/hr/leave'
+import { resolveGraphDateRange, toDateInputValue } from '@/lib/hr/graph-filters'
 import {
   getAvailableLeaveActions,
   getLeaveQueueBuckets,
@@ -56,7 +57,7 @@ const toLeaveStatusLabel = (value: unknown): string => {
 }
 
 type LeavePageProps = {
-  searchParams?: Promise<{ error?: string; success?: string }>
+  searchParams?: Promise<{ error?: string; from?: string; month?: string; period?: string; success?: string; to?: string }>
 }
 
 type LeaveQueueType = 'lead' | 'admin' | 'override'
@@ -74,6 +75,12 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolved = (await searchParams) || {}
+  const range = resolveGraphDateRange({
+    from: resolved.from || null,
+    month: resolved.month || null,
+    period: resolved.period || null,
+    to: resolved.to || null,
+  })
 
   const reqLike = { payload, user } as any
   await ensureDefaultLeaveTypes(reqLike)
@@ -158,8 +165,18 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
 
   const leaveRequests = leaveRequestsResult.docs
   const leaveBalances = leaveBalancesResult.docs
+  const filteredLeaveRequests = leaveRequests.filter((request) => {
+    const start = new Date(request.startDate)
+    const end = new Date(request.endDate)
 
-  const needsLeadAction = leaveRequests.filter((request) => {
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return false
+    }
+
+    return end.getTime() >= range.from.getTime() && start.getTime() <= range.to.getTime()
+  })
+
+  const needsLeadAction = filteredLeaveRequests.filter((request) => {
     const buckets = getLeaveQueueBuckets({
       employeeRole: (String(request.employeeRole || 'recruiter') as InternalRole) || 'recruiter',
       role: user.role,
@@ -169,7 +186,7 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
     return buckets.needsLeadAction
   })
 
-  const needsAdminAction = leaveRequests.filter((request) => {
+  const needsAdminAction = filteredLeaveRequests.filter((request) => {
     const buckets = getLeaveQueueBuckets({
       employeeRole: (String(request.employeeRole || 'recruiter') as InternalRole) || 'recruiter',
       role: user.role,
@@ -179,7 +196,7 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
     return buckets.needsAdminAction
   })
 
-  const adminOverrideEligible = leaveRequests.filter((request) => {
+  const adminOverrideEligible = filteredLeaveRequests.filter((request) => {
     const buckets = getLeaveQueueBuckets({
       employeeRole: (String(request.employeeRole || 'recruiter') as InternalRole) || 'recruiter',
       role: user.role,
@@ -189,7 +206,7 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
     return buckets.adminOverrideEligible
   })
 
-  const leaveStatusCounts = leaveRequests.reduce<Record<string, number>>((acc, request) => {
+  const leaveStatusCounts = filteredLeaveRequests.reduce<Record<string, number>>((acc, request) => {
     const status = String(request.status || 'draft')
     acc[status] = (acc[status] || 0) + 1
     return acc
@@ -200,7 +217,7 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
     value,
   }))
 
-  const leaveTypeCounts = leaveRequests.reduce<Record<string, number>>((acc, request) => {
+  const leaveTypeCounts = filteredLeaveRequests.reduce<Record<string, number>>((acc, request) => {
     const leaveTypeLabel = readLabel(request.leaveType, 'Leave')
     acc[leaveTypeLabel] = (acc[leaveTypeLabel] || 0) + 1
     return acc
@@ -224,6 +241,9 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
         <h1>Leave Management</h1>
         <p className="panel-intro">
           Apply leave, review approvals by stage, and track all audit actions from one workflow.
+        </p>
+        <p className="panel-subtitle">
+          Showing leave data from {formatDate(range.fromISO)} to {formatDate(range.toISO)}.
         </p>
         {resolved.success ? <p className="panel-subtitle">Success: {resolved.success}</p> : null}
         {resolved.error ? <p className="panel-subtitle" style={{ color: '#b91c1c' }}>Error: {resolved.error}</p> : null}
@@ -294,6 +314,43 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
       </article>
 
       <article className="panel panel-span-2">
+        <h2>Graph Filters</h2>
+        <form className="ops-form-shell ops-form-shell-strong" method="get">
+          <div className="ops-form-grid ops-form-grid-5">
+            <label className="ops-form-field">
+              <span>Period</span>
+              <select defaultValue={range.period} name="period">
+                <option value="day">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">Selected Month</option>
+                <option value="custom">Custom Date Range</option>
+              </select>
+            </label>
+            <label className="ops-form-field">
+              <span>Month</span>
+              <input defaultValue={range.month} name="month" type="month" />
+            </label>
+            <label className="ops-form-field">
+              <span>From</span>
+              <input defaultValue={toDateInputValue(range.from)} name="from" type="date" />
+            </label>
+            <label className="ops-form-field">
+              <span>To</span>
+              <input defaultValue={toDateInputValue(range.to)} name="to" type="date" />
+            </label>
+          </div>
+          <div className="ops-form-actions ops-form-actions-left">
+            <button className="button" type="submit">
+              Apply Graph Filter
+            </button>
+            <a className="button button-secondary" href={APP_ROUTES.internal.hr.leave}>
+              Reset
+            </a>
+          </div>
+        </form>
+      </article>
+
+      <article className="panel panel-span-2">
         <h2>Leave Insights</h2>
         <div
           style={{
@@ -304,6 +361,7 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
         >
           <div>
             <p className="panel-subtitle">Request Status Distribution</p>
+            <p className="graph-caption">Breakdown of leave requests by workflow status in selected period.</p>
             {leaveStatusChartData.length === 0 ? (
               <p className="panel-subtitle">No leave requests yet.</p>
             ) : (
@@ -312,6 +370,7 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
           </div>
           <div>
             <p className="panel-subtitle">Leave Type Usage</p>
+            <p className="graph-caption">Total leave requests split by leave type (CL, SL, EL, etc.).</p>
             {leaveTypeChartData.length === 0 ? (
               <p className="panel-subtitle">No leave type usage yet.</p>
             ) : (
@@ -321,6 +380,7 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
           {(user.role === 'admin' || user.role === 'leadRecruiter') ? (
             <div>
               <p className="panel-subtitle">Approval Queue Load</p>
+              <p className="graph-caption">Current pending load across lead queue, admin queue, and override queue.</p>
               {queueChartData.length === 0 ? (
                 <p className="panel-subtitle">No pending queues.</p>
               ) : (
@@ -333,7 +393,7 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
 
       <article className="panel panel-span-2">
         <h2>{user.role === 'recruiter' ? 'My Leave Requests' : 'Team Leave Requests'}</h2>
-        {leaveRequests.length === 0 ? (
+        {filteredLeaveRequests.length === 0 ? (
           <p className="panel-subtitle">No leave requests found.</p>
         ) : (
           <div className="table-wrap">
@@ -352,7 +412,7 @@ export default async function InternalHRLeavePage({ searchParams }: LeavePagePro
                 </tr>
               </thead>
               <tbody>
-                {leaveRequests.map((request) => {
+                {filteredLeaveRequests.map((request) => {
                   const availableActions = getAvailableLeaveActions({
                     actorID: user.id,
                     actorRole: user.role,

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { APP_ROUTES } from '@/lib/constants/routes'
+import { beginInternalRoutePending } from '@/lib/ui/internal-route-feedback'
 
 export const InternalLogoutButton = () => {
   const router = useRouter()
@@ -22,6 +23,7 @@ export const InternalLogoutButton = () => {
         credentials: 'include',
       })
     } finally {
+      beginInternalRoutePending()
       router.replace(APP_ROUTES.internal.login)
       router.refresh()
       setIsSubmitting(false)

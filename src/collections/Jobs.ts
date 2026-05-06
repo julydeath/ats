@@ -317,6 +317,14 @@ export const Jobs: CollectionConfig = {
       required: true,
     },
     {
+      name: 'jobDescriptionFile',
+      type: 'relationship',
+      relationTo: 'media',
+      admin: {
+        description: 'Optional JD attachment (PDF, DOC, DOCX, TXT).',
+      },
+    },
+    {
       name: 'requiredSkills',
       type: 'array',
       fields: [

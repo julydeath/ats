@@ -6,6 +6,7 @@ import { AttendancePunchControls } from '@/components/internal/AttendancePunchCo
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { ATTENDANCE_STATUS_LABELS, type AttendanceStatus } from '@/lib/constants/hr'
+import { resolveGraphDateRange, toDateInputValue } from '@/lib/hr/graph-filters'
 import {
   buildAttendanceCalendarDays,
   normalizeAttendanceQueryFilters,
@@ -17,6 +18,7 @@ type AttendancePageProps = {
     error?: string
     from?: string
     month?: string
+    period?: string
     success?: string
     to?: string
     view?: string
@@ -70,13 +72,6 @@ const STATUS_COLOR: Record<AttendanceStatus, string> = {
   weekOff: '#475569',
 }
 
-const toISODate = (value: Date): string => {
-  const year = value.getFullYear()
-  const month = `${value.getMonth() + 1}`.padStart(2, '0')
-  const day = `${value.getDate()}`.padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 const toShortEmployeeLabel = (value: string): string => {
   const parts = value.trim().split(/\s+/)
   if (parts.length === 0) return 'Unknown'
@@ -88,6 +83,12 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolved = (await searchParams) || {}
+  const range = resolveGraphDateRange({
+    from: resolved.from || null,
+    month: resolved.month || null,
+    period: resolved.period || null,
+    to: resolved.to || null,
+  })
 
   const selfEmployeeProfileResult = await payload.find({
     collection: 'employee-profiles',
@@ -109,9 +110,9 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
   const filters = normalizeAttendanceQueryFilters({
     input: {
       employeeId: resolved.employeeId || null,
-      from: resolved.from || null,
-      month: resolved.month || null,
-      to: resolved.to || null,
+      from: range.fromISO,
+      month: range.month,
+      to: range.toISO,
       view: resolved.view || null,
     },
     role: user.role,
@@ -380,6 +381,9 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
         <p className="panel-intro">
           Use monthly calendar status, punch logs, and attendance summaries to track daily compliance and LOP impact.
         </p>
+        <p className="panel-subtitle">
+          Showing attendance data from {formatDate(range.fromISO)} to {formatDate(range.toISO)}.
+        </p>
         {resolved.success ? <p className="panel-subtitle">Success: {resolved.success}</p> : null}
         {resolved.error ? <p className="panel-subtitle" style={{ color: '#b91c1c' }}>Error: {resolved.error}</p> : null}
       </article>
@@ -418,6 +422,7 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
         >
           <div>
             <p className="panel-subtitle">Attendance Status Mix</p>
+            <p className="graph-caption">Daily attendance state distribution for the selected date range.</p>
             {attendanceStatusChartData.length === 0 ? (
               <p className="panel-subtitle">No summary data for this period.</p>
             ) : (
@@ -426,6 +431,7 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
           </div>
           <div>
             <p className="panel-subtitle">Worked Minutes Trend</p>
+            <p className="graph-caption">Worked minutes per day from attendance punch logs and summary computation.</p>
             {workedTrendChartData.length === 0 ? (
               <p className="panel-subtitle">No worked time trend available.</p>
             ) : (
@@ -435,6 +441,7 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
           {canViewTeam && filters.view === 'team' ? (
             <div>
               <p className="panel-subtitle">Top Present Days (Team)</p>
+              <p className="graph-caption">Top employees by present-day count for current team filter.</p>
               {teamPresenceChartData.length === 0 ? (
                 <p className="panel-subtitle">No team summary available.</p>
               ) : (
@@ -461,16 +468,25 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
               <input name="view" type="hidden" value="my" />
             )}
             <label className="ops-form-field">
+              <span>Period</span>
+              <select defaultValue={range.period} name="period">
+                <option value="day">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">Selected Month</option>
+                <option value="custom">Custom Date Range</option>
+              </select>
+            </label>
+            <label className="ops-form-field">
               <span>Month</span>
-              <input defaultValue={filters.month} name="month" type="month" />
+              <input defaultValue={range.month} name="month" type="month" />
             </label>
             <label className="ops-form-field">
               <span>From</span>
-              <input defaultValue={toISODate(new Date(filters.fromISO))} name="from" type="date" />
+              <input defaultValue={toDateInputValue(range.from)} name="from" type="date" />
             </label>
             <label className="ops-form-field">
               <span>To</span>
-              <input defaultValue={toISODate(new Date(filters.toISO))} name="to" type="date" />
+              <input defaultValue={toDateInputValue(range.to)} name="to" type="date" />
             </label>
             {canViewTeam && filters.view === 'team' ? (
               <label className="ops-form-field">

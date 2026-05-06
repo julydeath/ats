@@ -455,6 +455,10 @@ export interface Job {
   experienceMax?: number | null;
   openings: number;
   description: string;
+  /**
+   * Optional JD attachment (PDF, DOC, DOCX, TXT).
+   */
+  jobDescriptionFile?: (number | null) | Media;
   requiredSkills?:
     | {
         skill: string;
@@ -1694,6 +1698,7 @@ export interface JobsSelect<T extends boolean = true> {
   experienceMax?: T;
   openings?: T;
   description?: T;
+  jobDescriptionFile?: T;
   requiredSkills?:
     | T
     | {

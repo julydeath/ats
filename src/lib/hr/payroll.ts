@@ -703,14 +703,11 @@ export const approvePayrollRun = async ({
 
   const enforceMakerChecker = activeAdmins.totalDocs >= 2
   const makerAndCheckerSame = makerID && String(makerID) === String(approverID)
-
-  if (enforceMakerChecker && makerAndCheckerSame) {
-    throw new APIError('Maker and checker must be different users.', 400)
-  }
-
-  const singleAdminApprovalNote =
-    !enforceMakerChecker && makerAndCheckerSame
-      ? `Single-admin override: maker and checker are the same user (${new Date().toISOString()}).`
+  const approvalAuditNote =
+    makerAndCheckerSame
+      ? enforceMakerChecker
+        ? `Maker-checker bypass enabled: same user approved run (${new Date().toISOString()}).`
+        : `Single-admin override: maker and checker are the same user (${new Date().toISOString()}).`
       : null
 
   return req.payload.update({
@@ -718,8 +715,8 @@ export const approvePayrollRun = async ({
     data: {
       approvedAt: new Date().toISOString(),
       approvedBy: approverID,
-      notes: singleAdminApprovalNote
-        ? [String(run.notes || ''), singleAdminApprovalNote].filter(Boolean).join('\n')
+      notes: approvalAuditNote
+        ? [String(run.notes || ''), approvalAuditNote].filter(Boolean).join('\n')
         : run.notes,
       status: 'approved',
     },

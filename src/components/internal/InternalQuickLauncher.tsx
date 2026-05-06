@@ -5,6 +5,7 @@ import { FormEvent, useMemo, useState } from 'react'
 
 import { getInternalNavigationByRole } from '@/lib/constants/internal-navigation'
 import type { InternalRole } from '@/lib/constants/roles'
+import { beginInternalRoutePending } from '@/lib/ui/internal-route-feedback'
 
 type InternalQuickLauncherProps = {
   role: InternalRole
@@ -67,6 +68,7 @@ export const InternalQuickLauncher = ({ role }: InternalQuickLauncherProps) => {
       return
     }
 
+    beginInternalRoutePending()
     router.push(target.href)
     setQuery('')
   }
@@ -94,7 +96,10 @@ export const InternalQuickLauncher = ({ role }: InternalQuickLauncherProps) => {
               <button
                 className="quick-launcher-item"
                 key={item.key}
-                onClick={() => router.push(item.href)}
+                onClick={() => {
+                  beginInternalRoutePending()
+                  router.push(item.href)
+                }}
                 type="button"
               >
                 <span className="quick-launcher-item-title">{item.label}</span>

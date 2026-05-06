@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react'
 
+import { beginInternalRoutePending } from '@/lib/ui/internal-route-feedback'
+
 export const FormUXEnhancer = () => {
   useEffect(() => {
     const inferPendingLabel = (currentLabel: string): string => {
@@ -72,6 +74,7 @@ export const FormUXEnhancer = () => {
       }
 
       form.classList.add('is-submitting')
+      beginInternalRoutePending()
 
       const formSubmitControls = Array.from(
         form.querySelectorAll<HTMLButtonElement | HTMLInputElement>(

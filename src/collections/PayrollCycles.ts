@@ -125,7 +125,6 @@ export const PayrollCycles: CollectionConfig = {
     },
     {
       fields: ['month', 'year'],
-      unique: true,
     },
   ],
 }

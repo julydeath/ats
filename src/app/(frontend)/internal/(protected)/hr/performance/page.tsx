@@ -5,6 +5,7 @@ import { SimpleBarChart, SimpleDonutChart } from '@/components/internal/charts/A
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { PERFORMANCE_REVIEW_STATUS_LABELS } from '@/lib/constants/hr'
+import { isDateInGraphRange, resolveGraphDateRange, toDateInputValue } from '@/lib/hr/graph-filters'
 
 const formatDate = (value: string): string =>
   new Date(value).toLocaleDateString('en-IN', {
@@ -14,13 +15,19 @@ const formatDate = (value: string): string =>
   })
 
 type PerformancePageProps = {
-  searchParams?: Promise<{ error?: string; success?: string }>
+  searchParams?: Promise<{ error?: string; from?: string; month?: string; period?: string; success?: string; to?: string }>
 }
 
 export default async function InternalHRPerformancePage({ searchParams }: PerformancePageProps) {
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolved = (await searchParams) || {}
+  const range = resolveGraphDateRange({
+    from: resolved.from || null,
+    month: resolved.month || null,
+    period: resolved.period || null,
+    to: resolved.to || null,
+  })
 
   const [cycles, snapshots, reviews, employees] = await Promise.all([
     payload.find({
@@ -34,7 +41,7 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
     payload.find({
       collection: 'performance-snapshots',
       depth: 2,
-      limit: 50,
+      limit: 200,
       overrideAccess: false,
       sort: '-updatedAt',
       user,
@@ -42,7 +49,7 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
     payload.find({
       collection: 'performance-reviews',
       depth: 2,
-      limit: 50,
+      limit: 200,
       overrideAccess: false,
       sort: '-updatedAt',
       user,
@@ -56,6 +63,27 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
       user,
     }),
   ])
+
+  const filteredCycles = cycles.docs.filter((cycle) =>
+    isDateInGraphRange({
+      dateValue: cycle.startDate,
+      range,
+    }),
+  )
+
+  const filteredSnapshots = snapshots.docs.filter((snapshot) =>
+    isDateInGraphRange({
+      dateValue: snapshot.updatedAt || snapshot.createdAt,
+      range,
+    }),
+  )
+
+  const filteredReviews = reviews.docs.filter((review) =>
+    isDateInGraphRange({
+      dateValue: review.updatedAt || review.createdAt,
+      range,
+    }),
+  )
 
   const reviewableEmployees = employees.docs.filter((employee) => {
     const linkedUser = typeof employee.user === 'object' ? employee.user : null
@@ -75,7 +103,7 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
     return false
   })
 
-  const snapshotTrendData = snapshots.docs.slice(0, 6).map((snapshot) => ({
+  const snapshotTrendData = filteredSnapshots.slice(0, 6).map((snapshot) => ({
     label:
       typeof snapshot.employee === 'object'
         ? snapshot.employee.employeeCode || String(snapshot.employee.id)
@@ -83,7 +111,7 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
     value: snapshot.kpiScore || 0,
   }))
 
-  const reviewStatusCounts = reviews.docs.reduce(
+  const reviewStatusCounts = filteredReviews.reduce(
     (acc, review) => {
       const key = String(review.status || 'draft')
       acc[key] = (acc[key] || 0) + 1
@@ -104,6 +132,9 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
         <h1>Performance Engine</h1>
         <p className="panel-intro">
           Hybrid model with ATS KPI snapshots and manager reviews (70/30 default weight).
+        </p>
+        <p className="panel-subtitle">
+          Showing data from {formatDate(range.fromISO)} to {formatDate(range.toISO)}.
         </p>
         {resolved.success ? <p className="panel-subtitle">Success: {resolved.success}</p> : null}
         {resolved.error ? <p className="panel-subtitle" style={{ color: '#b91c1c' }}>Error: {resolved.error}</p> : null}
@@ -128,6 +159,43 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
       </article>
 
       <article className="panel panel-span-2">
+        <h2>Graph Filters</h2>
+        <form className="ops-form-shell ops-form-shell-strong" method="get">
+          <div className="ops-form-grid ops-form-grid-5">
+            <label className="ops-form-field">
+              <span>Period</span>
+              <select defaultValue={range.period} name="period">
+                <option value="day">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">Selected Month</option>
+                <option value="custom">Custom Date Range</option>
+              </select>
+            </label>
+            <label className="ops-form-field">
+              <span>Month</span>
+              <input defaultValue={range.month} name="month" type="month" />
+            </label>
+            <label className="ops-form-field">
+              <span>From</span>
+              <input defaultValue={toDateInputValue(range.from)} name="from" type="date" />
+            </label>
+            <label className="ops-form-field">
+              <span>To</span>
+              <input defaultValue={toDateInputValue(range.to)} name="to" type="date" />
+            </label>
+          </div>
+          <div className="ops-form-actions ops-form-actions-left">
+            <button className="button" type="submit">
+              Apply Graph Filter
+            </button>
+            <a className="button button-secondary" href={APP_ROUTES.internal.hr.performance}>
+              Reset
+            </a>
+          </div>
+        </form>
+      </article>
+
+      <article className="panel panel-span-2">
         <h2>Visual Summary</h2>
         <div
           style={{
@@ -138,6 +206,7 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
         >
           <div>
             <p className="panel-subtitle">KPI Snapshot Scores</p>
+            <p className="graph-caption">KPI score trend based on ATS activity snapshots in selected period.</p>
             {snapshotTrendData.length === 0 ? (
               <p className="panel-subtitle">No KPI snapshots yet.</p>
             ) : (
@@ -146,6 +215,7 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
           </div>
           <div>
             <p className="panel-subtitle">Review Status Distribution</p>
+            <p className="graph-caption">Manager review lifecycle split across draft, submitted, and finalized reviews.</p>
             {reviewStatusData.length === 0 ? (
               <p className="panel-subtitle">No review records yet.</p>
             ) : (
@@ -228,7 +298,7 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
 
       <article className="panel panel-span-2">
         <h2>Recent KPI Snapshots</h2>
-        {snapshots.docs.length === 0 ? (
+        {filteredSnapshots.length === 0 ? (
           <p className="panel-subtitle">No KPI snapshots generated yet.</p>
         ) : (
           <div className="table-wrap">
@@ -244,7 +314,7 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
                 </tr>
               </thead>
               <tbody>
-                {snapshots.docs.map((snapshot) => (
+                {filteredSnapshots.map((snapshot) => (
                   <tr key={`snapshot-${snapshot.id}`}>
                     <td>{typeof snapshot.cycle === 'object' ? snapshot.cycle.title : snapshot.cycle}</td>
                     <td>{typeof snapshot.employee === 'object' ? snapshot.employee.employeeCode : snapshot.employee}</td>
@@ -262,7 +332,7 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
 
       <article className="panel panel-span-2">
         <h2>Manager Reviews</h2>
-        {reviews.docs.length === 0 ? (
+        {filteredReviews.length === 0 ? (
           <p className="panel-subtitle">No reviews found.</p>
         ) : (
           <div className="table-wrap">
@@ -279,7 +349,7 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
                 </tr>
               </thead>
               <tbody>
-                {reviews.docs.map((review) => (
+                {filteredReviews.map((review) => (
                   <tr key={`review-${review.id}`}>
                     <td>{review.reviewCode}</td>
                     <td>{typeof review.employee === 'object' ? review.employee.employeeCode : review.employee}</td>
@@ -296,12 +366,12 @@ export default async function InternalHRPerformancePage({ searchParams }: Perfor
         )}
       </article>
 
-      {cycles.docs[0] ? (
+      {filteredCycles[0] ? (
         <article className="panel panel-span-2">
           <h2>Cycle Calendar</h2>
           <p className="panel-subtitle">
-            Current cycle: {cycles.docs[0].title || `${cycles.docs[0].month}/${cycles.docs[0].year}`} ·
-            {` ${formatDate(cycles.docs[0].startDate)} - ${formatDate(cycles.docs[0].endDate)}`}
+            Current cycle: {filteredCycles[0].title || `${filteredCycles[0].month}/${filteredCycles[0].year}`} ·
+            {` ${formatDate(filteredCycles[0].startDate)} - ${formatDate(filteredCycles[0].endDate)}`}
           </p>
         </article>
       ) : null}

@@ -12,6 +12,7 @@ import {
   type PayrollCycleStatus,
   type PayoutStatus,
 } from '@/lib/constants/hr'
+import { isDateInGraphRange, resolveGraphDateRange, toDateInputValue } from '@/lib/hr/graph-filters'
 
 const formatDate = (value?: string | null): string => {
   if (!value) return '—'
@@ -32,13 +33,19 @@ const formatAmount = (value?: number | null): string =>
   }).format(value || 0)
 
 type PayrollPageProps = {
-  searchParams?: Promise<{ error?: string; success?: string }>
+  searchParams?: Promise<{ error?: string; from?: string; month?: string; period?: string; success?: string; to?: string }>
 }
 
 export default async function InternalHRPayrollPage({ searchParams }: PayrollPageProps) {
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolved = (await searchParams) || {}
+  const range = resolveGraphDateRange({
+    from: resolved.from || null,
+    month: resolved.month || null,
+    period: resolved.period || null,
+    to: resolved.to || null,
+  })
 
   if (user.role !== 'admin') {
     return (
@@ -67,7 +74,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
     payload.find({
       collection: 'payroll-runs',
       depth: 2,
-      limit: 30,
+      limit: 200,
       overrideAccess: false,
       sort: '-updatedAt',
       user,
@@ -88,7 +95,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
     payload.find({
       collection: 'payroll-line-items',
       depth: 1,
-      limit: 20,
+      limit: 200,
       overrideAccess: false,
       sort: '-updatedAt',
       user,
@@ -96,14 +103,42 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
     payload.find({
       collection: 'payroll-payout-transactions',
       depth: 1,
-      limit: 20,
+      limit: 200,
       overrideAccess: false,
       sort: '-updatedAt',
       user,
     }),
   ])
 
-  const payrollTrendChartData = runs.docs
+  const filteredCycles = cycles.docs.filter((cycle) =>
+    isDateInGraphRange({
+      dateValue: cycle.startDate,
+      range,
+    }),
+  )
+
+  const filteredRuns = runs.docs.filter((run) =>
+    isDateInGraphRange({
+      dateValue: typeof run.payrollCycle === 'object' ? run.payrollCycle.startDate : run.createdAt,
+      range,
+    }),
+  )
+
+  const filteredLineItems = lineItems.docs.filter((lineItem) =>
+    isDateInGraphRange({
+      dateValue: lineItem.updatedAt,
+      range,
+    }),
+  )
+
+  const filteredPayouts = payouts.docs.filter((payout) =>
+    isDateInGraphRange({
+      dateValue: payout.updatedAt,
+      range,
+    }),
+  )
+
+  const payrollTrendChartData = filteredRuns
     .slice()
     .sort((a, b) => {
       const aDate =
@@ -121,7 +156,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
       net: Number(run.totalNet || 0),
     }))
 
-  const runStatusCounts = runs.docs.reduce<Record<string, number>>((acc, run) => {
+  const runStatusCounts = filteredRuns.reduce<Record<string, number>>((acc, run) => {
     const key = String(run.status || 'draft')
     acc[key] = (acc[key] || 0) + 1
     return acc
@@ -132,7 +167,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
     value,
   }))
 
-  const payoutStatusCounts = payouts.docs.reduce<Record<string, number>>((acc, payout) => {
+  const payoutStatusCounts = filteredPayouts.reduce<Record<string, number>>((acc, payout) => {
     const key = String(payout.payoutStatus || 'queued')
     acc[key] = (acc[key] || 0) + 1
     return acc
@@ -150,6 +185,9 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
         <h1>India Payroll Engine</h1>
         <p className="panel-intro">
           Full cycle payroll operations with maker-checker approval and RazorpayX disbursement.
+        </p>
+        <p className="panel-subtitle">
+          Showing data from {formatDate(range.fromISO)} to {formatDate(range.toISO)}.
         </p>
         {resolved.success ? <p className="panel-subtitle">Success: {resolved.success}</p> : null}
         {resolved.error ? <p className="panel-subtitle" style={{ color: '#b91c1c' }}>Error: {resolved.error}</p> : null}
@@ -174,9 +212,45 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
           <li>Disburse payouts</li>
         </ol>
         <p className="panel-subtitle">
-          Maker-checker is enforced when 2+ active admins are available. For single-admin setups,
-          approval is allowed and audit-noted automatically.
+          Maker-checker is currently bypass-enabled. Same-user approval is allowed and audit-noted automatically.
         </p>
+      </article>
+
+      <article className="panel panel-span-2">
+        <h2>Graph Filters</h2>
+        <form className="ops-form-shell ops-form-shell-strong" method="get">
+          <div className="ops-form-grid ops-form-grid-5">
+            <label className="ops-form-field">
+              <span>Period</span>
+              <select defaultValue={range.period} name="period">
+                <option value="day">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">Selected Month</option>
+                <option value="custom">Custom Date Range</option>
+              </select>
+            </label>
+            <label className="ops-form-field">
+              <span>Month</span>
+              <input defaultValue={range.month} name="month" type="month" />
+            </label>
+            <label className="ops-form-field">
+              <span>From</span>
+              <input defaultValue={toDateInputValue(range.from)} name="from" type="date" />
+            </label>
+            <label className="ops-form-field">
+              <span>To</span>
+              <input defaultValue={toDateInputValue(range.to)} name="to" type="date" />
+            </label>
+          </div>
+          <div className="ops-form-actions ops-form-actions-left">
+            <button className="button" type="submit">
+              Apply Graph Filter
+            </button>
+            <a className="button button-secondary" href={APP_ROUTES.internal.hr.payroll}>
+              Reset
+            </a>
+          </div>
+        </form>
       </article>
 
       <article className="panel panel-span-2">
@@ -190,6 +264,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
         >
           <div>
             <p className="panel-subtitle">Net Pay Trend</p>
+            <p className="graph-caption">Monthly net payable generated from filtered payroll runs.</p>
             {payrollTrendChartData.length === 0 ? (
               <p className="panel-subtitle">No run totals available yet.</p>
             ) : (
@@ -198,6 +273,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
           </div>
           <div>
             <p className="panel-subtitle">Run Status Distribution</p>
+            <p className="graph-caption">How many runs are in draft, locked, approved, or disbursed stages.</p>
             {runStatusChartData.length === 0 ? (
               <p className="panel-subtitle">No payroll runs available.</p>
             ) : (
@@ -206,6 +282,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
           </div>
           <div>
             <p className="panel-subtitle">Payout Status Distribution</p>
+            <p className="graph-caption">Payout transaction mix for success, processing, and failed attempts.</p>
             {payoutStatusChartData.length === 0 ? (
               <p className="panel-subtitle">No payout transactions available.</p>
             ) : (
@@ -287,7 +364,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
 
       <article className="panel panel-span-2">
         <h2>Payroll Runs</h2>
-        {runs.docs.length === 0 ? (
+        {filteredRuns.length === 0 ? (
           <p className="panel-subtitle">No payroll runs created yet.</p>
         ) : (
           <div className="table-wrap">
@@ -304,7 +381,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                 </tr>
               </thead>
               <tbody>
-                {runs.docs.map((run) => (
+                {filteredRuns.map((run) => (
                   <tr key={`run-${run.id}`}>
                     <td>{run.payrollRunCode}</td>
                     <td>
@@ -348,7 +425,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
 
       <article className="panel panel-span-2">
         <h2>Payroll Cycles</h2>
-        {cycles.docs.length === 0 ? (
+        {filteredCycles.length === 0 ? (
           <p className="panel-subtitle">No payroll cycles found.</p>
         ) : (
           <div className="table-wrap">
@@ -362,7 +439,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                 </tr>
               </thead>
               <tbody>
-                {cycles.docs.map((cycle) => (
+                {filteredCycles.map((cycle) => (
                   <tr key={`cycle-row-${cycle.id}`}>
                     <td>{cycle.payrollCycleCode}</td>
                     <td>
@@ -380,7 +457,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
 
       <article className="panel panel-span-2">
         <h2>Recent Line Items</h2>
-        {lineItems.docs.length === 0 ? (
+        {filteredLineItems.length === 0 ? (
           <p className="panel-subtitle">No payroll line items available.</p>
         ) : (
           <div className="table-wrap">
@@ -396,7 +473,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                 </tr>
               </thead>
               <tbody>
-                {lineItems.docs.map((line) => (
+                {filteredLineItems.map((line) => (
                   <tr key={`line-item-${line.id}`}>
                     <td>{typeof line.payrollRun === 'object' ? line.payrollRun.payrollRunCode : line.payrollRun}</td>
                     <td>{typeof line.employee === 'object' ? line.employee.employeeCode : line.employee}</td>
@@ -414,7 +491,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
 
       <article className="panel panel-span-2">
         <h2>Recent Payout Transactions</h2>
-        {payouts.docs.length === 0 ? (
+        {filteredPayouts.length === 0 ? (
           <p className="panel-subtitle">No payout transactions yet.</p>
         ) : (
           <div className="table-wrap">
@@ -430,7 +507,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                 </tr>
               </thead>
               <tbody>
-                {payouts.docs.map((txn) => (
+                {filteredPayouts.map((txn) => (
                   <tr key={`txn-${txn.id}`}>
                     <td>{txn.payoutTxnCode}</td>
                     <td>{typeof txn.employee === 'object' ? txn.employee.employeeCode : txn.employee}</td>

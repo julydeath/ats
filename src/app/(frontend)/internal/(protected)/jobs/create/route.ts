@@ -126,6 +126,15 @@ const parseSkills = (value: FormDataEntryValue | null): Array<{ skill: string }>
     .map((skill) => ({ skill }))
 }
 
+const JOB_DESCRIPTION_FILE_MIME_TYPES = new Set<string>([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+])
+
+const MAX_JOB_DESCRIPTION_FILE_BYTES = 15 * 1024 * 1024
+
 const buildRedirectURL = (request: Request): URL => new URL(APP_ROUTES.internal.jobs.assigned, request.url)
 
 export async function POST(request: Request) {
@@ -166,6 +175,7 @@ export async function POST(request: Request) {
   const recruitmentManagerID = parseNumericID(formData.get('recruitmentManagerId'))
   const primaryRecruiterID = parseNumericID(formData.get('primaryRecruiterId'))
   const assignedToIDs = parseMultiNumericIDs(formData.getAll('assignedTo'))
+  const jobDescriptionFileInput = formData.get('jobDescriptionFile')
   let leadRecruiterID = hasInternalRole(internalUser, ['leadRecruiter'])
     ? currentUserID
     : parseNumericID(formData.get('leadRecruiterId'))
@@ -201,7 +211,41 @@ export async function POST(request: Request) {
     return NextResponse.redirect(failureURL, 303)
   }
 
+  let uploadedJobDescriptionFileID: number | null = null
+
   try {
+    if (jobDescriptionFileInput instanceof File && jobDescriptionFileInput.size > 0) {
+      if (!JOB_DESCRIPTION_FILE_MIME_TYPES.has(jobDescriptionFileInput.type)) {
+        const failureURL = buildRedirectURL(request)
+        failureURL.searchParams.set('error', 'JD attachment must be PDF, DOC, DOCX, or TXT.')
+        return NextResponse.redirect(failureURL, 303)
+      }
+
+      if (jobDescriptionFileInput.size > MAX_JOB_DESCRIPTION_FILE_BYTES) {
+        const failureURL = buildRedirectURL(request)
+        failureURL.searchParams.set('error', 'JD attachment must be up to 15MB.')
+        return NextResponse.redirect(failureURL, 303)
+      }
+
+      const fileBuffer = Buffer.from(await jobDescriptionFileInput.arrayBuffer())
+      const mediaDoc = await payload.create({
+        collection: 'media',
+        data: {
+          alt: `${title} JD`,
+        },
+        file: {
+          data: fileBuffer,
+          mimetype: jobDescriptionFileInput.type,
+          name: jobDescriptionFileInput.name,
+          size: jobDescriptionFileInput.size,
+        },
+        overrideAccess: false,
+        user: internalUser,
+      })
+
+      uploadedJobDescriptionFileID = toNumericID(mediaDoc.id)
+    }
+
     const job = await payload.create({
       collection: 'jobs',
       data: {
@@ -221,6 +265,7 @@ export async function POST(request: Request) {
         payType,
         primaryRecruiter: primaryRecruiterID ?? undefined,
         priority,
+        jobDescriptionFile: uploadedJobDescriptionFileID ?? undefined,
         recruitmentManager: recruitmentManagerID ?? undefined,
         requisitionTitle,
         requirementAssignedOn,
@@ -270,6 +315,19 @@ export async function POST(request: Request) {
 
     return NextResponse.redirect(successURL, 303)
   } catch (error) {
+    if (uploadedJobDescriptionFileID !== null) {
+      try {
+        await payload.delete({
+          collection: 'media',
+          id: uploadedJobDescriptionFileID,
+          overrideAccess: false,
+          user: internalUser,
+        })
+      } catch {
+        // no-op: best effort cleanup
+      }
+    }
+
     const failureURL = buildRedirectURL(request)
     failureURL.searchParams.set(
       'error',

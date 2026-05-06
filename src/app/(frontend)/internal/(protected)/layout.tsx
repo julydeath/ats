@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { FormUXEnhancer } from '@/components/internal/FormUXEnhancer'
 import { InternalNavigation } from '@/components/internal/InternalNavigation'
 import { InternalLogoutButton } from '@/components/internal/InternalLogoutButton'
+import { InternalRouteLoadingIndicator } from '@/components/internal/InternalRouteLoadingIndicator'
 import { InternalTopTabs } from '@/components/internal/InternalTopTabs'
 import { InternalUXToasts } from '@/components/internal/InternalUXToasts'
 import { requireInternalUser } from '@/lib/auth/internal-auth'
@@ -114,6 +115,7 @@ export default async function InternalProtectedLayout({ children }: InternalProt
         <main className="ops-content">{children}</main>
       </div>
 
+      <InternalRouteLoadingIndicator />
       <InternalUXToasts />
       <FormUXEnhancer />
     </div>
