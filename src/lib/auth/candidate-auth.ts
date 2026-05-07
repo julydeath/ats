@@ -1,5 +1,4 @@
 import configPromise from '@payload-config'
-import { headers as getHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import { getPayload } from 'payload'
@@ -9,6 +8,7 @@ import {
   isCandidateAuthenticated,
   type CandidateUserLike,
 } from '@/access/candidateRoles'
+import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 import { APP_ROUTES } from '@/lib/constants/routes'
 
 type RawCandidateUser = {
@@ -49,7 +49,7 @@ const toCandidateSessionUser = (user: RawCandidateUser): CandidateSessionUser | 
 }
 
 export const getCurrentCandidateUser = cache(async (): Promise<CandidateSessionUser | null> => {
-  const headers = await getHeaders()
+  const headers = await getPayloadAuthHeaders()
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers })
   const candidateUser = user as CandidateUserLike

@@ -1,11 +1,11 @@
 import configPromise from '@payload-config'
-import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { CANDIDATE_SOURCES, type CandidateSource } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
+import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 
 const RESUME_MIME_TYPES = new Set<string>([
   'application/pdf',
@@ -80,7 +80,7 @@ const buildCreateRedirectURL = (request: Request): URL => new URL(APP_ROUTES.int
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const { user } = await payload.auth({ headers: await getHeaders() })
+  const { user } = await payload.auth({ headers: await getPayloadAuthHeaders() })
   const internalUser = user as InternalUserLike
 
   if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter', 'recruiter'])) {

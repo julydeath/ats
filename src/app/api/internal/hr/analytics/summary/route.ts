@@ -1,11 +1,11 @@
 import configPromise from '@payload-config'
-import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import type { InternalSessionUser } from '@/lib/auth/internal-auth'
 import { getHRAnalyticsSummary, normalizeHRAnalyticsFilters } from '@/lib/hr/analytics'
+import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 
 type AuthenticatedInternalUser = {
   email?: string | null
@@ -25,7 +25,7 @@ const toSessionUser = (user: AuthenticatedInternalUser): InternalSessionUser => 
 
 export async function GET(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const auth = await payload.auth({ headers: await getHeaders() })
+  const auth = await payload.auth({ headers: await getPayloadAuthHeaders() })
   const user = auth.user as AuthenticatedInternalUser | null | undefined
 
   if (!user || !hasInternalRole(user as InternalUserLike, ['admin'])) {

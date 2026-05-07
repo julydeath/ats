@@ -1,14 +1,14 @@
 import configPromise from '@payload-config'
-import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { getOpenAttendanceSession } from '@/lib/hr/attendance'
+import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const auth = await payload.auth({ headers: await getHeaders() })
+  const auth = await payload.auth({ headers: await getPayloadAuthHeaders() })
   const user = auth.user as InternalUserLike
 
   if (!user || !hasInternalRole(user, ['leadRecruiter', 'recruiter'])) {

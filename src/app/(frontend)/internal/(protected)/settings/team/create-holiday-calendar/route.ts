@@ -1,11 +1,11 @@
 import configPromise from '@payload-config'
-import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { HOLIDAY_TYPE_OPTIONS } from '@/lib/constants/hr'
 import { APP_ROUTES } from '@/lib/constants/routes'
+import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 
 const HOLIDAY_TYPE_VALUES = new Set(HOLIDAY_TYPE_OPTIONS.map((option) => option.value))
 
@@ -23,7 +23,7 @@ const readNumber = (value: FormDataEntryValue | null): number | null => {
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const auth = await payload.auth({ headers: await getHeaders() })
+  const auth = await payload.auth({ headers: await getPayloadAuthHeaders() })
   const actor = auth.user as InternalUserLike
 
   if (!actor || !hasInternalRole(actor, ['admin'])) {

@@ -1,10 +1,10 @@
 import configPromise from '@payload-config'
-import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { APP_ROUTES } from '@/lib/constants/routes'
+import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 
 type ReviewAction = 'approve' | 'reject' | 'sendBack'
 
@@ -62,7 +62,7 @@ const buildQueueRedirectURL = (request: Request): URL =>
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const { user } = await payload.auth({ headers: await getHeaders() })
+  const { user } = await payload.auth({ headers: await getPayloadAuthHeaders() })
   const internalUser = user as InternalUserLike
 
   if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter'])) {

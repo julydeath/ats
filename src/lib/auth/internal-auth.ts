@@ -1,10 +1,10 @@
 import configPromise from '@payload-config'
-import { headers as getHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import { getPayload } from 'payload'
 
 import { hasInternalRole, isInternalAuthenticated, type InternalUserLike } from '@/access/internalRoles'
+import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { INTERNAL_ROLES, type InternalRole } from '@/lib/constants/roles'
 
@@ -35,7 +35,7 @@ const toInternalSessionUser = (user: RawAuthenticatedUser): InternalSessionUser 
 }
 
 export const readCurrentInternalUser = async (): Promise<InternalSessionUser | null> => {
-  const headers = await getHeaders()
+  const headers = await getPayloadAuthHeaders()
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers })
 

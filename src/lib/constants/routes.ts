@@ -4,6 +4,7 @@ export const APP_ROUTES = {
   internal: {
     base: '/internal',
     login: '/internal/login',
+    logout: '/internal/logout',
     dashboard: '/internal/dashboard',
     schedule: '/internal/schedule',
     settings: '/internal/settings',
@@ -99,6 +100,7 @@ export const APP_ROUTES = {
     base: '/candidate',
     inviteBase: '/candidate/invite',
     login: '/candidate/login',
+    logout: '/candidate/logout',
     dashboard: '/candidate/dashboard',
     applications: '/candidate/applications',
   },

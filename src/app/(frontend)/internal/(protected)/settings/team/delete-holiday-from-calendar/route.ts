@@ -1,10 +1,10 @@
 import configPromise from '@payload-config'
-import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { APIError, getPayload } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { APP_ROUTES } from '@/lib/constants/routes'
+import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 
 const buildRedirectURL = (request: Request): URL => new URL(APP_ROUTES.internal.team.base, request.url)
 
@@ -19,7 +19,7 @@ const readNumber = (value: FormDataEntryValue | null): number | null => {
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const auth = await payload.auth({ headers: await getHeaders() })
+  const auth = await payload.auth({ headers: await getPayloadAuthHeaders() })
   const actor = auth.user as InternalUserLike
 
   if (!actor || !hasInternalRole(actor, ['admin'])) {

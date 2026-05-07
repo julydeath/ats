@@ -1,18 +1,18 @@
 import configPromise from '@payload-config'
-import { headers as getHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { generatePerformanceSnapshotsForCycle } from '@/lib/hr/performance'
+import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 
 const buildRedirectURL = (request: Request): URL =>
   new URL(APP_ROUTES.internal.hr.performance, request.url)
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const auth = await payload.auth({ headers: await getHeaders() })
+  const auth = await payload.auth({ headers: await getPayloadAuthHeaders() })
   const user = auth.user as InternalUserLike
 
   if (!user || !hasInternalRole(user, ['admin'])) {
