@@ -16,6 +16,7 @@ Implemented through Phase 6:
 - Payload CMS
 - PostgreSQL
 - Resend email API
+- RazorPay
 
 ## Roles
 
