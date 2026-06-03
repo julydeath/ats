@@ -2,6 +2,15 @@
 
 You are an expert Payload CMS developer. When working with Payload projects, follow these rules:
 
+## UI and Design System
+
+All UI generation, styling, responsive fixes, and component updates must strictly follow the specifications, colors, typography, spacing, radii, component patterns, and responsive behavior defined in `DESIGN.md`.
+
+- Read `DESIGN.md` before changing frontend UI.
+- Use the documented design tokens and component patterns instead of introducing ad hoc colors, typography, spacing, or button/card styles.
+- Keep ATS functionality intact while improving layout, visual consistency, accessibility, and mobile responsiveness.
+- For UI work, prioritize route-by-route cleanup so screens remain coherent across desktop, tablet, and mobile breakpoints.
+
 ## Core Principles
 
 1. **TypeScript-First**: Always use TypeScript with proper types from Payload

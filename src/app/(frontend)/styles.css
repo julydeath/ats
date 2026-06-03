@@ -1,13 +1,49 @@
 :root {
-  --bg: #0f3a88;
-  --surface: #ffffff;
-  --surface-soft: #f2f5fb;
-  --border: #d8deea;
-  --text: #0f1f39;
-  --muted: #52627d;
-  --accent: #0f5ec9;
-  --accent-strong: #074293;
-  --danger: #b42318;
+  --primary: #533afd;
+  --primary-deep: #4434d4;
+  --primary-press: #2e2b8c;
+  --primary-soft: #665efd;
+  --primary-bg-subdued-hover: #b9b9f9;
+  --brand-dark-900: #1c1e54;
+  --ink: #0d253d;
+  --ink-secondary: #273951;
+  --ink-mute: #64748d;
+  --ink-mute-2: #61718a;
+  --on-primary: #ffffff;
+  --canvas: #ffffff;
+  --canvas-soft: #f6f9fc;
+  --canvas-cream: #f5e9d4;
+  --hairline: #e3e8ee;
+  --hairline-input: #a8c3de;
+  --ruby: #ea2261;
+  --magenta: #f96bee;
+  --lemon: #9b6829;
+  --shadow-blue: #003770;
+  --bg: var(--canvas-soft);
+  --surface: var(--canvas);
+  --surface-soft: var(--canvas-soft);
+  --border: var(--hairline);
+  --text: var(--ink);
+  --muted: var(--ink-mute);
+  --accent: var(--primary);
+  --accent-strong: var(--primary-deep);
+  --danger: var(--ruby);
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 9999px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  --shadow-level-1: rgba(0, 55, 112, 0.08) 0 1px 3px;
+  --shadow-level-2: rgba(0, 55, 112, 0.08) 0 8px 24px, rgba(0, 55, 112, 0.04) 0 2px 6px;
+  --gradient-mesh:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 560'%3E%3Cdefs%3E%3Cfilter id='blur' x='-20%25' y='-40%25' width='140%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='86'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='1440' height='560' fill='%23ffffff'/%3E%3Cg filter='url(%23blur)' opacity='.92'%3E%3Cellipse cx='132' cy='104' rx='290' ry='156' fill='%23f5e9d4'/%3E%3Cellipse cx='416' cy='84' rx='322' ry='160' fill='%23f5b166'/%3E%3Cellipse cx='734' cy='72' rx='344' ry='184' fill='%23b9b9f9'/%3E%3Cellipse cx='1024' cy='104' rx='312' ry='176' fill='%23533afd'/%3E%3Cellipse cx='1266' cy='110' rx='284' ry='168' fill='%23ea2261'/%3E%3Cellipse cx='1118' cy='18' rx='210' ry='118' fill='%23f96bee'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .internal-shell .job-board-columns {
@@ -89,11 +125,11 @@ body {
 
 body {
   color: var(--text);
-  background:
-    radial-gradient(circle at 12% 12%, rgba(255, 255, 255, 0.12) 0%, transparent 44%),
-    radial-gradient(circle at 88% 5%, rgba(255, 255, 255, 0.08) 0%, transparent 36%),
-    var(--bg);
-  font-family: var(--font-manrope), 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  font-family: var(--font-sans), 'SF Pro Display', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'ss01';
+  font-weight: 300;
+  letter-spacing: 0;
 }
 
 a {
@@ -4863,7 +4899,7 @@ ul {
 }
 
 .lead-velocity-track {
-  align-items: end;
+  align-items: flex-end;
   background: #ecf1f9;
   border-radius: 0.42rem;
   display: flex;
@@ -11912,7 +11948,7 @@ ul {
 }
 
 .hr-analytics-trend-bars {
-  align-items: end;
+  align-items: flex-end;
   display: flex;
   gap: 0.14rem;
   height: 92px;
@@ -11996,7 +12032,7 @@ ul {
 }
 
 .role-dashboard-hr-chart-bars {
-  align-items: end;
+  align-items: flex-end;
   display: flex;
   gap: 0.16rem;
   height: 90px;
@@ -12094,7 +12130,7 @@ ul {
 }
 
 .team-mgmt-header-row {
-  align-items: start;
+  align-items: flex-start;
   display: flex;
   gap: 0.8rem;
   justify-content: space-between;
@@ -13059,5 +13095,1015 @@ ul {
   .ops-route-skeleton-grid,
   .ops-route-skeleton-panels {
     grid-template-columns: 1fr;
+  }
+}
+
+/* DESIGN.md foundation pass */
+body {
+  color: var(--ink);
+  background: var(--canvas-soft);
+}
+
+body :is(button, input, select, textarea) {
+  font: inherit;
+}
+
+body :is(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+:is(.public-home, .auth-page, .internal-login-page) {
+  background: var(--canvas);
+  overflow: hidden;
+  position: relative;
+}
+
+:is(.public-home, .auth-page, .internal-login-page)::before {
+  background-image: var(--gradient-mesh);
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: cover;
+  content: '';
+  height: min(44vh, 360px);
+  inset: 0 0 auto;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+:is(.public-card, .auth-card, .internal-login-center, .internal-login-toast) {
+  position: relative;
+  z-index: 1;
+}
+
+:is(.public-card, .auth-card, .internal-login-card) {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-level-2);
+}
+
+:is(.public-card, .auth-card, .internal-login-card, .ops-shell, .internal-shell) :is(h1, h2, h3) {
+  color: var(--ink);
+  font-weight: 300;
+  font-feature-settings: 'ss01';
+  letter-spacing: -0.02em;
+}
+
+.public-card h1,
+.internal-login-brand h1 {
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  line-height: 1.05;
+}
+
+.internal-login-brand h1 {
+  color: var(--brand-dark-900);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+.internal-login-brand p,
+.public-card .muted,
+.auth-card .muted,
+.internal-login-copy p {
+  color: var(--ink-mute);
+  font-weight: 300;
+}
+
+.eyebrow,
+:is(.ops-shell, .internal-shell) :is([class*='kicker'], .ops-detail-label, .form-field, .filter-field, label > span) {
+  color: var(--primary-deep);
+  font-size: 0.66rem;
+  font-weight: 400;
+  letter-spacing: 0.1px;
+  text-transform: uppercase;
+}
+
+.button,
+.internal-login-submit,
+:is(.ops-shell, .internal-shell) :is(.button, [class$='-submit'], [class$='-cancel'], [class$='-button'], [class$='-btn']) {
+  align-items: center;
+  background: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-pill);
+  color: var(--on-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.875rem;
+  font-weight: 400;
+  justify-content: center;
+  line-height: 1;
+  min-height: 40px;
+  padding: 8px 16px;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.button:hover:not(:disabled),
+.internal-login-submit:hover:not(:disabled),
+:is(.ops-shell, .internal-shell) :is(.button, [class$='-submit'], [class$='-button'], [class$='-btn']):hover:not(:disabled) {
+  background: var(--primary-press);
+  border-color: var(--primary-press);
+}
+
+.button-secondary,
+:is(.ops-shell, .internal-shell) :is([class$='-cancel'], [class*='reset'], [class*='secondary'], .logout-button) {
+  background: var(--canvas);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.button-secondary:hover,
+:is(.ops-shell, .internal-shell) :is([class$='-cancel'], [class*='reset'], [class*='secondary'], .logout-button):hover {
+  background: var(--canvas-soft);
+  border-color: var(--primary-deep);
+  color: var(--primary-deep);
+}
+
+.input,
+.internal-login-input,
+:is(.ops-shell, .internal-shell) :is(input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea, .input) {
+  background: var(--canvas);
+  border: 1px solid var(--hairline-input);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 300;
+  min-height: 40px;
+}
+
+.input:focus,
+.internal-login-input:focus,
+:is(.ops-shell, .internal-shell) :is(input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea, .input):focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(83, 58, 253, 0.14);
+  outline: none;
+}
+
+:is(.ops-shell, .internal-shell) {
+  --ops-control-bg: var(--canvas);
+  --ops-control-border: var(--hairline-input);
+  --ops-control-border-focus: var(--primary);
+  --ops-control-height: 40px;
+  --ops-control-radius: var(--radius-sm);
+  --ops-control-text: var(--ink);
+  --ops-label: var(--ink-mute);
+  background: var(--canvas-soft);
+  color: var(--ink);
+  font-weight: 300;
+}
+
+.ops-topbar {
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom-color: var(--hairline);
+  backdrop-filter: blur(16px);
+}
+
+.ops-topbar-brand,
+.ops-side-brand-title {
+  color: var(--brand-dark-900);
+  font-weight: 400;
+}
+
+.ops-role-badge,
+.status-pill,
+.status-chip,
+:is(.ops-shell, .internal-shell) :is([class$='-pill'], [class*='-pill-'], [class$='-chip'], [class*='-chip-'], [class$='-tag'], [class*='-tag-']) {
+  background: var(--primary-bg-subdued-hover);
+  border-color: transparent;
+  border-radius: var(--radius-pill);
+  color: var(--primary-deep);
+  font-size: 0.625rem;
+  font-weight: 400;
+  letter-spacing: 0.1px;
+}
+
+.ops-user-pill {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  font-size: inherit;
+  letter-spacing: 0;
+}
+
+.ops-body {
+  min-width: 0;
+}
+
+.ops-sidebar {
+  background: var(--brand-dark-900);
+  border-right: 0;
+  color: var(--on-primary);
+}
+
+.ops-side-brand-subtitle,
+.ops-help-link,
+.ops-shell .logout-button {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.ops-side-brand-mark,
+.ops-user-avatar {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.ops-post-job-button {
+  box-shadow: rgba(83, 58, 253, 0.18) 0 8px 18px;
+}
+
+.ops-shell .nav-link {
+  border-radius: var(--radius-md);
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 300;
+}
+
+.ops-shell .nav-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-primary);
+}
+
+.ops-shell .nav-link-active {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--on-primary);
+}
+
+.ops-shell .nav-icon,
+.ops-shell .nav-link-active .nav-icon {
+  color: inherit;
+  font-weight: 400;
+}
+
+.ops-shell .nav-title {
+  font-weight: 300;
+}
+
+.ops-top-tab {
+  color: var(--ink-mute-2);
+  font-weight: 300;
+}
+
+.ops-top-tab-active {
+  border-bottom-color: var(--primary);
+  color: var(--primary);
+}
+
+.ops-content {
+  background: var(--canvas-soft);
+  min-width: 0;
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    .panel,
+    .ops-card,
+    .ops-form-shell,
+    .ops-detail-card,
+    [class$='-card'],
+    [class$='-panel'],
+    [class$='-tile'],
+    [class$='-modal']
+  ) {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-level-1);
+}
+
+:is(.ops-shell, .internal-shell) :is(.data-table, .team-mgmt-table, .candidate-mgmt-table, table) {
+  color: var(--ink-secondary);
+  font-feature-settings: 'tnum', 'ss01';
+  font-variant-numeric: tabular-nums;
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    .stat-value,
+    .kpi-value,
+    [class*='-value'],
+    [class*='count'],
+    [class*='amount'],
+    [class*='salary'],
+    [class*='payroll']
+  ) {
+  font-feature-settings: 'tnum', 'ss01';
+  font-variant-numeric: tabular-nums;
+}
+
+:is(.ops-shell, .internal-shell) :is(.table-wrap, [class$='-table-wrap'], .board-scroll) {
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+:is(.ops-shell, .internal-shell) :is(.data-table, .team-mgmt-table, .candidate-mgmt-table) {
+  min-width: 760px;
+}
+
+.ops-route-loading-bar {
+  background: linear-gradient(90deg, var(--primary) 0%, var(--magenta) 48%, var(--primary) 100%);
+  box-shadow: 0 8px 18px rgba(83, 58, 253, 0.22);
+}
+
+.ops-route-skeleton-hero,
+.ops-route-skeleton-card,
+.ops-route-skeleton-panel {
+  border-color: var(--hairline);
+  box-shadow: var(--shadow-level-1);
+}
+
+@media (max-width: 1180px) {
+  .ops-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-sidebar {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    display: grid;
+    gap: var(--space-md);
+    padding: var(--space-md);
+  }
+
+  .ops-sidebar-nav-wrap {
+    margin: 0 calc(var(--space-md) * -1);
+    overflow-x: auto;
+    padding: 0 var(--space-md) var(--space-xs);
+  }
+
+  .ops-shell .nav-list {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--space-sm);
+    padding: 0;
+  }
+
+  .ops-shell .nav-link {
+    grid-template-columns: auto auto;
+    min-height: 40px;
+    min-width: max-content;
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
+
+  .ops-sidebar-footer {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 780px) {
+  .public-home,
+  .auth-page {
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--space-lg);
+  }
+
+  .public-card,
+  .auth-card,
+  .internal-login-card {
+    padding: var(--space-xl);
+  }
+
+  .public-actions,
+  .internal-login-footer-links {
+    width: 100%;
+  }
+
+  .public-actions :is(.button, a),
+  .internal-login-submit {
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .ops-topbar {
+    gap: var(--space-md);
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-md);
+  }
+
+  .ops-topbar-left,
+  .ops-topbar-right {
+    min-width: 0;
+  }
+
+  .ops-top-tabs {
+    justify-content: flex-start;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: var(--space-xs);
+  }
+
+  .ops-top-tab {
+    min-width: max-content;
+  }
+
+  .ops-user-copy,
+  .ops-top-icon {
+    display: none;
+  }
+
+  .ops-content {
+    padding: var(--space-md);
+  }
+
+  .ops-side-brand {
+    display: none;
+  }
+
+  .ops-post-job-button {
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .ops-shell .nav-icon {
+    display: none;
+  }
+
+  .ops-shell .nav-title {
+    font-size: 0.875rem;
+  }
+
+  :is(.ops-shell, .internal-shell) :is(
+      .dashboard-grid,
+      .split-grid,
+      .workspace-grid,
+      .kpi-grid,
+      .stat-strip,
+      .alert-grid,
+      .hr-analytics-kpi-grid,
+      .hr-analytics-main-grid,
+      .team-mgmt-kpi-grid,
+      .clients-grid-kpis,
+      .application-create-kpis,
+      .application-detail-grid,
+      .client-detail-grid,
+      .candidate-profile-grid,
+      .candidate-intake-grid,
+      .clients-grid-cards
+    ) {
+    grid-template-columns: 1fr;
+  }
+
+  :is(.ops-shell, .internal-shell) :is(
+      .row-form,
+      .filter-toolbar,
+      .board-toolbar,
+      .clients-grid-toolbar,
+      .jobs-toolbar,
+      .candidate-mgmt-filters,
+      .lead-queue-filters,
+      .schedule-workspace-filter-row,
+      .hr-analytics-filters
+    ) {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  :is(.ops-shell, .internal-shell) :is(.button, [class$='-submit'], [class$='-cancel'], [class$='-button'], [class$='-btn']) {
+    min-height: 44px;
+  }
+
+  :is(.ops-shell, .internal-shell) :is(.job-board-columns, .stage-cards, .kanban-board) {
+    overflow-x: auto;
+  }
+
+  :is(.ops-shell, .internal-shell) :is(.job-stage-column, .stage-column, .kanban-column) {
+    min-width: min(82vw, 320px);
+  }
+}
+
+@media (max-width: 640px) {
+  .internal-shell {
+    border-radius: 0;
+    grid-template-columns: 1fr;
+    min-height: 100vh;
+  }
+
+  .internal-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+    padding: var(--space-lg);
+  }
+
+  .internal-sidebar .internal-nav {
+    overflow-x: auto;
+  }
+
+  .internal-sidebar .nav-list {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--space-sm);
+    padding: 0;
+  }
+
+  .internal-sidebar .nav-link {
+    min-width: max-content;
+    white-space: nowrap;
+  }
+
+  .internal-main,
+  .internal-content {
+    min-width: 0;
+  }
+
+  .internal-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+}
+
+/* Detailed control refinement: buttons, labels, inputs, and status color roles */
+:is(.ops-shell, .internal-shell) :is(
+    button,
+    [role='button'],
+    .button,
+    .ops-btn,
+    .ops-post-job-button,
+    .quick-launcher-button,
+    .admin-quick-action,
+    .recruiter-chip-button,
+    .recruiter-action-button,
+    .clients-header-button,
+    .clients-toolbar-button,
+    .clients-modal-cancel,
+    .clients-modal-submit,
+    .jobs-header-button,
+    .jobs-toolbar-button,
+    .jobs-row-action,
+    .jobs-modal-cancel,
+    .jobs-modal-submit,
+    .job-detail-button,
+    .job-detail-toolbar-button,
+    .job-candidate-action-button,
+    .candidate-mgmt-add-button,
+    .candidate-mgmt-filter-button,
+    .candidate-mgmt-reset-button,
+    .candidate-mgmt-action-link,
+    .candidate-mgmt-page-btn,
+    .candidate-profile-action,
+    .candidate-profile-activity-form button,
+    .lead-queue-filter-btn,
+    .lead-queue-reset-btn,
+    .lead-queue-icon-btn,
+    .lead-queue-reject-btn,
+    .lead-queue-approve-btn,
+    .lead-queue-page-btn,
+    .schedule-workspace-main-action,
+    .schedule-workspace-view-btn,
+    .schedule-workspace-filter-btn,
+    .placements-workspace-main-action,
+    .jobs-workspace-page-btn,
+    .schedule-workspace-page-btn,
+    .placements-workspace-page-btn,
+    .schedule-workspace-inline-form button,
+    .placements-workspace-inline-form button,
+    .role-dashboard-chip-btn,
+    .role-dashboard-inline-actions button,
+    .role-dashboard-inline-actions a,
+    .role-dashboard-report-box button,
+    .candidate-intake-head-btn,
+    .candidate-intake-parse-btn,
+    .candidate-intake-cancel,
+    .candidate-intake-submit,
+    .clients-grid-header-btn,
+    .clients-grid-toolbar button,
+    .client-grid-action,
+    .clients-create-modal-cancel,
+    .clients-create-modal-submit,
+    .client-detail-btn,
+    .application-create-head-btn,
+    .application-create-cancel,
+    .application-create-submit,
+    .application-detail-header-btn,
+    .application-detail-form button,
+    .team-mgmt-toggle-button,
+    .team-mgmt-inline-row .button
+  ),
+:is(.public-card, .auth-card, .internal-login-card) :is(.button, button) {
+  align-items: center;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  font-size: 0.875rem;
+  font-weight: 400;
+  gap: var(--space-sm);
+  justify-content: center;
+  letter-spacing: 0;
+  line-height: 1;
+  min-height: 40px;
+  padding: 8px 16px;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    .button:not(.button-secondary),
+    .ops-btn-primary,
+    .ops-post-job-button,
+    .admin-quick-action,
+    .recruiter-action-button-primary,
+    .clients-header-button-primary,
+    .clients-modal-submit,
+    .jobs-header-button-primary,
+    .jobs-modal-submit,
+    .job-detail-button-primary,
+    .job-candidate-action-button:not(.job-candidate-action-ghost),
+    .candidate-mgmt-add-button,
+    .candidate-mgmt-filter-button,
+    .candidate-profile-action-primary,
+    .lead-queue-filter-btn,
+    .lead-queue-approve-btn,
+    .schedule-workspace-main-action,
+    .schedule-workspace-filter-btn,
+    .placements-workspace-main-action,
+    .role-dashboard-chip-btn,
+    .role-dashboard-report-box button,
+    .candidate-intake-parse-btn,
+    .candidate-intake-submit,
+    .clients-grid-header-btn-primary,
+    .clients-grid-toolbar button,
+    .client-grid-action-primary,
+    .clients-create-modal-submit,
+    .client-detail-btn-primary,
+    .application-create-submit,
+    .application-detail-form button,
+    .team-mgmt-toggle-button
+  ),
+:is(.public-card, .auth-card, .internal-login-card) :is(.button:not(.button-secondary), button[type='submit']) {
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: none;
+  color: var(--on-primary);
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    .button:not(.button-secondary),
+    .ops-btn-primary,
+    .ops-post-job-button,
+    .admin-quick-action,
+    .recruiter-action-button-primary,
+    .clients-header-button-primary,
+    .clients-modal-submit,
+    .jobs-header-button-primary,
+    .jobs-modal-submit,
+    .job-detail-button-primary,
+    .job-candidate-action-button:not(.job-candidate-action-ghost),
+    .candidate-mgmt-add-button,
+    .candidate-mgmt-filter-button,
+    .candidate-profile-action-primary,
+    .lead-queue-filter-btn,
+    .lead-queue-approve-btn,
+    .schedule-workspace-main-action,
+    .schedule-workspace-filter-btn,
+    .placements-workspace-main-action,
+    .role-dashboard-chip-btn,
+    .role-dashboard-report-box button,
+    .candidate-intake-parse-btn,
+    .candidate-intake-submit,
+    .clients-grid-header-btn-primary,
+    .clients-grid-toolbar button,
+    .client-grid-action-primary,
+    .clients-create-modal-submit,
+    .client-detail-btn-primary,
+    .application-create-submit,
+    .application-detail-form button,
+    .team-mgmt-toggle-button
+  ):hover:not(:disabled),
+:is(.public-card, .auth-card, .internal-login-card) :is(.button:not(.button-secondary), button[type='submit']):hover:not(:disabled) {
+  background: var(--primary-press);
+  border-color: var(--primary-press);
+  color: var(--on-primary);
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    .button-secondary,
+    .ops-btn-secondary,
+    .clients-header-button:not(.clients-header-button-primary),
+    .clients-toolbar-button-secondary,
+    .clients-modal-cancel,
+    .jobs-header-button:not(.jobs-header-button-primary),
+    .jobs-toolbar-button-secondary,
+    .jobs-row-action-secondary,
+    .jobs-modal-cancel,
+    .job-detail-button-ghost,
+    .job-detail-toolbar-button-secondary,
+    .job-candidate-action-ghost,
+    .candidate-mgmt-reset-button,
+    .candidate-mgmt-action-link-secondary,
+    .lead-queue-reset-btn,
+    .schedule-workspace-view-btn,
+    .jobs-workspace-page-btn,
+    .schedule-workspace-page-btn,
+    .placements-workspace-page-btn,
+    .role-dashboard-inline-actions a,
+    .candidate-intake-head-btn,
+    .candidate-intake-cancel,
+    .clients-grid-header-btn:not(.clients-grid-header-btn-primary),
+    .client-grid-action:not(.client-grid-action-primary),
+    .clients-create-modal-cancel,
+    .client-detail-btn:not(.client-detail-btn-primary),
+    .application-create-head-btn,
+    .application-create-cancel,
+    .application-detail-header-btn,
+    .logout-button
+  ),
+:is(.public-card, .auth-card, .internal-login-card) .button-secondary {
+  background: var(--canvas);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    .button-secondary,
+    .ops-btn-secondary,
+    .clients-header-button:not(.clients-header-button-primary),
+    .clients-toolbar-button-secondary,
+    .clients-modal-cancel,
+    .jobs-header-button:not(.jobs-header-button-primary),
+    .jobs-toolbar-button-secondary,
+    .jobs-row-action-secondary,
+    .jobs-modal-cancel,
+    .job-detail-button-ghost,
+    .job-detail-toolbar-button-secondary,
+    .job-candidate-action-ghost,
+    .candidate-mgmt-reset-button,
+    .candidate-mgmt-action-link-secondary,
+    .lead-queue-reset-btn,
+    .schedule-workspace-view-btn,
+    .jobs-workspace-page-btn,
+    .schedule-workspace-page-btn,
+    .placements-workspace-page-btn,
+    .role-dashboard-inline-actions a,
+    .candidate-intake-head-btn,
+    .candidate-intake-cancel,
+    .clients-grid-header-btn:not(.clients-grid-header-btn-primary),
+    .client-grid-action:not(.client-grid-action-primary),
+    .clients-create-modal-cancel,
+    .client-detail-btn:not(.client-detail-btn-primary),
+    .application-create-head-btn,
+    .application-create-cancel,
+    .application-detail-header-btn,
+    .logout-button
+  ):hover:not(:disabled),
+:is(.public-card, .auth-card, .internal-login-card) .button-secondary:hover {
+  background: var(--canvas-soft);
+  border-color: var(--primary-deep);
+  color: var(--primary-deep);
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    .lead-queue-reject-btn,
+    [class*='delete'],
+    [class*='danger'],
+    [class*='reject']
+  ) {
+  background: rgba(234, 34, 97, 0.08);
+  border-color: rgba(234, 34, 97, 0.3);
+  color: var(--ruby);
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    .lead-queue-reject-btn,
+    [class*='delete'],
+    [class*='danger'],
+    [class*='reject']
+  ):hover:not(:disabled) {
+  background: var(--ruby);
+  border-color: var(--ruby);
+  color: var(--on-primary);
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    input:not([type='checkbox']):not([type='radio']):not([type='range']),
+    select,
+    textarea,
+    .input,
+    .table-input,
+    .internal-login-input,
+    .quick-launcher-input,
+    .header-search-input,
+    .clients-input,
+    .clients-input-compact,
+    .clients-inline-input,
+    .clients-inline-select,
+    .jobs-toolbar-field input,
+    .jobs-toolbar-field select,
+    .job-detail-select,
+    .job-candidate-select,
+    .job-candidate-input,
+    .candidate-mgmt-search,
+    .candidate-mgmt-select,
+    .candidate-profile-activity-form input,
+    .candidate-profile-activity-form select,
+    .candidate-profile-activity-form textarea,
+    .lead-queue-select,
+    .lead-queue-note-input,
+    .schedule-workspace-select,
+    .schedule-workspace-search input,
+    .placements-workspace-search input,
+    .placements-workspace-search select,
+    .candidate-intake-page input,
+    .candidate-intake-page select,
+    .candidate-intake-page textarea,
+    .clients-grid-toolbar input,
+    .clients-grid-toolbar select,
+    .clients-create-modal-form input,
+    .clients-create-modal-form select,
+    .clients-create-modal-form textarea,
+    .application-create-card select,
+    .application-create-card textarea,
+    .application-detail-form input,
+    .application-detail-form select,
+    .application-detail-form textarea,
+    .hr-analytics-filters .input
+  ),
+:is(.public-card, .auth-card, .internal-login-card) :is(input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea, .input) {
+  background-color: var(--canvas);
+  border: 1px solid var(--hairline-input);
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 300;
+  min-height: 40px;
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    input:not([type='checkbox']):not([type='radio']):not([type='range']),
+    select,
+    .input,
+    .table-input
+  ) {
+  padding: 8px 12px;
+}
+
+:is(.ops-shell, .internal-shell) textarea,
+:is(.public-card, .auth-card, .internal-login-card) textarea {
+  line-height: 1.4;
+  min-height: 88px;
+  padding: 10px 12px;
+}
+
+:is(.ops-shell, .internal-shell) select:not([multiple]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2361718a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 14px;
+  padding-right: 36px;
+}
+
+:is(.ops-shell, .internal-shell, .public-card, .auth-card, .internal-login-card) :is(input, textarea)::placeholder {
+  color: var(--ink-mute);
+  opacity: 0.68;
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    input:not([type='checkbox']):not([type='radio']):not([type='range']),
+    select,
+    textarea,
+    .input,
+    .table-input
+  ):focus,
+:is(.public-card, .auth-card, .internal-login-card) :is(input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea, .input):focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(83, 58, 253, 0.14);
+  outline: none;
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    label,
+    label > span,
+    .form-field,
+    .filter-field,
+    .internal-login-field-label,
+    .clients-label,
+    .clients-modal-field span,
+    .jobs-toolbar-field span,
+    .jobs-modal-field span,
+    .job-candidate-section-label,
+    .candidate-profile-detail-label,
+    .candidate-profile-activity-form label span,
+    .lead-queue-candidate-cell small,
+    .jobs-workspace-modal-grid label span,
+    .schedule-workspace-modal-grid label span,
+    .placements-workspace-modal-grid label span,
+    .candidate-intake-fields label span,
+    .candidate-intake-parser label span,
+    .clients-create-modal-form label > span,
+    .clients-create-modal-field-block > span,
+    .application-create-card label > span,
+    .application-detail-form label span,
+    .hr-analytics-filters label,
+    .team-mgmt-field > span
+  ),
+.auth-form .form-field,
+.internal-login-field-label {
+  color: var(--ink-mute);
+  font-size: 0.625rem;
+  font-weight: 400;
+  letter-spacing: 0.1px;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+:is(.ops-shell, .internal-shell) :is(input[type='checkbox'], input[type='radio']),
+.internal-login-remember-row input {
+  accent-color: var(--primary);
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    .status-pill,
+    .status-chip,
+    [class$='-pill'],
+    [class*='-pill-'],
+    [class$='-chip'],
+    [class*='-chip-'],
+    [class$='-tag'],
+    [class*='-tag-']
+  ) {
+  border-radius: var(--radius-pill);
+  font-size: 0.625rem;
+  font-weight: 400;
+  letter-spacing: 0.1px;
+  line-height: 1.15;
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    [class*='active'],
+    [class*='approved'],
+    [class*='paid'],
+    [class*='good'],
+    [class*='success']
+  ):is(.status-pill, .status-chip, [class$='-pill'], [class*='-pill-'], [class$='-chip'], [class*='-chip-'], [class$='-tag'], [class*='-tag-']) {
+  background: var(--primary-bg-subdued-hover);
+  border-color: transparent;
+  color: var(--primary-deep);
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    [class*='pending'],
+    [class*='warning'],
+    [class*='warn'],
+    [class*='onHold'],
+    [class*='orange']
+  ):is(.status-pill, .status-chip, [class$='-pill'], [class*='-pill-'], [class$='-chip'], [class*='-chip-'], [class$='-tag'], [class*='-tag-']) {
+  background: var(--canvas-cream);
+  border-color: rgba(155, 104, 41, 0.18);
+  color: var(--lemon);
+}
+
+:is(.ops-shell, .internal-shell) :is(
+    [class*='inactive'],
+    [class*='danger'],
+    [class*='error'],
+    [class*='reject'],
+    [class*='rejected'],
+    [class*='closed'],
+    [class*='cancelled'],
+    [class*='notPaid'],
+    [class*='bad']
+  ):is(.status-pill, .status-chip, [class$='-pill'], [class*='-pill-'], [class$='-chip'], [class*='-chip-'], [class$='-tag'], [class*='-tag-']) {
+  background: rgba(234, 34, 97, 0.08);
+  border-color: rgba(234, 34, 97, 0.22);
+  color: var(--ruby);
+}
+
+.ops-user-pill {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  font-size: inherit;
+  letter-spacing: 0;
+  line-height: inherit;
+}
+
+@media (max-width: 780px) {
+  :is(.ops-shell, .internal-shell) :is(
+      button,
+      [role='button'],
+      .button,
+      .ops-btn,
+      .ops-post-job-button,
+      [class$='-button'],
+      [class$='-btn'],
+      [class$='-submit'],
+      [class$='-cancel']
+    ),
+  :is(.public-card, .auth-card, .internal-login-card) :is(.button, button) {
+    min-height: 44px;
+    white-space: normal;
+  }
+
+  :is(.ops-shell, .internal-shell) :is(input, select, .input),
+  :is(.public-card, .auth-card, .internal-login-card) :is(input, select, .input) {
+    min-height: 44px;
   }
 }

@@ -1,15 +1,15 @@
 import type { Metadata } from 'next'
-import { Manrope } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import type { ReactNode } from 'react'
 
 import { AppQueryProvider } from '@/components/providers/AppQueryProvider'
 
 import './styles.css'
 
-const manrope = Manrope({
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-manrope',
-  weight: ['500', '600', '700', '800'],
+  variable: '--font-sans',
+  weight: ['300', '400', '500', '600'],
 })
 
 export const metadata: Metadata = {
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export default function FrontendLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className={manrope.variable}>
+      <body className={inter.variable}>
         <AppQueryProvider>
           <main className="app-root">{children}</main>
         </AppQueryProvider>
