@@ -70,12 +70,6 @@ export default async function InternalProtectedLayout({ children }: InternalProt
         )}
 
         <div className="ops-topbar-right">
-          <span className="ops-top-icon" title="Notifications">
-            ●
-          </span>
-          <span className="ops-top-icon" title="Apps">
-            ◼
-          </span>
           <div className="ops-user-pill">
             <span className="ops-user-avatar">{avatarText}</span>
             <div className="ops-user-copy">

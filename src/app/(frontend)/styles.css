@@ -4192,9 +4192,10 @@ ul {
   display: inline-flex;
   font-size: 0.64rem;
   font-weight: 800;
-  height: 1.72rem;
+  height: 2rem;
   justify-content: center;
-  min-width: 1.72rem;
+  min-width: 2rem;
+  width: 2rem;
 }
 
 .ops-user-copy {
@@ -14105,5 +14106,810 @@ body :is(a, button, input, select, textarea):focus-visible {
   :is(.ops-shell, .internal-shell) :is(input, select, .input),
   :is(.public-card, .auth-card, .internal-login-card) :is(input, select, .input) {
     min-height: 44px;
+  }
+}
+
+/* Mobile shell refinement: compact header, logo, and navigation rail */
+@media (max-width: 780px) {
+  .ops-topbar {
+    backdrop-filter: blur(18px);
+    box-shadow: 0 1px 0 rgba(0, 55, 112, 0.08);
+    display: grid;
+    gap: var(--space-sm) var(--space-md);
+    grid-template-areas:
+      'brand user'
+      'tabs tabs';
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 0;
+    padding: 10px 12px 8px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .ops-topbar-left {
+    grid-area: brand;
+    gap: var(--space-sm);
+    min-width: 0;
+  }
+
+  .ops-topbar-brand {
+    color: var(--brand-dark-900);
+    font-size: 1rem;
+    line-height: 1.1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ops-role-badge {
+    flex: 0 0 auto;
+    font-size: 0.55rem;
+    line-height: 1;
+    padding: 5px 7px;
+  }
+
+  .ops-topbar-right {
+    grid-area: user;
+    justify-content: flex-end;
+  }
+
+  .ops-user-avatar {
+    font-size: 0.68rem;
+    height: 32px;
+    min-width: 32px;
+    width: 32px;
+  }
+
+  .ops-top-tabs {
+    background: var(--canvas-soft);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-pill);
+    gap: 4px;
+    grid-area: tabs;
+    justify-content: flex-start;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 4px;
+    scrollbar-width: none;
+  }
+
+  .ops-top-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ops-top-tab {
+    border: 0;
+    border-radius: var(--radius-pill);
+    color: var(--ink-mute-2);
+    flex: 0 0 auto;
+    font-size: 0.78rem;
+    line-height: 1;
+    min-height: 34px;
+    padding: 9px 12px;
+  }
+
+  .ops-top-tab-active {
+    background: var(--primary);
+    color: var(--on-primary);
+  }
+
+  .ops-sidebar {
+    align-items: center;
+    background: var(--brand-dark-900);
+    border-bottom: 0;
+    box-shadow: 0 8px 22px rgba(13, 37, 61, 0.12);
+    display: grid;
+    gap: var(--space-sm);
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 9px 12px;
+  }
+
+  .ops-sidebar-nav-wrap {
+    margin: 0;
+    min-width: 0;
+    overflow-x: auto;
+    padding: 0;
+    scrollbar-width: none;
+  }
+
+  .ops-sidebar-nav-wrap::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ops-shell .internal-nav {
+    min-width: 0;
+  }
+
+  .ops-shell .nav-list {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 0;
+  }
+
+  .ops-shell .nav-link {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-pill);
+    color: rgba(255, 255, 255, 0.78);
+    min-height: 36px;
+    min-width: max-content;
+    padding: 8px 12px;
+  }
+
+  .ops-shell .nav-link-active {
+    background: var(--canvas);
+    border-color: var(--canvas);
+    color: var(--primary-deep);
+  }
+
+  .ops-shell .nav-title {
+    font-size: 0.82rem;
+    line-height: 1;
+  }
+
+  .ops-post-job-button {
+    border-radius: var(--radius-pill);
+    box-shadow: none;
+    font-size: 0.78rem;
+    min-height: 36px;
+    padding: 8px 12px;
+    white-space: nowrap;
+    width: auto;
+  }
+
+  .ops-sidebar-footer {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .internal-shell {
+    background: var(--canvas-soft);
+  }
+
+  .internal-sidebar {
+    background: var(--brand-dark-900);
+    border-bottom: 0;
+    color: var(--on-primary);
+    gap: var(--space-md);
+    padding: 14px 12px 10px;
+  }
+
+  .internal-sidebar .eyebrow {
+    color: var(--primary-bg-subdued-hover);
+    margin: 0 0 4px;
+  }
+
+  .internal-sidebar .sidebar-title {
+    color: var(--on-primary);
+    font-size: 1.15rem;
+    line-height: 1.1;
+  }
+
+  .internal-sidebar .internal-nav {
+    margin: 0 -12px;
+    overflow-x: auto;
+    padding: 0 12px;
+    scrollbar-width: none;
+  }
+
+  .internal-sidebar .internal-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .internal-sidebar .nav-list {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 0;
+  }
+
+  .internal-sidebar .nav-link {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-pill);
+    color: rgba(255, 255, 255, 0.82);
+    min-height: 36px;
+    min-width: max-content;
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
+
+  .internal-sidebar .nav-link-active,
+  .internal-sidebar .nav-link:hover {
+    background: var(--canvas);
+    border-color: var(--canvas);
+    color: var(--primary-deep);
+  }
+
+  .internal-header {
+    background: var(--canvas);
+    border-bottom: 1px solid var(--hairline);
+    padding: 12px;
+  }
+}
+
+/* Internal route mobile foundation: list, form, detail, calendar, and modal pages */
+@media (max-width: 720px) {
+  .ops-body,
+  .internal-shell {
+    align-content: start;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .ops-content {
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .ops-content > * {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .internal-sidebar {
+    align-self: start;
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  :is(
+      .dashboard-grid,
+      .split-grid,
+      .workspace-grid,
+      .lead-top-grid,
+      .lead-bottom-grid,
+      .jobs-kpi-grid,
+      .jobs-foot-grid,
+      .candidate-mgmt-filters,
+      .candidate-profile-grid,
+      .candidate-profile-activity-form,
+      .lead-queue-kpis,
+      .lead-queue-filters,
+      .lead-queue-action-form,
+      .schedule-workspace-filter-row,
+      .schedule-workspace-grid,
+      .jobs-workspace-modal-grid,
+      .schedule-workspace-modal-grid,
+      .placements-workspace-modal-grid,
+      .candidate-intake-grid,
+      .candidate-intake-fields-2,
+      .clients-grid-kpis,
+      .clients-grid-toolbar,
+      .clients-grid-cards,
+      .client-grid-info,
+      .clients-create-modal-grid,
+      .client-detail-grid,
+      .client-detail-info-grid,
+      .client-detail-jobs-grid,
+      .application-create-kpis,
+      .application-create-grid,
+      .application-detail-grid,
+      .application-detail-actions-grid,
+      .hr-analytics-filters,
+      .hr-analytics-kpi-grid,
+      .hr-analytics-main-grid,
+      .team-mgmt-kpi-grid,
+      .team-mgmt-form-grid,
+      .team-mgmt-setup-grid,
+      .ops-form-grid,
+      .ops-detail-grid,
+      .kpi-grid
+    ) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  :is(
+      .panel-span-2,
+      .candidate-profile-activity-form-span-2,
+      .jobs-workspace-modal-span-2,
+      .schedule-workspace-modal-span-2,
+      .placements-workspace-modal-span-2,
+      .candidate-intake-field-span-2,
+      .team-mgmt-field-span-2,
+      .hr-analytics-card-span-2
+    ) {
+    grid-column: auto !important;
+  }
+
+  :is(
+      .lead-overview-header-row,
+      .jobs-workspace-header,
+      .candidate-mgmt-header,
+      .candidate-profile-hero,
+      .lead-queue-header,
+      .schedule-workspace-header,
+      .placements-workspace-header,
+      .candidate-intake-header,
+      .clients-grid-header,
+      .client-detail-header,
+      .application-create-header,
+      .application-detail-header,
+      .hr-analytics-header,
+      .team-mgmt-header-row,
+      .team-mgmt-directory-head,
+      .role-dashboard-card-head,
+      .candidate-profile-resume-head,
+      .schedule-workspace-calendar-head,
+      .jobs-modal-head,
+      .clients-create-modal-head,
+      .flow-progress-head
+    ) {
+    align-items: stretch !important;
+    display: grid !important;
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) !important;
+    justify-content: stretch !important;
+  }
+
+  :is(
+      .jobs-workspace-header,
+      .candidate-mgmt-header,
+      .candidate-profile-hero,
+      .lead-queue-header,
+      .schedule-workspace-header,
+      .placements-workspace-header,
+      .candidate-intake-header,
+      .clients-grid-header,
+      .client-detail-header,
+      .application-create-header,
+      .application-detail-header,
+      .hr-analytics-header
+    ) {
+    background: var(--canvas);
+    border-color: var(--hairline);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-level-1);
+    padding: 14px;
+  }
+
+  :is(
+      .jobs-workspace-header h1,
+      .candidate-mgmt-header-copy h1,
+      .candidate-profile-title-row h1,
+      .lead-queue-header h1,
+      .schedule-workspace-header h1,
+      .placements-workspace-header h1,
+      .candidate-intake-header h1,
+      .clients-grid-header h1,
+      .client-detail-header h1,
+      .application-create-header h1,
+      .application-detail-header h1,
+      .lead-overview-header-row h1,
+      .panel h1
+    ) {
+    font-size: clamp(1.35rem, 8vw, 1.72rem);
+    letter-spacing: 0;
+    line-height: 1.12;
+  }
+
+  :is(
+      .jobs-workspace-header p,
+      .candidate-mgmt-header-copy p,
+      .candidate-profile-meta-line,
+      .lead-queue-header p,
+      .schedule-workspace-header p,
+      .placements-workspace-header p,
+      .candidate-intake-header p,
+      .clients-grid-header p,
+      .client-detail-header p,
+      .application-create-header p,
+      .application-detail-header p,
+      .panel-intro,
+      .panel-subtitle
+    ) {
+    font-size: 0.84rem;
+    line-height: 1.45;
+    max-width: 100%;
+  }
+
+  :is(
+      .jobs-workspace-header-actions,
+      .candidate-mgmt-header-actions,
+      .candidate-profile-hero-actions,
+      .lead-queue-head-links,
+      .schedule-workspace-header-actions,
+      .placements-workspace-header-actions,
+      .candidate-intake-header-actions,
+      .clients-grid-header-actions,
+      .client-detail-actions,
+      .application-create-header-actions,
+      .application-detail-header-actions,
+      .hr-analytics-filter-actions,
+      .team-mgmt-header-actions,
+      .team-mgmt-form-actions,
+      .ops-form-actions,
+      .candidate-intake-footer,
+      .clients-create-modal-footer,
+      .jobs-modal-footer,
+      .client-grid-actions,
+      .application-detail-review-buttons
+    ) {
+    display: grid !important;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) !important;
+    justify-content: stretch !important;
+    width: 100%;
+  }
+
+  :is(
+      .jobs-workspace-header-actions,
+      .schedule-workspace-header-actions,
+      .placements-workspace-header-actions
+    )
+    :is(form, .jobs-workspace-search, .schedule-workspace-search, .placements-workspace-search) {
+    display: grid !important;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+  }
+
+  .schedule-workspace-header-actions form.schedule-workspace-search {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .schedule-workspace-header-actions form.schedule-workspace-search button {
+    align-items: center;
+    background: var(--primary);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-pill);
+    color: var(--on-primary);
+    display: inline-flex;
+    font-weight: 600;
+    justify-content: center;
+    min-height: 42px;
+    width: 100%;
+  }
+
+  :is(
+      .jobs-header-button,
+      .jobs-toolbar-button,
+      .jobs-row-action,
+      .candidate-mgmt-add-button,
+      .candidate-mgmt-filter-button,
+      .candidate-mgmt-reset-button,
+      .candidate-mgmt-action-link,
+      .candidate-profile-action,
+      .candidate-profile-activity-form button,
+      .lead-queue-head-links a,
+      .lead-queue-filter-btn,
+      .lead-queue-reset-btn,
+      .lead-queue-icon-btn,
+      .lead-queue-reject-btn,
+      .lead-queue-approve-btn,
+      .schedule-workspace-main-action,
+      .schedule-workspace-filter-btn,
+      .jobs-workspace-create,
+      .placements-workspace-main-action,
+      .jobs-workspace-page-btn,
+      .schedule-workspace-page-btn,
+      .placements-workspace-page-btn,
+      .candidate-intake-head-btn,
+      .candidate-intake-parse-btn,
+      .candidate-intake-cancel,
+      .candidate-intake-submit,
+      .clients-grid-header-btn,
+      .clients-grid-toolbar button,
+      .clients-grid-toolbar a,
+      .client-grid-action,
+      .clients-create-modal-cancel,
+      .clients-create-modal-submit,
+      .client-detail-btn,
+      .application-create-head-btn,
+      .application-create-cancel,
+      .application-create-submit,
+      .application-detail-header-btn,
+      .application-detail-form button,
+      .team-mgmt-inline-row .button,
+      .team-mgmt-toggle-button,
+      .ops-btn,
+      .button
+    ) {
+    border-radius: var(--radius-pill);
+    min-height: 42px;
+    min-width: 0;
+    text-align: center;
+    white-space: normal;
+    width: 100%;
+  }
+
+  :is(
+      .jobs-toolbar,
+      .candidate-mgmt-filters,
+      .lead-queue-filters,
+      .schedule-workspace-filter-row,
+      .clients-grid-toolbar,
+      .hr-analytics-filters,
+      .ops-form-grid
+    ) {
+    align-items: stretch !important;
+    gap: 10px;
+  }
+
+  :is(
+      .jobs-toolbar input,
+      .jobs-toolbar select,
+      .candidate-mgmt-search,
+      .candidate-mgmt-select,
+      .lead-queue-search,
+      .lead-queue-select,
+      .lead-queue-note-input,
+      .schedule-workspace-search,
+      .schedule-workspace-select,
+      .jobs-workspace-search input,
+      .jobs-workspace-search button,
+      .schedule-workspace-header-actions .schedule-workspace-search input,
+      .schedule-workspace-header-actions .schedule-workspace-search select,
+      .schedule-workspace-header-actions .schedule-workspace-search button,
+      .placements-workspace-search input,
+      .placements-workspace-search select,
+      .placements-workspace-search button,
+      .candidate-intake-page input,
+      .candidate-intake-page select,
+      .candidate-intake-page textarea,
+      .clients-grid-toolbar input,
+      .clients-grid-toolbar select,
+      .clients-create-modal-form input,
+      .clients-create-modal-form select,
+      .clients-create-modal-form textarea,
+      .application-create-card select,
+      .application-create-card textarea,
+      .application-detail-form input,
+      .application-detail-form select,
+      .application-detail-form textarea,
+      .hr-analytics-filters .input,
+      .team-mgmt-field input,
+      .team-mgmt-field select,
+      .team-mgmt-field textarea,
+      .ops-form-field input,
+      .ops-form-field select,
+      .ops-form-field textarea,
+      .row-form input,
+      .row-form select,
+      .row-form textarea
+    ) {
+    box-sizing: border-box;
+    min-height: 44px;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  :is(
+      .panel,
+      .ops-card,
+      .jobs-surface-card,
+      .jobs-foot-card,
+      .candidate-mgmt-filter-card,
+      .candidate-mgmt-table-card,
+      .candidate-profile-card,
+      .candidate-profile-resume-card,
+      .lead-queue-filter-card,
+      .lead-queue-table-card,
+      .schedule-workspace-calendar-card,
+      .schedule-workspace-upcoming-card,
+      .schedule-workspace-side-card,
+      .schedule-workspace-capacity-card,
+      .jobs-workspace-table-card,
+      .schedule-workspace-table-card,
+      .placements-workspace-table-card,
+      .candidate-intake-form,
+      .candidate-intake-card,
+      .clients-grid-toolbar-card,
+      .clients-grid-empty,
+      .client-grid-card,
+      .client-detail-card,
+      .application-create-form,
+      .application-create-card,
+      .application-detail-card,
+      .hr-analytics-card,
+      .team-mgmt-kpi-panel,
+      .team-mgmt-panel,
+      .team-mgmt-setup-card,
+      .client-detail-job-card,
+      .application-detail-form
+    ) {
+    border-color: var(--hairline);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-level-1);
+    max-width: 100%;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  :is(.kpi-card, .jobs-kpi-card, .clients-grid-kpi, .lead-queue-kpi-card, .hr-analytics-kpi-card, .team-mgmt-kpi-card) {
+    min-height: 0;
+    padding: 12px;
+  }
+
+  :is(.kpi-value, .jobs-kpi-card strong, .clients-grid-kpi strong, .lead-queue-kpi-card strong) {
+    font-size: clamp(1.45rem, 9vw, 2rem);
+    line-height: 1.08;
+  }
+
+  :is(
+      .table-wrap,
+      .jobs-table-wrap,
+      .candidate-mgmt-table-wrap,
+      .lead-queue-table-wrap,
+      .jobs-workspace-table-card,
+      .schedule-workspace-table-card,
+      .placements-workspace-table-card,
+      .team-mgmt-table-wrap
+    ) {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  :is(
+      .data-table,
+      .jobs-table,
+      .candidate-mgmt-table,
+      .lead-queue-table,
+      .jobs-workspace-table,
+      .schedule-workspace-table,
+      .placements-workspace-table,
+      .team-mgmt-table
+    ) {
+    min-width: 680px !important;
+  }
+
+  :is(
+      .data-table th,
+      .data-table td,
+      .jobs-table th,
+      .jobs-table td,
+      .candidate-mgmt-table th,
+      .candidate-mgmt-table td,
+      .lead-queue-table th,
+      .lead-queue-table td,
+      .jobs-workspace-table th,
+      .jobs-workspace-table td,
+      .schedule-workspace-table th,
+      .schedule-workspace-table td,
+      .placements-workspace-table th,
+      .placements-workspace-table td,
+      .team-mgmt-table th,
+      .team-mgmt-table td
+    ) {
+    padding: 10px 8px;
+  }
+
+  .schedule-workspace-calendar-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  :is(.schedule-workspace-weekdays, .schedule-workspace-calendar-grid) {
+    min-width: 560px;
+  }
+
+  .schedule-workspace-day {
+    border-radius: var(--radius-sm);
+    min-height: 86px;
+    padding: 6px;
+  }
+
+  .schedule-workspace-event strong {
+    white-space: normal;
+  }
+
+  :is(.candidate-profile-title-row, .client-detail-title-wrap, .client-grid-card-head, .lead-queue-candidate-cell) {
+    min-width: 0;
+  }
+
+  .client-grid-card-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .client-grid-status {
+    justify-self: start;
+  }
+
+  :is(.candidate-profile-application-item, .schedule-workspace-upcoming-item, .role-dashboard-list-row, .role-dashboard-action-row) {
+    align-items: stretch;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :is(.row-form, .payroll-payment-form, .schedule-workspace-inline-form, .placements-workspace-inline-form) {
+    align-items: stretch !important;
+    display: grid !important;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+  }
+
+  :is(.row-form button, .schedule-workspace-inline-form button, .placements-workspace-inline-form button) {
+    min-height: 40px;
+    width: 100%;
+  }
+
+  :is(.jobs-modal, .jobs-workspace-modal, .schedule-workspace-modal, .placements-workspace-modal, .clients-create-modal) {
+    border-radius: var(--radius-md);
+    inset: 10px !important;
+    left: 10px !important;
+    max-height: calc(100dvh - 20px);
+    max-width: none;
+    overflow: auto;
+    top: 10px !important;
+    transform: none !important;
+    width: auto !important;
+  }
+
+  :is(.jobs-workspace-modal footer, .schedule-workspace-modal footer, .placements-workspace-modal footer) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .ops-content {
+    padding: 10px;
+  }
+
+  :is(
+      .jobs-workspace-header,
+      .candidate-mgmt-header,
+      .candidate-profile-hero,
+      .lead-queue-header,
+      .schedule-workspace-header,
+      .placements-workspace-header,
+      .candidate-intake-header,
+      .clients-grid-header,
+      .client-detail-header,
+      .application-create-header,
+      .application-detail-header,
+      .hr-analytics-header,
+      .panel
+    ) {
+    padding: 11px;
+  }
+
+  :is(
+      .jobs-workspace-header h1,
+      .candidate-mgmt-header-copy h1,
+      .candidate-profile-title-row h1,
+      .lead-queue-header h1,
+      .schedule-workspace-header h1,
+      .placements-workspace-header h1,
+      .candidate-intake-header h1,
+      .clients-grid-header h1,
+      .client-detail-header h1,
+      .application-create-header h1,
+      .application-detail-header h1,
+      .panel h1
+    ) {
+    font-size: 1.35rem;
+  }
+
+  :is(.jobs-workspace-page, .candidate-mgmt-page, .lead-queue-page, .schedule-workspace-page, .clients-grid-page) {
+    gap: 10px;
+  }
+
+  :is(
+      .data-table,
+      .jobs-table,
+      .candidate-mgmt-table,
+      .lead-queue-table,
+      .jobs-workspace-table,
+      .schedule-workspace-table,
+      .placements-workspace-table,
+      .team-mgmt-table
+    ) {
+    min-width: 620px !important;
   }
 }
