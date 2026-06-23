@@ -11,6 +11,7 @@
     "backfill:business-codes": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/backfill-business-codes.ts",
     "migrate:application-stages": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/migrate-application-stages.ts",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
+    "generate:db-schema": "cross-env NODE_OPTIONS=--no-deprecation payload generate:db-schema",
     "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
     "lint": "cross-env NODE_OPTIONS=--no-deprecation next lint",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
