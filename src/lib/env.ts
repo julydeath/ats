@@ -14,6 +14,8 @@ const readOptionalEnv = (name: string): string =>
   (process.env[name] || '').trim()
 
 export const env = {
+  DATABASE_CA_CERT: readOptionalEnv('DATABASE_CA_CERT').replace(/\\n/g, '\n'),
+  DATABASE_SSL_REJECT_UNAUTHORIZED: readOptionalEnv('DATABASE_SSL_REJECT_UNAUTHORIZED'),
   DATABASE_URL: readRequiredEnv('DATABASE_URL'),
   NEXT_PUBLIC_APP_URL: normalizeURL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   PAYLOAD_SECRET: readRequiredEnv('PAYLOAD_SECRET'),

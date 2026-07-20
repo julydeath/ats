@@ -46,6 +46,30 @@ import { env } from './lib/env'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 const appURL = env.NEXT_PUBLIC_APP_URL
+const parsedDatabaseURL = new URL(env.DATABASE_URL)
+const isAivenDatabase = parsedDatabaseURL.hostname.endsWith('.aivencloud.com')
+const databaseSSL =
+  isAivenDatabase && env.DATABASE_CA_CERT.length > 0
+    ? {
+        ca: env.DATABASE_CA_CERT,
+        rejectUnauthorized: true,
+      }
+    : env.DATABASE_SSL_REJECT_UNAUTHORIZED === 'false'
+      ? {
+          rejectUnauthorized: false,
+        }
+      : undefined
+const databaseURL =
+  databaseSSL
+    ? (() => {
+        const parsedURL = new URL(env.DATABASE_URL)
+        parsedURL.searchParams.delete('sslmode')
+        parsedURL.searchParams.delete('sslcert')
+        parsedURL.searchParams.delete('sslkey')
+        parsedURL.searchParams.delete('sslrootcert')
+        return parsedURL.toString()
+      })()
+    : env.DATABASE_URL
 
 export default buildConfig({
   admin: {
@@ -103,7 +127,9 @@ export default buildConfig({
   db: postgresAdapter({
     generateSchemaOutputFile: path.resolve(dirname, 'payload-generated-schema.ts'),
     pool: {
-      connectionString: env.DATABASE_URL,
+      connectionString: databaseURL,
+      max: Number(process.env.DATABASE_POOL_MAX || 5),
+      ...(databaseSSL ? { ssl: databaseSSL } : {}),
     },
     push: process.env.PAYLOAD_DB_PUSH === 'true',
   }),
