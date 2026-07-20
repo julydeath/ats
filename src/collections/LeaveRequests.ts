@@ -588,6 +588,9 @@ export const LeaveRequests: CollectionConfig = {
       fields: ['employee', 'status', 'startDate'],
     },
     {
+      fields: ['employee', 'startDate', 'endDate'],
+    },
+    {
       fields: ['requestedBy', 'status'],
     },
   ],

@@ -135,5 +135,17 @@ export const ApplicationStageHistory: CollectionConfig = {
     {
       fields: ['candidateAccount', 'changedAt'],
     },
+    {
+      fields: ['toStage', 'changedAt'],
+    },
+    {
+      fields: ['actor', 'changedAt'],
+    },
+    {
+      fields: ['job', 'changedAt'],
+    },
+    {
+      fields: ['recruiter', 'changedAt'],
+    },
   ],
 }

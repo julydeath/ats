@@ -600,5 +600,11 @@ export const Applications: CollectionConfig = {
     {
       fields: ['recruiter', 'stage', 'updatedAt'],
     },
+    {
+      fields: ['recruiter', 'createdAt'],
+    },
+    {
+      fields: ['job', 'updatedAt'],
+    },
   ],
 }

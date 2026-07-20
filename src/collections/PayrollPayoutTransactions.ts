@@ -142,5 +142,8 @@ export const PayrollPayoutTransactions: CollectionConfig = {
     {
       fields: ['payoutStatus', 'updatedAt'],
     },
+    {
+      fields: ['employee', 'initiatedAt'],
+    },
   ],
 }

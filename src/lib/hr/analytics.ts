@@ -313,6 +313,12 @@ export const getHRAnalyticsSummary = async ({
     depth: 1,
     limit: 300,
     overrideAccess: false,
+    pagination: false,
+    select: {
+      employeeCode: true,
+      user: true,
+      workState: true,
+    },
     user,
     where: buildWhereAnd(employeeWhereConditions),
   })
@@ -408,6 +414,13 @@ export const getHRAnalyticsSummary = async ({
       depth: 0,
       limit: 3000,
       overrideAccess: false,
+      pagination: false,
+      select: {
+        date: true,
+        employee: true,
+        lop: true,
+        status: true,
+      },
       user,
       where: buildWhereAnd([
         { employee: { in: employeeIDs } },
@@ -420,6 +433,13 @@ export const getHRAnalyticsSummary = async ({
       depth: 1,
       limit: 2000,
       overrideAccess: false,
+      pagination: false,
+      select: {
+        employee: true,
+        leaveType: true,
+        status: true,
+        totalDays: true,
+      },
       user,
       where: buildWhereAnd([
         { employee: { in: employeeIDs } },
@@ -432,6 +452,11 @@ export const getHRAnalyticsSummary = async ({
       depth: 0,
       limit: 1200,
       overrideAccess: false,
+      pagination: false,
+      select: {
+        createdAt: true,
+        createdBy: true,
+      },
       user,
       where: buildWhereAnd([
         { createdBy: { in: userIDs } },
@@ -444,6 +469,11 @@ export const getHRAnalyticsSummary = async ({
       depth: 0,
       limit: 3000,
       overrideAccess: false,
+      pagination: false,
+      select: {
+        createdAt: true,
+        recruiter: true,
+      },
       user,
       where: buildWhereAnd([
         { recruiter: { in: userIDs } },
@@ -456,6 +486,10 @@ export const getHRAnalyticsSummary = async ({
       depth: 0,
       limit: 5000,
       overrideAccess: false,
+      pagination: false,
+      select: {
+        actor: true,
+      },
       user,
       where: buildWhereAnd([
         { actor: { in: userIDs } },
@@ -468,6 +502,11 @@ export const getHRAnalyticsSummary = async ({
       depth: 0,
       limit: 2500,
       overrideAccess: false,
+      pagination: false,
+      select: {
+        recruiter: true,
+        startTime: true,
+      },
       user,
       where: buildWhereAnd([
         { recruiter: { in: userIDs } },
@@ -480,6 +519,12 @@ export const getHRAnalyticsSummary = async ({
       depth: 0,
       limit: 1200,
       overrideAccess: false,
+      pagination: false,
+      select: {
+        createdAt: true,
+        recruiter: true,
+        status: true,
+      },
       user,
       where: buildWhereAnd([
         { recruiter: { in: userIDs } },
@@ -492,6 +537,13 @@ export const getHRAnalyticsSummary = async ({
       depth: 0,
       limit: 1200,
       overrideAccess: false,
+      pagination: false,
+      select: {
+        clientLead: true,
+        ownership: true,
+        owningHeadRecruiter: true,
+        primaryOwner: true,
+      },
       user,
       where: buildWhereAnd([
         { status: { equals: 'active' } },
@@ -510,6 +562,12 @@ export const getHRAnalyticsSummary = async ({
       depth: 0,
       limit: 2000,
       overrideAccess: false,
+      pagination: false,
+      select: {
+        createdAt: true,
+        grossEarnings: true,
+        netPayable: true,
+      },
       user,
       where: buildWhereAnd([
         { employee: { in: employeeIDs } },
@@ -522,6 +580,10 @@ export const getHRAnalyticsSummary = async ({
       depth: 0,
       limit: 2000,
       overrideAccess: false,
+      pagination: false,
+      select: {
+        payoutStatus: true,
+      },
       user,
       where: buildWhereAnd([
         { employee: { in: employeeIDs } },
@@ -756,7 +818,7 @@ export const getHRAnalyticsSummary = async ({
   const placementsClosed = employeeRows.reduce((sum, row) => sum + row.placementsClosed, 0)
   const stageMoves = employeeRows.reduce((sum, row) => sum + row.stageMoves, 0)
   const lopDays = employeeRows.reduce((sum, row) => sum + row.lopDays, 0)
-  const totalActiveClients = clientOwnershipSet.size > 0 ? activeClients.totalDocs : 0
+  const totalActiveClients = clientOwnershipSet.size > 0 ? activeClients.docs.length : 0
 
   return {
     employeeRows,

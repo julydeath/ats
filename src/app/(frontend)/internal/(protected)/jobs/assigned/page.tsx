@@ -210,8 +210,6 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
     clientsResult,
     leadsResult,
     recruitersResult,
-    recruiterAssignmentsResult,
-    applicationsResult,
     stageHistory,
     weeklyCandidates,
   ] = await Promise.all([
@@ -220,6 +218,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       depth: 1,
       limit: 120,
       overrideAccess: false,
+      pagination: false,
       select: {
         businessUnit: true,
         client: true,
@@ -247,6 +246,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       depth: 0,
       limit: 120,
       overrideAccess: false,
+      pagination: false,
       select: {
         clientCode: true,
         id: true,
@@ -260,12 +260,13 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
         },
       },
     }),
-    user.role === 'admin'
+    isCreateModalOpen && user.role === 'admin'
       ? payload.find({
           collection: 'users',
           depth: 0,
           limit: 80,
           overrideAccess: false,
+          pagination: false,
           select: {
             email: true,
             fullName: true,
@@ -289,12 +290,13 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           },
         })
       : Promise.resolve(null),
-    canCreateJobs
+    isCreateModalOpen && canCreateJobs
       ? payload.find({
           collection: 'users',
           depth: 0,
           limit: 120,
           overrideAccess: false,
+          pagination: false,
           select: {
             email: true,
             fullName: true,
@@ -321,40 +323,11 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           docs: [] as Array<{ email?: string; fullName?: string; id: number | string }>,
         }),
     payload.find({
-      collection: 'recruiter-job-assignments',
-      depth: 1,
-      limit: 300,
-      overrideAccess: false,
-      select: {
-        job: true,
-        recruiter: true,
-        status: true,
-      },
-      sort: '-updatedAt',
-      user,
-      where: {
-        status: {
-          equals: 'active',
-        },
-      },
-    }),
-    payload.find({
-      collection: 'applications',
-      depth: 0,
-      limit: 600,
-      overrideAccess: false,
-      select: {
-        id: true,
-        job: true,
-        stage: true,
-      },
-      user,
-    }),
-    payload.find({
       collection: 'application-stage-history',
       depth: 1,
       limit: 6,
       overrideAccess: false,
+      pagination: false,
       select: {
         candidate: true,
         changedAt: true,
@@ -402,6 +375,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       | 'targetClosureDate'
     >
   >
+  const visibleJobIDs = jobs.map((job) => job.id)
   const unresolvedClientIDs = Array.from(
     new Set(
       jobs
@@ -421,7 +395,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
         .filter((id): id is string => Boolean(id)),
     ),
   )
-  const [fallbackClientsResult, fallbackLeadsResult] = await Promise.all([
+  const [fallbackClientsResult, fallbackLeadsResult, recruiterAssignmentsResult, applicationsResult] = await Promise.all([
     unresolvedClientIDs.length === 0
       ? Promise.resolve({ docs: [] as Array<{ clientCode?: string | null; id: number | string; name?: string }> })
       : payload.find({
@@ -429,6 +403,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           depth: 0,
           limit: unresolvedClientIDs.length,
           overrideAccess: true,
+          pagination: false,
           select: {
             clientCode: true,
             id: true,
@@ -447,6 +422,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           depth: 0,
           limit: unresolvedLeadIDs.length,
           overrideAccess: true,
+          pagination: false,
           select: {
             email: true,
             fullName: true,
@@ -455,6 +431,60 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           where: {
             id: {
               in: unresolvedLeadIDs,
+            },
+          },
+        }),
+    visibleJobIDs.length === 0
+      ? Promise.resolve({
+          docs: [] as Array<Pick<RecruiterJobAssignment, 'job' | 'recruiter' | 'status'>>,
+        })
+      : payload.find({
+          collection: 'recruiter-job-assignments',
+          depth: 1,
+          limit: 300,
+          overrideAccess: false,
+          pagination: false,
+          select: {
+            job: true,
+            recruiter: true,
+            status: true,
+          },
+          sort: '-updatedAt',
+          user,
+          where: {
+            and: [
+              {
+                status: {
+                  equals: 'active',
+                },
+              },
+              {
+                job: {
+                  in: visibleJobIDs,
+                },
+              },
+            ],
+          },
+        }),
+    visibleJobIDs.length === 0
+      ? Promise.resolve({
+          docs: [] as Array<Pick<Application, 'id' | 'job' | 'stage'>>,
+        })
+      : payload.find({
+          collection: 'applications',
+          depth: 0,
+          limit: 600,
+          overrideAccess: false,
+          pagination: false,
+          select: {
+            id: true,
+            job: true,
+            stage: true,
+          },
+          user,
+          where: {
+            job: {
+              in: visibleJobIDs,
             },
           },
         }),

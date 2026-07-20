@@ -686,7 +686,8 @@ export default async function InternalDashboardPage() {
     openJobsCount,
     candidateCount,
     newCandidatesCount,
-    applications,
+    pendingReviewsCount,
+    recentApplications,
     recruiterAssignments,
     clientLeadAssignments,
     jobLeadAssignments,
@@ -726,11 +727,22 @@ export default async function InternalDashboardPage() {
         },
       },
     }),
+    payload.count({
+      collection: 'applications',
+      overrideAccess: false,
+      user,
+      where: {
+        stage: {
+          equals: 'sourced',
+        },
+      },
+    }),
     payload.find({
       collection: 'applications',
       depth: 1,
-      limit: 120,
+      limit: 4,
       overrideAccess: false,
+      pagination: false,
       select: {
         candidate: true,
         id: true,
@@ -746,12 +758,17 @@ export default async function InternalDashboardPage() {
       depth: 1,
       limit: 120,
       overrideAccess: false,
+      pagination: false,
       select: {
         recruiter: true,
-        status: true,
       },
       sort: '-updatedAt',
       user,
+      where: {
+        status: {
+          equals: 'active',
+        },
+      },
     }),
     payload.count({
       collection: 'client-lead-assignments',
@@ -776,7 +793,7 @@ export default async function InternalDashboardPage() {
   ])
 
   const dateRangeLabel = `${toDayMonth(weekStart)} - ${toDayMonth(new Date())}`
-  const pendingReviews = applications.docs.filter((application) => application.stage === 'sourced').length
+  const pendingReviews = pendingReviewsCount.totalDocs
   const stageTitleByKey: Record<string, string> = {
     interviewCleared: 'Interview Cleared',
     interviewScheduled: 'Interview Scheduled',
@@ -788,7 +805,7 @@ export default async function InternalDashboardPage() {
     submittedToClient: 'Submitted To Client',
   }
 
-  const recentActivity = applications.docs.slice(0, 4).map((item) => ({
+  const recentActivity = recentApplications.docs.map((item) => ({
     id: String(item.id),
     subtitle: `${readLabel(item.candidate)} for ${readLabel(item.job)}`,
     time: toRelativeTime(item.updatedAt),
@@ -803,7 +820,7 @@ export default async function InternalDashboardPage() {
             : 'slate',
   }))
 
-  const activeAssignments = recruiterAssignments.docs.filter((item) => item.status === 'active')
+  const activeAssignments = recruiterAssignments.docs
   const recruiterCountByID = new Map<string, { count: number; name: string }>()
 
   activeAssignments.forEach((assignment) => {

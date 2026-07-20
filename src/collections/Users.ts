@@ -169,4 +169,9 @@ export const Users: CollectionConfig = {
       },
     },
   ],
+  indexes: [
+    {
+      fields: ['role', 'isActive', 'fullName'],
+    },
+  ],
 }

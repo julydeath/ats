@@ -330,5 +330,11 @@ export const Placements: CollectionConfig = {
     {
       fields: ['candidate', 'status'],
     },
+    {
+      fields: ['recruiter', 'createdAt'],
+    },
+    {
+      fields: ['recruiter', 'status', 'createdAt'],
+    },
   ],
 }

@@ -336,5 +336,8 @@ export const Interviews: CollectionConfig = {
     {
       fields: ['candidate', 'startTime'],
     },
+    {
+      fields: ['recruiter', 'startTime'],
+    },
   ],
 }

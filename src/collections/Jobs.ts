@@ -363,6 +363,7 @@ export const Jobs: CollectionConfig = {
       name: 'createdBy',
       type: 'relationship',
       relationTo: 'users',
+      index: true,
       admin: {
         readOnly: true,
       },
@@ -555,6 +556,9 @@ export const Jobs: CollectionConfig = {
     },
     {
       fields: ['client', 'status', 'updatedAt'],
+    },
+    {
+      fields: ['createdBy', 'createdAt'],
     },
   ],
 }

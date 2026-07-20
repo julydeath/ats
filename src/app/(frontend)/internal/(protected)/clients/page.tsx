@@ -136,6 +136,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const requestedPage = parsePage(resolvedSearchParams.page)
   const isCreateModalOpen = resolvedSearchParams.create === '1'
   const canManageClients = user.role === 'admin' || user.role === 'leadRecruiter'
+  const shouldLoadCreateOptions = isCreateModalOpen && canManageClients
 
   const whereConditions: Where[] = []
 
@@ -191,7 +192,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       user,
       where: whereQuery,
     }),
-    canManageClients
+    shouldLoadCreateOptions
       ? payload.find({
           collection: 'users',
           depth: 0,
@@ -223,7 +224,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       : Promise.resolve({
           docs: [] as Array<{ email?: string; fullName?: string; id: number | string }>,
         }),
-    canManageClients
+    shouldLoadCreateOptions
       ? payload.find({
           collection: 'users',
           depth: 0,

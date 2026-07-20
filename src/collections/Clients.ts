@@ -198,16 +198,19 @@ export const Clients: CollectionConfig = {
       name: 'primaryOwner',
       type: 'relationship',
       relationTo: 'users',
+      index: true,
     },
     {
       name: 'ownership',
       type: 'relationship',
       relationTo: 'users',
+      index: true,
     },
     {
       name: 'clientLead',
       type: 'relationship',
       relationTo: 'users',
+      index: true,
       filterOptions: {
         role: {
           equals: 'leadRecruiter',
@@ -402,6 +405,21 @@ export const Clients: CollectionConfig = {
     {
       fields: ['normalizedName'],
       unique: true,
+    },
+    {
+      fields: ['status', 'updatedAt'],
+    },
+    {
+      fields: ['owningHeadRecruiter', 'status'],
+    },
+    {
+      fields: ['clientLead', 'status'],
+    },
+    {
+      fields: ['primaryOwner', 'status'],
+    },
+    {
+      fields: ['ownership', 'status'],
     },
   ],
 }

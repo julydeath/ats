@@ -245,5 +245,8 @@ export const PayrollLineItems: CollectionConfig = {
     {
       fields: ['payrollRun', 'paymentStatus'],
     },
+    {
+      fields: ['employee', 'createdAt'],
+    },
   ],
 }
