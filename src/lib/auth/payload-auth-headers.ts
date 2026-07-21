@@ -8,6 +8,36 @@ const hasPayloadTokenCookie = (headers: Headers): boolean => {
   return cookieHeader.includes(`${PAYLOAD_AUTH_COOKIE_NAME}=`)
 }
 
+const readFirstHeaderValue = (headers: Headers, name: string): string =>
+  (headers.get(name) || '').split(',')[0]?.trim() || ''
+
+const getOriginHost = (origin: string): string => {
+  try {
+    return new URL(origin).host.toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
+const getRequestHosts = (headers: Headers): string[] =>
+  Array.from(
+    new Set(
+      [
+        readFirstHeaderValue(headers, 'host'),
+        readFirstHeaderValue(headers, 'x-forwarded-host'),
+      ]
+        .map((host) => host.toLowerCase())
+        .filter(Boolean),
+    ),
+  )
+
+const isSameOriginRequest = (headers: Headers): boolean => {
+  const origin = headers.get('origin') || headers.get('Origin') || ''
+  const originHost = getOriginHost(origin)
+
+  return Boolean(originHost && getRequestHosts(headers).includes(originHost))
+}
+
 export const normalizePayloadAuthHeaders = (requestHeaders: Headers): Headers => {
   const normalizedHeaders = new Headers(requestHeaders)
 
@@ -15,6 +45,24 @@ export const normalizePayloadAuthHeaders = (requestHeaders: Headers): Headers =>
   const hasSecFetchSite = Boolean(
     normalizedHeaders.get('sec-fetch-site') || normalizedHeaders.get('Sec-Fetch-Site'),
   )
+  const secFetchSite =
+    normalizedHeaders.get('sec-fetch-site') || normalizedHeaders.get('Sec-Fetch-Site') || ''
+
+  if (
+    hasPayloadTokenCookie(normalizedHeaders) &&
+    hasOrigin &&
+    isSameOriginRequest(normalizedHeaders) &&
+    (!secFetchSite ||
+      secFetchSite === 'same-origin' ||
+      secFetchSite === 'same-site' ||
+      secFetchSite === 'none')
+  ) {
+    // Payload validates any present Origin against config.csrf. On Vercel, a
+    // stale app URL env can make same-host form POSTs look unauthenticated.
+    normalizedHeaders.delete('origin')
+    normalizedHeaders.set('Sec-Fetch-Site', 'same-origin')
+    return normalizedHeaders
+  }
 
   if (hasPayloadTokenCookie(normalizedHeaders) && !hasOrigin && !hasSecFetchSite) {
     // Payload's cookie JWT extraction rejects requests that have CSRF configured

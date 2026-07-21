@@ -46,6 +46,7 @@ import { env } from './lib/env'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 const appURL = env.NEXT_PUBLIC_APP_URL
+const trustedAppURLs = env.APP_URLS
 const parsedDatabaseURL = new URL(env.DATABASE_URL)
 const isAivenDatabase = parsedDatabaseURL.hostname.endsWith('.aivencloud.com')
 const databaseSSL =
@@ -116,8 +117,8 @@ export default buildConfig({
     PayrollPayoutTransactions,
     Media,
   ],
-  cors: [appURL],
-  csrf: [appURL],
+  cors: trustedAppURLs,
+  csrf: trustedAppURLs,
   editor: lexicalEditor(),
   secret: env.PAYLOAD_SECRET,
   serverURL: appURL,
