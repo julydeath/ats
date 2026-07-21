@@ -8,7 +8,7 @@ import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const auth = await payload.auth({ headers: await getPayloadAuthHeaders() })
+  const auth = await payload.auth({ headers: await getPayloadAuthHeaders(request.headers) })
   const user = auth.user as InternalUserLike
 
   if (!user || !hasInternalRole(user, ['leadRecruiter', 'recruiter'])) {

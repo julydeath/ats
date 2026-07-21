@@ -29,7 +29,7 @@ const toNumber = (value: unknown): number | null => {
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const { user } = await payload.auth({ headers: await getPayloadAuthHeaders() })
+  const { user } = await payload.auth({ headers: await getPayloadAuthHeaders(request.headers) })
   const internalUser = user as InternalUserLike
 
   if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter', 'recruiter'])) {

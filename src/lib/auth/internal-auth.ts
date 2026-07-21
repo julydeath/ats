@@ -24,18 +24,15 @@ type RawAuthenticatedUser = {
   role?: unknown
 }
 
-const toInternalSessionUser = (user: RawAuthenticatedUser): InternalSessionUser => {
-  return {
-    email: String(user.email || ''),
-    fullName: user.fullName || null,
-    id: user.id,
-    isActive: user.isActive ?? true,
-    role: user.role as InternalRole,
-  }
-}
+const toInternalSessionUser = (user: RawAuthenticatedUser): InternalSessionUser => ({
+  email: String(user.email || ''),
+  fullName: user.fullName || null,
+  id: user.id,
+  isActive: user.isActive ?? true,
+  role: user.role as InternalRole,
+})
 
-export const readCurrentInternalUser = async (): Promise<InternalSessionUser | null> => {
-  const headers = await getPayloadAuthHeaders()
+const readInternalUserFromHeaders = async (headers: Headers): Promise<InternalSessionUser | null> => {
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers })
 
@@ -44,6 +41,20 @@ export const readCurrentInternalUser = async (): Promise<InternalSessionUser | n
   }
 
   return toInternalSessionUser(user as unknown as RawAuthenticatedUser)
+}
+
+export const readCurrentInternalUser = async (): Promise<InternalSessionUser | null> => {
+  const headers = await getPayloadAuthHeaders()
+
+  return readInternalUserFromHeaders(headers)
+}
+
+export const readCurrentInternalUserFromRequest = async (
+  request: Pick<Request, 'headers'>,
+): Promise<InternalSessionUser | null> => {
+  const headers = await getPayloadAuthHeaders(request.headers)
+
+  return readInternalUserFromHeaders(headers)
 }
 
 export const getCurrentInternalUser = cache(readCurrentInternalUser)

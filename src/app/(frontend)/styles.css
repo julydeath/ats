@@ -6937,12 +6937,12 @@ ul {
 
 .job-kanban-card {
   background: #fff;
-  border: 1px solid #dbe4f2;
-  border-radius: 12px;
+  /* border: 1px solid #dbe4f2;
+  border-radius: 2px; */
   cursor: grab;
   display: grid;
-  gap: 0.36rem;
-  padding: 0.5rem;
+  /* gap: 0.36rem; */
+  /* padding: 0.5rem; */
 }
 
 .job-kanban-card-static {
@@ -14911,5 +14911,700 @@ body :is(a, button, input, select, textarea):focus-visible {
       .team-mgmt-table
     ) {
     min-width: 620px !important;
+  }
+}
+
+/* Job applicant pipeline refinement */
+.job-detail-flow-card {
+  padding: 8px;
+}
+
+.job-detail-flow-card .flow-progress-card {
+  background: var(--canvas);
+  border-color: var(--hairline);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  gap: 8px;
+  padding: 10px;
+}
+
+.job-detail-flow-card .flow-progress-head {
+  align-items: center;
+  gap: 12px;
+}
+
+.job-detail-flow-card .flow-progress-kicker {
+  color: var(--ink-mute);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+}
+
+.job-detail-flow-card .flow-progress-head h3 {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  margin-top: 2px;
+}
+
+.job-detail-flow-card .flow-progress-subtitle {
+  color: var(--ink-mute);
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.job-detail-flow-card .flow-progress-head-meta {
+  align-items: end;
+}
+
+.job-detail-flow-card .flow-progress-head-meta span,
+.job-detail-flow-card .flow-progress-head-meta a {
+  font-size: 0.75rem;
+}
+
+.job-detail-flow-card .flow-progress-steps {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.job-detail-flow-card .flow-progress-step {
+  border-color: var(--hairline);
+  border-radius: var(--radius-md);
+  flex: 0 0 142px;
+  gap: 2px;
+  min-height: 56px;
+  padding: 6px 8px;
+}
+
+.job-detail-flow-card .flow-progress-step-top p {
+  color: var(--ink-secondary);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.job-detail-flow-card .flow-progress-step-top span {
+  background: rgba(83, 58, 253, 0.1);
+  border-color: rgba(83, 58, 253, 0.18);
+  color: var(--primary-deep);
+  font-size: 0.58rem;
+  line-height: 1;
+  padding: 2px 5px;
+}
+
+.job-detail-flow-card .flow-progress-step-time,
+.job-detail-flow-card .flow-progress-step-owner {
+  color: var(--ink-mute);
+  font-size: 0.68rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-detail-flow-card .flow-progress-step-current {
+  border-color: rgba(83, 58, 253, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(83, 58, 253, 0.2);
+}
+
+.job-detail-flow-card .flow-progress-step-done {
+  border-color: rgba(29, 90, 59, 0.22);
+}
+
+.job-detail-board-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.job-applicants-workspace {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.job-kanban-selected-flow {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.job-kanban-shell {
+  align-items: stretch;
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 34%);
+  min-width: 0;
+}
+
+.job-kanban-main {
+  border-right: 1px solid var(--hairline);
+  min-width: 0;
+  padding: 10px;
+}
+
+.job-kanban-meta {
+  align-items: center;
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto auto minmax(180px, 1fr);
+  margin-bottom: 10px;
+  padding: 10px;
+}
+
+.job-kanban-eyebrow {
+  color: var(--ink-mute);
+  font-size: 0.66rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.job-kanban-meta h2 {
+  color: var(--ink);
+  font-size: 1.06rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.2;
+  margin: 2px 0 0;
+}
+
+.job-kanban-count {
+  align-items: center;
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  color: var(--ink-secondary);
+  display: inline-flex;
+  font-size: 0.78rem;
+  gap: 4px;
+  justify-self: start;
+  margin: 0;
+  min-height: 32px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.job-kanban-count strong {
+  color: var(--primary);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.job-kanban-hint {
+  color: var(--ink-mute);
+  font-size: 0.76rem;
+  justify-self: end;
+  line-height: 1.35;
+  margin: 0;
+  max-width: 440px;
+  text-align: right;
+}
+
+.job-kanban-columns {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 0 8px;
+  scroll-snap-type: x proximity;
+}
+
+.job-kanban-column {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  flex: 0 0 220px;
+  min-height: 255px;
+  min-width: 220px;
+  padding: 6px;
+  scroll-snap-align: start;
+}
+
+.job-kanban-column-empty-state {
+  background: var(--canvas-soft);
+  flex-basis: 164px;
+  min-width: 164px;
+}
+
+.job-kanban-column-header {
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+}
+
+.job-kanban-column-title {
+  min-width: 0;
+}
+
+.job-kanban-column-title h3 {
+  color: var(--ink-secondary);
+  font-size: 0.76rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-kanban-column-count {
+  background: rgba(83, 58, 253, 0.08);
+  color: var(--primary-deep);
+  font-size: 0.6rem;
+  font-weight: 400;
+  min-width: 18px;
+  padding: 2px 5px;
+}
+
+.job-kanban-column-menu,
+.job-kanban-card-menu {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--ink-mute);
+  display: inline-flex;
+  font-size: 1rem;
+  height: 24px;
+  justify-content: center;
+  line-height: 1;
+  min-height: 24px;
+  min-width: 24px;
+  padding: 0;
+  width: 24px;
+}
+
+.job-kanban-column-menu:hover,
+.job-kanban-card-menu:hover {
+  background: rgba(83, 58, 253, 0.08);
+  color: var(--primary-deep);
+}
+
+.job-kanban-card-list {
+  gap: 6px;
+  min-height: 190px;
+  min-width: 0;
+}
+
+.job-kanban-column-empty-state .job-kanban-card-list {
+  min-height: 76px;
+}
+
+.job-kanban-empty {
+  align-items: center;
+  border: 1px dashed var(--hairline);
+  border-radius: var(--radius-md);
+  color: var(--ink-mute);
+  display: flex;
+  font-size: 0.76rem;
+  justify-content: center;
+  min-height: 92px;
+  padding: 10px;
+  text-align: center;
+}
+
+.job-stage-over .job-kanban-card-list {
+  background: rgba(83, 58, 253, 0.06);
+  border-radius: var(--radius-md);
+}
+
+.job-kanban-card {
+  border-color: var(--hairline);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  box-shadow: var(--shadow-level-1);
+  cursor: pointer;
+  gap: 5px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 7px;
+  width: 100%;
+}
+
+.job-kanban-card:hover {
+  border-color: rgba(83, 58, 253, 0.28);
+}
+
+.job-kanban-card-selected {
+  border-color: rgba(83, 58, 253, 0.56);
+  box-shadow: inset 0 0 0 1px rgba(83, 58, 253, 0.24), var(--shadow-level-1);
+}
+
+.job-kanban-card-dragging {
+  box-shadow: var(--shadow-level-2);
+  opacity: 0.9;
+}
+
+.job-kanban-card-head {
+  gap: 6px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.job-kanban-card-copy {
+  min-width: 0;
+}
+
+.job-kanban-card-avatar {
+  background: rgba(83, 58, 253, 0.1);
+  color: var(--primary-deep);
+  font-size: 0.6rem;
+  font-weight: 400;
+  height: 24px;
+  width: 24px;
+}
+
+.job-kanban-card-name {
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-kanban-card-role {
+  color: var(--ink-mute);
+  font-size: 0.68rem;
+  font-weight: 300;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-kanban-card-details {
+  border-bottom: 0;
+  border-top: 1px solid var(--hairline);
+  gap: 2px;
+  min-width: 0;
+  padding: 5px 0 0;
+}
+
+.job-kanban-card-meta,
+.job-kanban-card-updated,
+.job-kanban-card-comment {
+  color: var(--ink-mute);
+  font-size: 0.66rem;
+  line-height: 1.25;
+  margin: 0;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-kanban-card-footer {
+  gap: 6px;
+  min-width: 0;
+}
+
+.job-kanban-card-updated {
+  flex: 1 1 auto;
+}
+
+.job-kanban-card-stage {
+  background: rgba(83, 58, 253, 0.08);
+  color: var(--primary-deep);
+  flex: 0 0 auto;
+  font-size: 0.58rem;
+  font-weight: 400;
+  line-height: 1.1;
+  max-width: 70px;
+  overflow: hidden;
+  padding: 3px 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-candidate-drawer {
+  background: var(--canvas);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  gap: 12px;
+  height: 100%;
+  max-height: calc(100vh - 126px);
+  min-width: 0;
+  overflow: hidden auto;
+  padding: 12px;
+  top: 12px;
+}
+
+.job-candidate-drawer-head {
+  align-items: center;
+  border-bottom: 1px solid var(--hairline);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  justify-content: stretch;
+  padding-bottom: 10px;
+}
+
+.job-candidate-drawer-title {
+  min-width: 0;
+}
+
+.job-candidate-drawer-title p {
+  color: var(--ink-mute);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.job-candidate-drawer-title strong {
+  color: var(--ink);
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 400;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-candidate-drawer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.job-candidate-action-button {
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 400;
+  min-height: 38px;
+  min-width: 0;
+  padding: 8px 14px;
+}
+
+.job-candidate-action-button:not(.job-candidate-action-ghost),
+.job-candidate-update {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.job-candidate-action-ghost {
+  border-color: rgba(83, 58, 253, 0.42);
+  color: var(--primary-deep);
+}
+
+.job-candidate-profile {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  justify-items: start;
+  text-align: left;
+}
+
+.job-candidate-avatar {
+  background: var(--brand-dark-900);
+  border-radius: var(--radius-md);
+  font-size: 0.92rem;
+  font-weight: 400;
+  height: 52px;
+  width: 52px;
+}
+
+.job-candidate-profile-copy {
+  min-width: 0;
+}
+
+.job-candidate-profile h3 {
+  color: var(--ink);
+  font-size: 1.28rem;
+  font-weight: 300;
+  letter-spacing: 0;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-candidate-profile p {
+  color: var(--ink-mute);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  margin-top: 3px;
+}
+
+.job-candidate-contact {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.job-candidate-contact span {
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  color: var(--ink-secondary);
+  font-size: 0.74rem;
+  min-width: 0;
+  overflow: hidden;
+  padding: 6px 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-candidate-contact span:nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+.job-candidate-tabs {
+  border-bottom: 1px solid var(--hairline);
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 0;
+}
+
+.job-candidate-tab {
+  border-radius: 0;
+  color: var(--ink-mute);
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  font-weight: 400;
+  min-height: 36px;
+  padding: 8px 10px;
+}
+
+.job-candidate-tab-active {
+  color: var(--primary-deep);
+}
+
+.job-candidate-tab-active::after {
+  background: var(--primary);
+  bottom: -1px;
+  left: 8px;
+  right: 8px;
+}
+
+.job-candidate-tab-panel,
+.job-candidate-stage-controls {
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  padding: 10px;
+}
+
+.job-candidate-tab-panel {
+  min-height: 0;
+}
+
+.job-candidate-panel-content {
+  color: var(--ink-secondary);
+  font-size: 0.82rem;
+  gap: 6px;
+}
+
+.job-candidate-section-label {
+  color: var(--ink-mute);
+  font-size: 0.66rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.job-candidate-panel-content blockquote {
+  border-color: var(--hairline);
+  border-radius: var(--radius-md);
+}
+
+.job-candidate-stage-pill {
+  background: rgba(83, 58, 253, 0.1);
+  border-radius: var(--radius-pill);
+  color: var(--primary-deep);
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-weight: 400;
+  justify-self: start;
+  line-height: 1.15;
+  max-width: 100%;
+  padding: 3px 7px;
+}
+
+.job-candidate-stage-controls {
+  border-top: 0;
+}
+
+.job-candidate-select,
+.job-candidate-input {
+  background: var(--canvas);
+  border-color: var(--hairline-input);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.84rem;
+  height: 40px;
+}
+
+.job-candidate-update {
+  border-radius: var(--radius-pill);
+  font-size: 0.84rem;
+  font-weight: 400;
+  min-height: 40px;
+}
+
+@media (max-width: 1320px) {
+  .job-kanban-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .job-kanban-main {
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .job-candidate-drawer {
+    border-radius: 0;
+    max-height: none;
+    position: static;
+  }
+}
+
+@media (max-width: 900px) {
+  .job-detail-flow-card .flow-progress-head,
+  .job-kanban-meta,
+  .job-candidate-drawer-head {
+    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .job-detail-flow-card .flow-progress-head {
+    display: grid;
+  }
+
+  .job-detail-flow-card .flow-progress-head-meta,
+  .job-kanban-hint {
+    justify-items: start;
+    justify-self: start;
+    text-align: left;
+  }
+
+  .job-kanban-column {
+    flex-basis: min(78vw, 230px);
+    min-width: min(78vw, 230px);
+  }
+
+  .job-kanban-column-empty-state {
+    flex-basis: min(62vw, 176px);
+    min-width: min(62vw, 176px);
+  }
+
+  .job-candidate-drawer-actions,
+  .job-candidate-contact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .job-candidate-drawer-actions {
+    display: grid;
+  }
+
+  .job-candidate-contact span:nth-child(3) {
+    grid-column: auto;
   }
 }

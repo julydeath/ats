@@ -2,7 +2,7 @@ import configPromise from '@payload-config'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
-import { readCurrentInternalUser } from '@/lib/auth/internal-auth'
+import { readCurrentInternalUserFromRequest } from '@/lib/auth/internal-auth'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { generatePayrollRun } from '@/lib/hr/payroll'
 
@@ -58,7 +58,7 @@ const dropLegacyPayrollCycleMonthYearUniqueIndexes = async (payload: Awaited<Ret
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const user = await readCurrentInternalUser()
+  const user = await readCurrentInternalUserFromRequest(request)
 
   if (!user || !user.isActive || user.role !== 'admin') {
     const redirectURL = buildRedirectURL(request)

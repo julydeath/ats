@@ -43,6 +43,26 @@ const parseNumber = (value: unknown): string => {
   return ''
 }
 
+const toInputText = (value: string | undefined): string | undefined => {
+  if (!value || isEmpty(value)) {
+    return undefined
+  }
+
+  return value
+}
+
+const countParsedValue = (value: unknown): boolean => {
+  if (typeof value === 'string') {
+    return value.trim().length > 0
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value)
+  }
+
+  return typeof value === 'boolean'
+}
+
 export const CandidateCreateForm = ({
   errorMessage,
   jobs,
@@ -57,9 +77,29 @@ export const CandidateCreateForm = ({
   const [parserAppliedMessage, setParserAppliedMessage] = useState<string | null>(null)
 
   const resumeRef = useRef<HTMLInputElement>(null)
+  const sourceDetailsRef = useRef<HTMLInputElement>(null)
+  const prefixRef = useRef<HTMLInputElement>(null)
+  const firstNameRef = useRef<HTMLInputElement>(null)
+  const middleNameRef = useRef<HTMLInputElement>(null)
+  const lastNameRef = useRef<HTMLInputElement>(null)
+  const nickNameRef = useRef<HTMLInputElement>(null)
   const fullNameRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
+  const alternateEmailRef = useRef<HTMLInputElement>(null)
   const phoneRef = useRef<HTMLInputElement>(null)
+  const alternatePhoneRef = useRef<HTMLInputElement>(null)
+  const homePhoneRef = useRef<HTMLInputElement>(null)
+  const workPhoneRef = useRef<HTMLInputElement>(null)
+  const otherPhoneRef = useRef<HTMLInputElement>(null)
+  const cityRef = useRef<HTMLInputElement>(null)
+  const stateRef = useRef<HTMLInputElement>(null)
+  const countryRef = useRef<HTMLInputElement>(null)
+  const postalCodeRef = useRef<HTMLInputElement>(null)
+  const addressRef = useRef<HTMLTextAreaElement>(null)
+  const skypeIDRef = useRef<HTMLInputElement>(null)
+  const facebookProfileURLRef = useRef<HTMLInputElement>(null)
+  const twitterProfileURLRef = useRef<HTMLInputElement>(null)
+  const videoReferenceRef = useRef<HTMLInputElement>(null)
   const currentCompanyRef = useRef<HTMLInputElement>(null)
   const currentLocationRef = useRef<HTMLInputElement>(null)
   const currentRoleRef = useRef<HTMLInputElement>(null)
@@ -68,9 +108,30 @@ export const CandidateCreateForm = ({
   const skillsRef = useRef<HTMLInputElement>(null)
   const primarySkillsRef = useRef<HTMLInputElement>(null)
   const totalExperienceYearsRef = useRef<HTMLInputElement>(null)
+  const totalExperienceMonthsRef = useRef<HTMLInputElement>(null)
+  const expectedSalaryRef = useRef<HTMLInputElement>(null)
+  const expectedPayMinRef = useRef<HTMLInputElement>(null)
+  const expectedPayMaxRef = useRef<HTMLInputElement>(null)
+  const expectedPayCurrencyRef = useRef<HTMLInputElement>(null)
+  const expectedPayTypeRef = useRef<HTMLInputElement>(null)
+  const expectedPayUnitRef = useRef<HTMLInputElement>(null)
+  const noticePeriodDaysRef = useRef<HTMLInputElement>(null)
+  const noticePeriodLabelRef = useRef<HTMLInputElement>(null)
   const linkedInURLRef = useRef<HTMLInputElement>(null)
   const portfolioURLRef = useRef<HTMLInputElement>(null)
+  const workAuthorizationRef = useRef<HTMLInputElement>(null)
+  const workAuthorizationExpiryRef = useRef<HTMLInputElement>(null)
+  const taxTermsRef = useRef<HTMLInputElement>(null)
+  const applicantStatusRef = useRef<HTMLInputElement>(null)
+  const applicantGroupRef = useRef<HTMLInputElement>(null)
+  const referredByRef = useRef<HTMLInputElement>(null)
+  const nationalityRef = useRef<HTMLInputElement>(null)
+  const referenceIDRef = useRef<HTMLInputElement>(null)
+  const gpaRef = useRef<HTMLInputElement>(null)
+  const relocationRef = useRef<HTMLInputElement>(null)
+  const clearanceRef = useRef<HTMLInputElement>(null)
   const notesRef = useRef<HTMLTextAreaElement>(null)
+  const additionalCommentsRef = useRef<HTMLTextAreaElement>(null)
 
   const parserCoverage = useMemo(() => {
     if (!parsedData) {
@@ -78,42 +139,147 @@ export const CandidateCreateForm = ({
     }
 
     const values = [
-      parsedData.fullName,
-      parsedData.email,
-      parsedData.phone,
-      parsedData.currentRole,
+      parsedData.additionalComments,
+      parsedData.address,
+      parsedData.alternateEmail,
+      parsedData.alternatePhone,
+      parsedData.applicantGroup,
+      parsedData.applicantStatus,
+      parsedData.city,
+      parsedData.clearance,
+      parsedData.country,
       parsedData.currentCompany,
-      parseNumber(parsedData.totalExperienceYears),
+      parsedData.currentLocation,
+      parsedData.currentRole,
+      parsedData.email,
+      parsedData.expectedPayCurrency,
+      parsedData.expectedPayMax,
+      parsedData.expectedPayMin,
+      parsedData.expectedPayType,
+      parsedData.expectedPayUnit,
+      parsedData.expectedSalary,
+      parsedData.facebookProfileURL,
+      parsedData.firstName,
+      parsedData.fullName,
+      parsedData.gpa,
+      parsedData.homePhone,
+      parsedData.jobTitle,
+      parsedData.lastName,
       parsedData.linkedInURL,
+      parsedData.middleName,
+      parsedData.nationality,
+      parsedData.nickName,
+      parsedData.notes,
+      parsedData.noticePeriodDays,
+      parsedData.noticePeriodLabel,
+      parsedData.otherPhone,
+      parsedData.phone,
       parsedData.portfolioURL,
+      parsedData.postalCode,
+      parsedData.prefix,
+      parsedData.primarySkills,
+      parsedData.referenceID,
+      parsedData.referredBy,
+      parsedData.relocation,
+      parsedData.skypeID,
+      parsedData.skills,
+      parsedData.sourceDetails,
+      parsedData.state,
+      parsedData.taxTerms,
+      parsedData.technology,
+      parsedData.totalExperienceMonths,
+      parsedData.totalExperienceYears,
+      parsedData.twitterProfileURL,
+      parsedData.videoReference,
+      parsedData.workAuthorization,
+      parsedData.workAuthorizationExpiry,
+      parsedData.workPhone,
     ]
 
-    return values.filter((value) => typeof value === 'string' && value.trim().length > 0).length
+    return values.filter(countParsedValue).length
   }, [parsedData])
   const hasJobs = jobs.length > 0
 
   const applyParsedData = (data: ParsedResumeData) => {
     let appliedCount = 0
 
-    const setInputValue = (ref: RefObject<HTMLInputElement | null>, nextValue?: string) => {
+    const setInputValue = (
+      ref: RefObject<HTMLInputElement | null>,
+      nextValue?: string,
+      options: { overwriteDefaultValue?: string } = {},
+    ) => {
       const el = ref.current
-      if (!el || !nextValue || isEmpty(nextValue)) {
+      const normalizedValue = toInputText(nextValue)
+
+      if (!el || !normalizedValue) {
         return
       }
 
-      if (!isEmpty(el.value)) {
+      const canOverwriteDefault =
+        options.overwriteDefaultValue !== undefined &&
+        el.value === options.overwriteDefaultValue &&
+        normalizedValue !== options.overwriteDefaultValue
+
+      if (!isEmpty(el.value) && !canOverwriteDefault) {
         return
       }
 
-      el.value = nextValue
+      el.value = normalizedValue
       el.dispatchEvent(new Event('input', { bubbles: true }))
       el.dispatchEvent(new Event('change', { bubbles: true }))
       appliedCount += 1
     }
 
+    const setTextareaValue = (ref: RefObject<HTMLTextAreaElement | null>, nextValue?: string) => {
+      const el = ref.current
+      const normalizedValue = toInputText(nextValue)
+
+      if (!el || !normalizedValue || !isEmpty(el.value)) {
+        return
+      }
+
+      el.value = normalizedValue
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+      appliedCount += 1
+    }
+
+    const setCheckboxValue = (ref: RefObject<HTMLInputElement | null>, nextValue?: boolean) => {
+      const el = ref.current
+
+      if (!el || nextValue !== true || el.checked) {
+        return
+      }
+
+      el.checked = true
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+      appliedCount += 1
+    }
+
+    setInputValue(sourceDetailsRef, data.sourceDetails)
+    setInputValue(prefixRef, data.prefix)
+    setInputValue(firstNameRef, data.firstName)
+    setInputValue(middleNameRef, data.middleName)
+    setInputValue(lastNameRef, data.lastName)
+    setInputValue(nickNameRef, data.nickName)
     setInputValue(fullNameRef, data.fullName)
     setInputValue(emailRef, data.email)
+    setInputValue(alternateEmailRef, data.alternateEmail)
     setInputValue(phoneRef, data.phone)
+    setInputValue(alternatePhoneRef, data.alternatePhone)
+    setInputValue(homePhoneRef, data.homePhone)
+    setInputValue(workPhoneRef, data.workPhone)
+    setInputValue(otherPhoneRef, data.otherPhone)
+    setInputValue(cityRef, data.city)
+    setInputValue(stateRef, data.state)
+    setInputValue(countryRef, data.country, { overwriteDefaultValue: 'India' })
+    setInputValue(postalCodeRef, data.postalCode)
+    setTextareaValue(addressRef, data.address)
+    setInputValue(skypeIDRef, data.skypeID)
+    setInputValue(facebookProfileURLRef, data.facebookProfileURL)
+    setInputValue(twitterProfileURLRef, data.twitterProfileURL)
+    setInputValue(videoReferenceRef, data.videoReference)
     setInputValue(currentCompanyRef, data.currentCompany)
     setInputValue(currentLocationRef, data.currentLocation)
     setInputValue(currentRoleRef, data.currentRole)
@@ -122,15 +288,30 @@ export const CandidateCreateForm = ({
     setInputValue(skillsRef, data.skills)
     setInputValue(primarySkillsRef, data.primarySkills)
     setInputValue(totalExperienceYearsRef, parseNumber(data.totalExperienceYears))
+    setInputValue(totalExperienceMonthsRef, parseNumber(data.totalExperienceMonths))
+    setInputValue(expectedSalaryRef, parseNumber(data.expectedSalary))
+    setInputValue(expectedPayMinRef, parseNumber(data.expectedPayMin))
+    setInputValue(expectedPayMaxRef, parseNumber(data.expectedPayMax))
+    setInputValue(expectedPayCurrencyRef, data.expectedPayCurrency)
+    setInputValue(expectedPayTypeRef, data.expectedPayType)
+    setInputValue(expectedPayUnitRef, data.expectedPayUnit)
+    setInputValue(noticePeriodDaysRef, parseNumber(data.noticePeriodDays))
+    setInputValue(noticePeriodLabelRef, data.noticePeriodLabel)
     setInputValue(linkedInURLRef, data.linkedInURL)
     setInputValue(portfolioURLRef, data.portfolioURL)
-
-    if (notesRef.current && data.notes && isEmpty(notesRef.current.value)) {
-      notesRef.current.value = data.notes
-      notesRef.current.dispatchEvent(new Event('input', { bubbles: true }))
-      notesRef.current.dispatchEvent(new Event('change', { bubbles: true }))
-      appliedCount += 1
-    }
+    setInputValue(workAuthorizationRef, data.workAuthorization)
+    setInputValue(workAuthorizationExpiryRef, data.workAuthorizationExpiry)
+    setInputValue(taxTermsRef, data.taxTerms)
+    setInputValue(applicantStatusRef, data.applicantStatus)
+    setInputValue(applicantGroupRef, data.applicantGroup)
+    setInputValue(referredByRef, data.referredBy)
+    setInputValue(nationalityRef, data.nationality)
+    setInputValue(referenceIDRef, data.referenceID)
+    setInputValue(gpaRef, data.gpa)
+    setCheckboxValue(relocationRef, data.relocation)
+    setCheckboxValue(clearanceRef, data.clearance)
+    setTextareaValue(notesRef, data.notes)
+    setTextareaValue(additionalCommentsRef, data.additionalComments)
 
     setParserAppliedMessage(
       appliedCount > 0
@@ -245,7 +426,12 @@ export const CandidateCreateForm = ({
                 </label>
                 <label className="candidate-intake-field-span-2">
                   <span>Source Details</span>
-                  <input name="sourceDetails" placeholder="Example: Employee referral by Rahul" type="text" />
+                  <input
+                    name="sourceDetails"
+                    placeholder="Example: Employee referral by Rahul"
+                    ref={sourceDetailsRef}
+                    type="text"
+                  />
                 </label>
               </div>
             </section>
@@ -255,23 +441,23 @@ export const CandidateCreateForm = ({
               <div className="candidate-intake-fields candidate-intake-fields-2">
                 <label>
                   <span>Prefix</span>
-                  <input name="prefix" placeholder="Mr / Ms / Dr" type="text" />
+                  <input name="prefix" placeholder="Mr / Ms / Dr" ref={prefixRef} type="text" />
                 </label>
                 <label>
                   <span>Nick Name</span>
-                  <input name="nickName" placeholder="Optional short name" type="text" />
+                  <input name="nickName" placeholder="Optional short name" ref={nickNameRef} type="text" />
                 </label>
                 <label>
                   <span>First Name</span>
-                  <input name="firstName" type="text" />
+                  <input name="firstName" ref={firstNameRef} type="text" />
                 </label>
                 <label>
                   <span>Middle Name</span>
-                  <input name="middleName" type="text" />
+                  <input name="middleName" ref={middleNameRef} type="text" />
                 </label>
                 <label>
                   <span>Last Name</span>
-                  <input name="lastName" type="text" />
+                  <input name="lastName" ref={lastNameRef} type="text" />
                 </label>
                 <label>
                   <span>Full Name *</span>
@@ -283,7 +469,7 @@ export const CandidateCreateForm = ({
                 </label>
                 <label>
                   <span>Alternate Email</span>
-                  <input name="alternateEmail" type="email" />
+                  <input name="alternateEmail" ref={alternateEmailRef} type="email" />
                 </label>
                 <label>
                   <span>Phone</span>
@@ -291,19 +477,19 @@ export const CandidateCreateForm = ({
                 </label>
                 <label>
                   <span>Alternate Phone</span>
-                  <input name="alternatePhone" type="tel" />
+                  <input name="alternatePhone" ref={alternatePhoneRef} type="tel" />
                 </label>
                 <label>
                   <span>Home Phone</span>
-                  <input name="homePhone" type="tel" />
+                  <input name="homePhone" ref={homePhoneRef} type="tel" />
                 </label>
                 <label>
                   <span>Work Phone</span>
-                  <input name="workPhone" type="tel" />
+                  <input name="workPhone" ref={workPhoneRef} type="tel" />
                 </label>
                 <label>
                   <span>Other Phone</span>
-                  <input name="otherPhone" type="tel" />
+                  <input name="otherPhone" ref={otherPhoneRef} type="tel" />
                 </label>
                 <label className="candidate-intake-field-span-2">
                   <span>Current Location</span>
@@ -311,39 +497,44 @@ export const CandidateCreateForm = ({
                 </label>
                 <label>
                   <span>City</span>
-                  <input name="city" type="text" />
+                  <input name="city" ref={cityRef} type="text" />
                 </label>
                 <label>
                   <span>State</span>
-                  <input name="state" type="text" />
+                  <input name="state" ref={stateRef} type="text" />
                 </label>
                 <label>
                   <span>Country</span>
-                  <input defaultValue="India" name="country" type="text" />
+                  <input defaultValue="India" name="country" ref={countryRef} type="text" />
                 </label>
                 <label>
                   <span>Postal Code</span>
-                  <input name="postalCode" type="text" />
+                  <input name="postalCode" ref={postalCodeRef} type="text" />
                 </label>
                 <label className="candidate-intake-field-span-2">
                   <span>Address</span>
-                  <textarea name="address" rows={2} />
+                  <textarea name="address" ref={addressRef} rows={2} />
                 </label>
                 <label>
                   <span>Skype ID</span>
-                  <input name="skypeID" type="text" />
+                  <input name="skypeID" ref={skypeIDRef} type="text" />
                 </label>
                 <label>
                   <span>Facebook URL</span>
-                  <input name="facebookProfileURL" type="url" />
+                  <input name="facebookProfileURL" ref={facebookProfileURLRef} type="url" />
                 </label>
                 <label>
                   <span>Twitter URL</span>
-                  <input name="twitterProfileURL" type="url" />
+                  <input name="twitterProfileURL" ref={twitterProfileURLRef} type="url" />
                 </label>
                 <label>
                   <span>Video Reference</span>
-                  <input name="videoReference" placeholder="YouTube / Loom link" type="url" />
+                  <input
+                    name="videoReference"
+                    placeholder="YouTube / Loom link"
+                    ref={videoReferenceRef}
+                    type="url"
+                  />
                 </label>
               </div>
             </section>
@@ -381,39 +572,59 @@ export const CandidateCreateForm = ({
                 </label>
                 <label>
                   <span>Total Experience (Months)</span>
-                  <input max={11} min={0} name="totalExperienceMonths" type="number" />
+                  <input max={11} min={0} name="totalExperienceMonths" ref={totalExperienceMonthsRef} type="number" />
                 </label>
                 <label>
                   <span>Expected Salary</span>
-                  <input min={0} name="expectedSalary" type="number" />
+                  <input min={0} name="expectedSalary" ref={expectedSalaryRef} type="number" />
                 </label>
                 <label>
                   <span>Expected Pay Min</span>
-                  <input min={0} name="expectedPayMin" type="number" />
+                  <input min={0} name="expectedPayMin" ref={expectedPayMinRef} type="number" />
                 </label>
                 <label>
                   <span>Expected Pay Max</span>
-                  <input min={0} name="expectedPayMax" type="number" />
+                  <input min={0} name="expectedPayMax" ref={expectedPayMaxRef} type="number" />
                 </label>
                 <label>
                   <span>Expected Pay Currency</span>
-                  <input name="expectedPayCurrency" placeholder="INR / USD / AED" type="text" />
+                  <input
+                    name="expectedPayCurrency"
+                    placeholder="INR / USD / AED"
+                    ref={expectedPayCurrencyRef}
+                    type="text"
+                  />
                 </label>
                 <label>
                   <span>Expected Pay Type</span>
-                  <input name="expectedPayType" placeholder="Monthly / Yearly / Hourly" type="text" />
+                  <input
+                    name="expectedPayType"
+                    placeholder="Monthly / Yearly / Hourly"
+                    ref={expectedPayTypeRef}
+                    type="text"
+                  />
                 </label>
                 <label>
                   <span>Expected Pay Unit</span>
-                  <input name="expectedPayUnit" placeholder="Per hour / Per month / Per annum" type="text" />
+                  <input
+                    name="expectedPayUnit"
+                    placeholder="Per hour / Per month / Per annum"
+                    ref={expectedPayUnitRef}
+                    type="text"
+                  />
                 </label>
                 <label>
                   <span>Notice Period (Days)</span>
-                  <input min={0} name="noticePeriodDays" type="number" />
+                  <input min={0} name="noticePeriodDays" ref={noticePeriodDaysRef} type="number" />
                 </label>
                 <label>
                   <span>Notice Period Label</span>
-                  <input name="noticePeriodLabel" placeholder="Immediate / 30 days / 60 days" type="text" />
+                  <input
+                    name="noticePeriodLabel"
+                    placeholder="Immediate / 30 days / 60 days"
+                    ref={noticePeriodLabelRef}
+                    type="text"
+                  />
                 </label>
                 <label>
                   <span>LinkedIn URL</span>
@@ -425,23 +636,33 @@ export const CandidateCreateForm = ({
                 </label>
                 <label>
                   <span>Work Authorization</span>
-                  <input name="workAuthorization" placeholder="H1-B / Citizen / PR" type="text" />
+                  <input
+                    name="workAuthorization"
+                    placeholder="H1-B / Citizen / PR"
+                    ref={workAuthorizationRef}
+                    type="text"
+                  />
                 </label>
                 <label>
                   <span>Work Authorization Expiry</span>
-                  <input name="workAuthorizationExpiry" type="date" />
+                  <input name="workAuthorizationExpiry" ref={workAuthorizationExpiryRef} type="date" />
                 </label>
                 <label>
                   <span>Tax Terms</span>
-                  <input name="taxTerms" placeholder="W2 / C2C / 1099" type="text" />
+                  <input name="taxTerms" placeholder="W2 / C2C / 1099" ref={taxTermsRef} type="text" />
                 </label>
                 <label>
                   <span>Applicant Status</span>
-                  <input name="applicantStatus" placeholder="New lead / Active / Hold" type="text" />
+                  <input
+                    name="applicantStatus"
+                    placeholder="New lead / Active / Hold"
+                    ref={applicantStatusRef}
+                    type="text"
+                  />
                 </label>
                 <label>
                   <span>Applicant Group</span>
-                  <input name="applicantGroup" placeholder="UI, Data, Backend..." type="text" />
+                  <input name="applicantGroup" placeholder="UI, Data, Backend..." ref={applicantGroupRef} type="text" />
                 </label>
                 <label>
                   <span>Ownership</span>
@@ -456,15 +677,15 @@ export const CandidateCreateForm = ({
                 </label>
                 <label>
                   <span>Referred By</span>
-                  <input name="referredBy" placeholder="Employee/partner reference" type="text" />
+                  <input name="referredBy" placeholder="Employee/partner reference" ref={referredByRef} type="text" />
                 </label>
                 <label>
                   <span>Nationality</span>
-                  <input name="nationality" type="text" />
+                  <input name="nationality" ref={nationalityRef} type="text" />
                 </label>
                 <label>
                   <span>Reference ID</span>
-                  <input name="referenceID" type="text" />
+                  <input name="referenceID" ref={referenceIDRef} type="text" />
                 </label>
                 <label>
                   <span>Aadhaar / National ID</span>
@@ -472,7 +693,7 @@ export const CandidateCreateForm = ({
                 </label>
                 <label>
                   <span>GPA</span>
-                  <input name="gpa" type="text" />
+                  <input name="gpa" ref={gpaRef} type="text" />
                 </label>
                 <label>
                   <span>Gender</span>
@@ -491,11 +712,11 @@ export const CandidateCreateForm = ({
                   <input name="disabilityStatus" placeholder="Optional EEO field" type="text" />
                 </label>
                 <label className="candidate-intake-checkbox">
-                  <input name="relocation" type="checkbox" />
+                  <input name="relocation" ref={relocationRef} type="checkbox" />
                   <span>Open to Relocation</span>
                 </label>
                 <label className="candidate-intake-checkbox">
-                  <input name="clearance" type="checkbox" />
+                  <input name="clearance" ref={clearanceRef} type="checkbox" />
                   <span>Security Clearance</span>
                 </label>
               </div>
@@ -509,7 +730,7 @@ export const CandidateCreateForm = ({
               </label>
               <label className="candidate-intake-notes">
                 <span>Additional Comments</span>
-                <textarea name="additionalComments" rows={3} />
+                <textarea name="additionalComments" ref={additionalCommentsRef} rows={3} />
               </label>
             </section>
           </div>
@@ -548,7 +769,7 @@ export const CandidateCreateForm = ({
               <h2>Parser Snapshot</h2>
               <div className="candidate-intake-parser-summary">
                 <p>
-                  Coverage: <strong>{parsedData ? `${parserCoverage}/8 core fields` : 'Not parsed yet'}</strong>
+                  Coverage: <strong>{parsedData ? `${parserCoverage} fields detected` : 'Not parsed yet'}</strong>
                 </p>
                 {parseWarnings.length > 0 ? (
                   <ul>

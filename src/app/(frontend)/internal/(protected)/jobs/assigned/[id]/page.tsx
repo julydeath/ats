@@ -3,10 +3,13 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 
-import { ApplicationFlowProgress } from '@/components/internal/ApplicationFlowProgress'
 import { JobApplicantsBoard } from '@/components/internal/JobApplicantsBoard'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
-import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
+import {
+  APPLICATION_STAGES,
+  APPLICATION_STAGE_LABELS,
+  type ApplicationStage,
+} from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import type { InternalRole } from '@/lib/constants/roles'
 import { extractRelationshipID } from '@/lib/utils/relationships'
@@ -54,6 +57,55 @@ const relationshipToNumericID = (value: unknown): number | null => {
   }
 
   return null
+}
+
+const serializeFlowActor = (value: unknown) => {
+  if (!value) {
+    return null
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    return value
+  }
+
+  if (typeof value === 'object') {
+    const typed = value as {
+      email?: string
+      fullName?: string
+      name?: string
+      role?: unknown
+    }
+    const actor: {
+      email?: string
+      fullName?: string
+      name?: string
+      role?: InternalRole
+    } = {}
+
+    if (typed.email) actor.email = typed.email
+    if (typed.fullName) actor.fullName = typed.fullName
+    if (typed.name) actor.name = typed.name
+    if (typed.role === 'admin' || typed.role === 'leadRecruiter' || typed.role === 'recruiter') {
+      actor.role = typed.role
+    }
+
+    return Object.keys(actor).length > 0 ? actor : null
+  }
+
+  return null
+}
+
+const serializeDateTime = (value: Date | string | null | undefined): string | null => {
+  if (!value) {
+    return null
+  }
+
+  const date = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return date.toISOString()
 }
 
 const formatDate = (value: string | Date | null | undefined): string => {
@@ -145,7 +197,8 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
   const activeTab: JobTab = isJobTab(tabRaw) ? tabRaw : 'applicants'
   const searchQuery = (resolvedSearchParams.q || '').trim().toLowerCase()
   const stageFilter = (resolvedSearchParams.stage || '').trim()
-  const canAddApplicant = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
+  const canAddApplicant =
+    user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
   const boardRole = BOARD_ROLE[user.role]
 
   try {
@@ -299,6 +352,34 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
       return haystack.includes(searchQuery)
     })
 
+    const stageHistoryByApplication = new Map<
+      string,
+      Array<{
+        actor?: ReturnType<typeof serializeFlowActor>
+        changedAt?: string | null
+        toStage?: ApplicationStage | null
+      }>
+    >()
+
+    stageHistory.docs.forEach((entry) => {
+      const applicationKey = String(extractRelationshipID(entry.application) || '')
+      if (!applicationKey || typeof entry.toStage !== 'string') {
+        return
+      }
+
+      if (!APPLICATION_STAGES.includes(entry.toStage as ApplicationStage)) {
+        return
+      }
+
+      const bucket = stageHistoryByApplication.get(applicationKey) || []
+      bucket.push({
+        actor: serializeFlowActor(entry.actor),
+        changedAt: serializeDateTime(entry.changedAt),
+        toStage: entry.toStage as ApplicationStage,
+      })
+      stageHistoryByApplication.set(applicationKey, bucket)
+    })
+
     const boardCards = filteredApplications.map((application) => {
       const candidate = application.candidate as
         | {
@@ -319,6 +400,7 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
       const normalizedCandidateID = relationshipToNumericID(application.candidate)
 
       return {
+        applicationCode: application.applicationCode || `APP-${application.id}`,
         applicationNotes: application.notes || '',
         candidateCompany:
           typeof candidate === 'object' && candidate?.currentCompany
@@ -336,7 +418,10 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
         candidatePhone: (typeof candidate === 'object' && candidate?.phone) || '',
         candidatePortfolio: (typeof candidate === 'object' && candidate?.portfolioURL) || '',
         candidateRole:
-          typeof candidate === 'object' && candidate?.currentRole ? candidate.currentRole : 'Role not provided',
+          typeof candidate === 'object' && candidate?.currentRole
+            ? candidate.currentRole
+            : 'Role not provided',
+        flowEntries: stageHistoryByApplication.get(String(application.id)) || [],
         id: application.id,
         latestComment: application.latestComment || '',
         recruiterName: readLabel(application.recruiter),
@@ -346,40 +431,15 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
     })
 
     const teamMembers = Array.from(
-      new Set(applications.docs.map((application) => readLabel(application.recruiter)).filter(Boolean)),
+      new Set(
+        applications.docs.map((application) => readLabel(application.recruiter)).filter(Boolean),
+      ),
     ).slice(0, 4)
 
-    const stageHistoryByApplication = new Map<
-      string,
-      Array<{
-        actor?: unknown
-        changedAt?: Date | string | null
-        toStage?: unknown
-      }>
-    >()
-
-    stageHistory.docs.forEach((entry) => {
-      const applicationKey = String(extractRelationshipID(entry.application) || '')
-      if (!applicationKey) {
-        return
-      }
-
-      const bucket = stageHistoryByApplication.get(applicationKey) || []
-      bucket.push({
-        actor: entry.actor,
-        changedAt: entry.changedAt,
-        toStage: entry.toStage,
-      })
-      stageHistoryByApplication.set(applicationKey, bucket)
-    })
-
-    const flowFocusApplication = filteredApplications[0] || applications.docs[0] || null
-    const flowFocusApplicationHistory = flowFocusApplication
-      ? stageHistoryByApplication.get(String(flowFocusApplication.id)) || []
-      : []
-
     const discussionItems = applications.docs
-      .filter((application) => application.latestComment && application.latestComment.trim().length > 0)
+      .filter(
+        (application) => application.latestComment && application.latestComment.trim().length > 0,
+      )
       .slice(0, 25)
 
     const scheduleItems = interviews.docs.slice(0, 24)
@@ -418,14 +478,23 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
 
             <div className="job-detail-action-row">
               {canAddApplicant ? (
-                <Link className="job-detail-button job-detail-button-primary" href={`${APP_ROUTES.internal.applications.new}?jobId=${job.id}`}>
+                <Link
+                  className="job-detail-button job-detail-button-primary"
+                  href={`${APP_ROUTES.internal.applications.new}?jobId=${job.id}`}
+                >
                   Add Applicant
                 </Link>
               ) : null}
-              <Link className="job-detail-button" href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}?tab=schedule`}>
+              <Link
+                className="job-detail-button"
+                href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}?tab=schedule`}
+              >
                 Schedule
               </Link>
-              <Link className="job-detail-button job-detail-button-ghost" href={APP_ROUTES.internal.jobs.assigned}>
+              <Link
+                className="job-detail-button job-detail-button-ghost"
+                href={APP_ROUTES.internal.jobs.assigned}
+              >
                 Back to Jobs
               </Link>
             </div>
@@ -443,22 +512,6 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
             </Link>
           ))}
         </nav>
-
-        {flowFocusApplication ? (
-          <section className="job-detail-content-card">
-            <ApplicationFlowProgress
-              applicationCode={flowFocusApplication.applicationCode || `APP-${flowFocusApplication.id}`}
-              currentStage={flowFocusApplication.stage as ApplicationStage}
-              detailHref={`${APP_ROUTES.internal.applications.detailBase}/${flowFocusApplication.id}`}
-              entries={flowFocusApplicationHistory}
-              fallbackOwnerName={readLabel(flowFocusApplication.recruiter, 'Unassigned')}
-              fallbackOwnerRole="recruiter"
-              fallbackTimestamp={flowFocusApplication.updatedAt}
-              subtitle={`${readLabel(flowFocusApplication.candidate)} · Live job pipeline snapshot`}
-              title="Job Flow Snapshot"
-            />
-          </section>
-        ) : null}
 
         {activeTab === 'applicants' ? (
           <>
@@ -483,7 +536,10 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
                 <button className="job-detail-toolbar-button" type="submit">
                   Filter
                 </button>
-                <Link className="job-detail-toolbar-button job-detail-toolbar-button-secondary" href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}?tab=applicants`}>
+                <Link
+                  className="job-detail-toolbar-button job-detail-toolbar-button-secondary"
+                  href={`${APP_ROUTES.internal.jobs.detailBase}/${job.id}?tab=applicants`}
+                >
                   Reset
                 </Link>
               </form>
@@ -524,7 +580,8 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
                 <strong>Openings:</strong> {job.openings}
               </p>
               <p>
-                <strong>Experience:</strong> {job.experienceMin ?? 0} - {job.experienceMax ?? 'Any'} years
+                <strong>Experience:</strong> {job.experienceMin ?? 0} - {job.experienceMax ?? 'Any'}{' '}
+                years
               </p>
               <p>
                 <strong>Salary:</strong> {job.salaryMin ?? 0} - {job.salaryMax ?? 'Not set'}
@@ -548,7 +605,10 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
                 <strong>Status:</strong> {job.status}
               </p>
               <p>
-                <strong>States:</strong> {Array.isArray(job.states) && job.states.length > 0 ? job.states.join(', ') : 'Not set'}
+                <strong>States:</strong>{' '}
+                {Array.isArray(job.states) && job.states.length > 0
+                  ? job.states.join(', ')
+                  : 'Not set'}
               </p>
               <p>
                 <strong>Lead Recruiter:</strong> {readLabel(job.owningHeadRecruiter)}
@@ -602,10 +662,16 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
             ) : (
               <div className="job-detail-discussion-list">
                 {discussionItems.map((application) => (
-                  <article className="job-detail-discussion-item" key={`discussion-${application.id}`}>
-                    <p className="job-detail-discussion-title">{readLabel(application.candidate)}</p>
+                  <article
+                    className="job-detail-discussion-item"
+                    key={`discussion-${application.id}`}
+                  >
+                    <p className="job-detail-discussion-title">
+                      {readLabel(application.candidate)}
+                    </p>
                     <p className="job-detail-discussion-meta">
-                      {readLabel(application.recruiter)} · {APPLICATION_STAGE_LABELS[application.stage as ApplicationStage]}
+                      {readLabel(application.recruiter)} ·{' '}
+                      {APPLICATION_STAGE_LABELS[application.stage as ApplicationStage]}
                     </p>
                     <p className="job-detail-discussion-text">{application.latestComment}</p>
                     <Link
@@ -634,16 +700,24 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
             ) : (
               <div className="job-detail-schedule-list">
                 {scheduleItems.map((interview) => (
-                  <article className="job-detail-schedule-item" key={`job-schedule-${interview.id}`}>
+                  <article
+                    className="job-detail-schedule-item"
+                    key={`job-schedule-${interview.id}`}
+                  >
                     <div>
                       <p className="job-detail-schedule-title">{readLabel(interview.candidate)}</p>
                       <p className="job-detail-schedule-meta">
-                        {String(interview.interviewRound || 'screening')} · {String(interview.status || 'scheduled')} ·{' '}
-                        {readLabel(interview.recruiter)} · {String(interview.mode || 'video')}
+                        {String(interview.interviewRound || 'screening')} ·{' '}
+                        {String(interview.status || 'scheduled')} · {readLabel(interview.recruiter)}{' '}
+                        · {String(interview.mode || 'video')}
                       </p>
-                      <p className="job-detail-schedule-meta">{interview.interviewerName || 'Interviewer not set'}</p>
+                      <p className="job-detail-schedule-meta">
+                        {interview.interviewerName || 'Interviewer not set'}
+                      </p>
                     </div>
-                    <p className="job-detail-schedule-time">{formatDateTime(interview.startTime)}</p>
+                    <p className="job-detail-schedule-time">
+                      {formatDateTime(interview.startTime)}
+                    </p>
                   </article>
                 ))}
               </div>

@@ -139,7 +139,7 @@ const buildRedirectURL = (request: Request): URL => new URL(APP_ROUTES.internal.
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const { user } = await payload.auth({ headers: await getPayloadAuthHeaders() })
+  const { user } = await payload.auth({ headers: await getPayloadAuthHeaders(request.headers) })
   const internalUser = user as InternalUserLike
   const currentUserID = toNumericID(internalUser?.id)
 

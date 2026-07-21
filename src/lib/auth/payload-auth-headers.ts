@@ -27,8 +27,8 @@ export const normalizePayloadAuthHeaders = (requestHeaders: Headers): Headers =>
   return normalizedHeaders
 }
 
-export const getPayloadAuthHeaders = async (): Promise<Headers> => {
-  const requestHeaders = await getHeaders()
+export const getPayloadAuthHeaders = async (headers?: HeadersInit): Promise<Headers> => {
+  const requestHeaders = headers ? new Headers(headers) : new Headers(await getHeaders())
 
-  return normalizePayloadAuthHeaders(new Headers(requestHeaders))
+  return normalizePayloadAuthHeaders(requestHeaders)
 }

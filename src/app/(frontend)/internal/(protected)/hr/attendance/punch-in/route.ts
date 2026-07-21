@@ -12,7 +12,7 @@ const buildRedirectURL = (request: Request): URL =>
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const authResult = await payload.auth({ headers: await getPayloadAuthHeaders() })
+  const authResult = await payload.auth({ headers: await getPayloadAuthHeaders(request.headers) })
   const user = authResult.user as InternalUserLike
 
   if (!user || !hasInternalRole(user, ['leadRecruiter', 'recruiter'])) {

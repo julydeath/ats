@@ -80,7 +80,7 @@ const buildCreateRedirectURL = (request: Request): URL => new URL(APP_ROUTES.int
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
-  const { user } = await payload.auth({ headers: await getPayloadAuthHeaders() })
+  const { user } = await payload.auth({ headers: await getPayloadAuthHeaders(request.headers) })
   const internalUser = user as InternalUserLike
 
   if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter', 'recruiter'])) {
