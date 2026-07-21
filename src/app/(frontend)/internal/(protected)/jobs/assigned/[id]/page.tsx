@@ -464,13 +464,15 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
                 <span className="muted tiny">No assigned recruiters</span>
               ) : (
                 teamMembers.map((member, index) => (
-                  <span className="job-detail-avatar" key={`${member}-${index + 1}`} title={member}>
-                    {member
+                  console.log({member, index}),
+                  <span className="ops-user-pill" key={`${member}-${index + 1}`} title={member}>
+                    {/* {member
                       .split(' ')
                       .map((part) => part[0] || '')
                       .join('')
                       .slice(0, 2)
-                      .toUpperCase()}
+                      .toUpperCase()} */}
+                      {member.toUpperCase()}
                   </span>
                 ))
               )}

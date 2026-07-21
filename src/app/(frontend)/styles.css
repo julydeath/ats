@@ -4181,6 +4181,7 @@ ul {
 .ops-user-pill {
   align-items: center;
   display: flex;
+  padding: 0.2rem 0.4rem;
   gap: 0.5rem;
 }
 
@@ -4242,15 +4243,15 @@ ul {
   border-radius: 0.45rem;
   color: #fff;
   display: inline-flex;
-  font-size: 0.7rem;
+  font-size: 1.25rem;
   height: 1.95rem;
   justify-content: center;
   min-width: 1.95rem;
 }
 
 .ops-side-brand-title {
-  color: #234cb4;
-  font-size: 0.9rem;
+  color: white;
+  font-size: 1.25rem;
   font-weight: 800;
 }
 
@@ -4319,7 +4320,7 @@ ul {
 .ops-shell .nav-link-active {
   background: #eaf2ff;
   border-color: #d3e2ff;
-  color: #1352be;
+  color: #fcfcfc;
 }
 
 .ops-shell .nav-icon {
@@ -4333,7 +4334,7 @@ ul {
 }
 
 .ops-shell .nav-link-active .nav-icon {
-  color: #1452bf;
+  color: #fefefe;
 }
 
 .ops-shell .nav-title {
@@ -13263,12 +13264,12 @@ body :is(a, button, input, select, textarea):focus-visible {
   border-bottom-color: var(--hairline);
   backdrop-filter: blur(16px);
 }
-
+/* 
 .ops-topbar-brand,
 .ops-side-brand-title {
   color: var(--brand-dark-900);
   font-weight: 400;
-}
+} */
 
 .ops-role-badge,
 .status-pill,

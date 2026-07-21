@@ -83,8 +83,8 @@ export default async function InternalProtectedLayout({ children }: InternalProt
       <div className="ops-body">
         <aside className="ops-sidebar">
           <div className="ops-side-brand">
-            <span className="ops-side-brand-mark">■</span>
-            <div>
+            <span className="ops-side-brand-mark">I</span>
+            <div style={{ color: 'white' }}>
               <p className="ops-side-brand-title">Inspirix HR</p>
               <p className="ops-side-brand-subtitle">Recruitment Ops</p>
             </div>
