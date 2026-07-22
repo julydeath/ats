@@ -12,6 +12,7 @@ import {
   type JobStatus,
 } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
+import { env } from '@/lib/env'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 
@@ -129,13 +130,34 @@ const parseSkills = (value: FormDataEntryValue | null): Array<{ skill: string }>
 const JOB_DESCRIPTION_FILE_MIME_TYPES = new Set<string>([
   'application/pdf',
   'application/msword',
+  'application/octet-stream',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'text/plain',
 ])
 
+const JOB_DESCRIPTION_FILE_MIME_BY_EXTENSION: Record<string, string> = {
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.pdf': 'application/pdf',
+  '.txt': 'text/plain',
+}
+
 const MAX_JOB_DESCRIPTION_FILE_BYTES = 15 * 1024 * 1024
 
 const buildRedirectURL = (request: Request): URL => new URL(APP_ROUTES.internal.jobs.assigned, request.url)
+
+const getJobDescriptionFileMimeType = (file: File): string | null => {
+  const normalizedMimeType = file.type.trim().toLowerCase()
+  const extension = Object.keys(JOB_DESCRIPTION_FILE_MIME_BY_EXTENSION).find((suffix) =>
+    file.name.toLowerCase().endsWith(suffix),
+  )
+
+  if (normalizedMimeType && normalizedMimeType !== 'application/octet-stream') {
+    return JOB_DESCRIPTION_FILE_MIME_TYPES.has(normalizedMimeType) ? normalizedMimeType : null
+  }
+
+  return extension ? JOB_DESCRIPTION_FILE_MIME_BY_EXTENSION[extension] : null
+}
 
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
@@ -215,7 +237,18 @@ export async function POST(request: Request) {
 
   try {
     if (jobDescriptionFileInput instanceof File && jobDescriptionFileInput.size > 0) {
-      if (!JOB_DESCRIPTION_FILE_MIME_TYPES.has(jobDescriptionFileInput.type)) {
+      const jobDescriptionFileMimeType = getJobDescriptionFileMimeType(jobDescriptionFileInput)
+
+      if (process.env.VERCEL && !env.S3_UPLOADS_ENABLED) {
+        const failureURL = buildRedirectURL(request)
+        failureURL.searchParams.set(
+          'error',
+          'JD upload storage is not configured for production. Configure S3/R2 storage and retry.',
+        )
+        return NextResponse.redirect(failureURL, 303)
+      }
+
+      if (!jobDescriptionFileMimeType) {
         const failureURL = buildRedirectURL(request)
         failureURL.searchParams.set('error', 'JD attachment must be PDF, DOC, DOCX, or TXT.')
         return NextResponse.redirect(failureURL, 303)
@@ -235,7 +268,7 @@ export async function POST(request: Request) {
         },
         file: {
           data: fileBuffer,
-          mimetype: jobDescriptionFileInput.type,
+          mimetype: jobDescriptionFileMimeType,
           name: jobDescriptionFileInput.name,
           size: jobDescriptionFileInput.size,
         },

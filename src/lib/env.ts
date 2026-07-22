@@ -29,6 +29,12 @@ const normalizeURL = (url: string): string => {
 const readOptionalEnv = (name: string): string =>
   (process.env[name] || '').trim()
 
+const readBooleanEnv = (name: string): boolean => {
+  const value = readOptionalEnv(name).toLowerCase()
+
+  return value === '1' || value === 'true' || value === 'yes'
+}
+
 const readURLListEnv = (name: string): string[] =>
   readOptionalEnv(name)
     .split(',')
@@ -54,6 +60,13 @@ const appURLs = Array.from(
   ),
 )
 
+const s3Bucket = readOptionalEnv('S3_BUCKET')
+const s3AccessKeyID = readOptionalEnv('S3_ACCESS_KEY_ID')
+const s3SecretAccessKey = readOptionalEnv('S3_SECRET_ACCESS_KEY')
+const s3Region = readOptionalEnv('S3_REGION') || 'auto'
+const s3Endpoint = normalizeURL(readOptionalEnv('S3_ENDPOINT'))
+const isCloudflareR2Endpoint = s3Endpoint.includes('.r2.cloudflarestorage.com')
+
 export const env = {
   APP_URLS: appURLs,
   DATABASE_CA_CERT: readOptionalEnv('DATABASE_CA_CERT').replace(/\\n/g, '\n'),
@@ -65,4 +78,12 @@ export const env = {
   RAZORPAYX_KEY_ID: readOptionalEnv('RAZORPAYX_KEY_ID'),
   RAZORPAYX_KEY_SECRET: readOptionalEnv('RAZORPAYX_KEY_SECRET'),
   RAZORPAYX_WEBHOOK_SECRET: readOptionalEnv('RAZORPAYX_WEBHOOK_SECRET'),
+  S3_ACCESS_KEY_ID: s3AccessKeyID,
+  S3_BUCKET: s3Bucket,
+  S3_ENDPOINT: s3Endpoint,
+  S3_FORCE_PATH_STYLE: readBooleanEnv('S3_FORCE_PATH_STYLE') || isCloudflareR2Endpoint,
+  S3_PUBLIC_BASE_URL: normalizeURL(readOptionalEnv('S3_PUBLIC_BASE_URL')),
+  S3_REGION: s3Region,
+  S3_SECRET_ACCESS_KEY: s3SecretAccessKey,
+  S3_UPLOADS_ENABLED: Boolean(s3Bucket && s3AccessKeyID && s3SecretAccessKey && s3Region),
 } as const

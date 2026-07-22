@@ -1,5 +1,6 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { s3Storage } from '@payloadcms/storage-s3'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -47,6 +48,30 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 const appURL = env.NEXT_PUBLIC_APP_URL
 const trustedAppURLs = env.APP_URLS
+const storagePlugins = env.S3_UPLOADS_ENABLED
+  ? [
+      s3Storage({
+        bucket: env.S3_BUCKET,
+        collections: {
+          'candidate-resumes': {
+            signedDownloads: true,
+          },
+          media: {
+            signedDownloads: true,
+          },
+        },
+        config: {
+          credentials: {
+            accessKeyId: env.S3_ACCESS_KEY_ID,
+            secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+          },
+          endpoint: env.S3_ENDPOINT || undefined,
+          forcePathStyle: env.S3_FORCE_PATH_STYLE || undefined,
+          region: env.S3_REGION,
+        },
+      }),
+    ]
+  : []
 const parsedDatabaseURL = new URL(env.DATABASE_URL)
 const isAivenDatabase = parsedDatabaseURL.hostname.endsWith('.aivencloud.com')
 const databaseSSL =
@@ -135,5 +160,5 @@ export default buildConfig({
     push: process.env.PAYLOAD_DB_PUSH === 'true',
   }),
   sharp,
-  plugins: [],
+  plugins: [...storagePlugins],
 })

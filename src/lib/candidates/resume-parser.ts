@@ -75,6 +75,12 @@ const PDF_STANDARD_FONT_URL = pathToFileURL(
   path.join(process.cwd(), 'node_modules/pdfjs-dist/standard_fonts/'),
 ).toString()
 
+type PDFJSNodeCanvasGlobals = {
+  DOMMatrix?: unknown
+  ImageData?: unknown
+  Path2D?: unknown
+}
+
 const nullableStringSchema = z.string().nullable().optional()
 const nullableNumberSchema = z.union([z.number(), z.string()]).nullable().optional()
 const nullableBooleanSchema = z.union([z.boolean(), z.string()]).nullable().optional()
@@ -1520,6 +1526,13 @@ const mergeParsedData = (base: ParsedResumeData, override: ParsedResumeData): Pa
 }
 
 const loadPDFJS = async (): Promise<typeof import('pdfjs-dist/legacy/build/pdf.mjs')> => {
+  const canvas = await import('@napi-rs/canvas')
+  const pdfGlobals = globalThis as PDFJSNodeCanvasGlobals
+
+  pdfGlobals.DOMMatrix ??= canvas.DOMMatrix
+  pdfGlobals.ImageData ??= canvas.ImageData
+  pdfGlobals.Path2D ??= canvas.Path2D
+
   const pdfJS = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
   // In Next's server bundle, pdf.js otherwise guesses a relative

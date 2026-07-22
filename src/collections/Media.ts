@@ -12,5 +12,18 @@ export const Media: CollectionConfig = {
       required: true,
     },
   ],
-  upload: true,
+  upload: {
+    mimeTypes: [
+      'application/msword',
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/svg+xml',
+      'image/webp',
+      'text/plain',
+    ],
+    staticDir: 'media',
+  },
 }
