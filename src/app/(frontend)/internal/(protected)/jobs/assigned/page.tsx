@@ -576,6 +576,8 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
   const successMessage =
     resolvedSearchParams.success === 'jobCreated'
       ? 'Job created successfully.'
+      : resolvedSearchParams.success === 'jobUpdated'
+        ? 'Job updated successfully.'
       : resolvedSearchParams.success === 'jobReactivated'
         ? 'Existing job was reactivated successfully.'
         : ''
@@ -784,6 +786,14 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                               href={`${APP_ROUTES.internal.candidates.new}?jobId=${job.id}`}
                             >
                               Add Candidate
+                            </Link>
+                          ) : null}
+                          {canReassignJobs ? (
+                            <Link
+                              className="jobs-row-action jobs-row-action-secondary"
+                              href={`${APP_ROUTES.internal.jobs.editBase}/${job.id}/edit`}
+                            >
+                              Edit
                             </Link>
                           ) : null}
                           {canReassignJobs ? (

@@ -129,6 +129,7 @@ type CandidateDetailPageProps = {
   searchParams?: Promise<{
     error?: string
     success?: string
+    warning?: string
   }>
 }
 
@@ -262,6 +263,7 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
 
     const resumeMeta = getResumeMeta(candidate.resume)
     const canCreateApplication = user.role === 'admin' || user.role === 'leadRecruiter'
+    const canEditCandidate = user.role === 'admin' || user.role === 'leadRecruiter'
     const sourceJobID = extractRelationshipID(candidate.sourceJob)
     const latestApplication = applicationsForCandidate.docs[0] || null
     const latestStage = (latestApplication?.stage as ApplicationStage | undefined) || null
@@ -351,9 +353,14 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
               <p className="candidate-profile-success">
                 {resolvedSearchParams.success === 'activityCreated'
                   ? 'Candidate activity added successfully.'
+                  : resolvedSearchParams.success === 'candidateCreatedWithApplication'
+                    ? 'Candidate profile saved and application created successfully.'
+                    : resolvedSearchParams.success === 'candidateUpdated'
+                      ? 'Candidate profile updated successfully.'
                   : 'Candidate profile saved successfully.'}
               </p>
             ) : null}
+            {resolvedSearchParams.warning ? <p className="error-text">{resolvedSearchParams.warning}</p> : null}
             {resolvedSearchParams.error ? <p className="error-text">{resolvedSearchParams.error}</p> : null}
           </div>
 
@@ -384,6 +391,14 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
                 href={`${APP_ROUTES.internal.applications.new}?candidateId=${candidate.id}&jobId=${sourceJobID || ''}`}
               >
                 Invite to Job
+              </Link>
+            ) : null}
+            {canEditCandidate ? (
+              <Link
+                className="candidate-profile-action"
+                href={`${APP_ROUTES.internal.candidates.editBase}/${candidate.id}/edit`}
+              >
+                Edit Profile
               </Link>
             ) : null}
           </div>

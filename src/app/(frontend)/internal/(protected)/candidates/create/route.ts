@@ -6,6 +6,7 @@ import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { CANDIDATE_SOURCES, type CandidateSource } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
+import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const RESUME_MIME_TYPES = new Set<string>([
   'application/pdf',
@@ -78,6 +79,9 @@ const toNumericID = (value: unknown): number | null => {
 
 const buildCreateRedirectURL = (request: Request): URL => new URL(APP_ROUTES.internal.candidates.new, request.url)
 
+const buildEditRedirectURL = (request: Request, candidateID: number): URL =>
+  new URL(`${APP_ROUTES.internal.candidates.editBase}/${candidateID}/edit`, request.url)
+
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers: await getPayloadAuthHeaders(request.headers) })
@@ -88,6 +92,7 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData()
+  const candidateID = parseNumericID(formData.get('candidateId'))
 
   const fullName = readString(formData.get('fullName'))
   const prefix = readString(formData.get('prefix')) || undefined
@@ -159,14 +164,14 @@ export async function POST(request: Request) {
   const skills = parseList(skillsInput).slice(0, 30)
   const primarySkills = parseList(primarySkillsInput).slice(0, 20)
 
-  if (!fullName || !sourceJobID) {
-    const failureURL = buildCreateRedirectURL(request)
-    failureURL.searchParams.set('error', 'Candidate name and source job are required.')
+  if (!fullName) {
+    const failureURL = candidateID ? buildEditRedirectURL(request, candidateID) : buildCreateRedirectURL(request)
+    failureURL.searchParams.set('error', 'Candidate name is required.')
     return NextResponse.redirect(failureURL, 303)
   }
 
   if (!email && !phone) {
-    const failureURL = buildCreateRedirectURL(request)
+    const failureURL = candidateID ? buildEditRedirectURL(request, candidateID) : buildCreateRedirectURL(request)
     failureURL.searchParams.set('error', 'Provide at least one contact method: email or phone.')
     return NextResponse.redirect(failureURL, 303)
   }
@@ -176,7 +181,7 @@ export async function POST(request: Request) {
     expectedPayMax !== undefined &&
     expectedPayMin > expectedPayMax
   ) {
-    const failureURL = buildCreateRedirectURL(request)
+    const failureURL = candidateID ? buildEditRedirectURL(request, candidateID) : buildCreateRedirectURL(request)
     failureURL.searchParams.set('error', 'Expected pay min cannot be greater than expected pay max.')
     return NextResponse.redirect(failureURL, 303)
   }
@@ -187,7 +192,7 @@ export async function POST(request: Request) {
   try {
     if (resumeInput instanceof File && resumeInput.size > 0) {
       if (!RESUME_MIME_TYPES.has(resumeInput.type)) {
-        const failureURL = buildCreateRedirectURL(request)
+        const failureURL = candidateID ? buildEditRedirectURL(request, candidateID) : buildCreateRedirectURL(request)
         failureURL.searchParams.set('error', 'Resume must be a PDF, DOC, or DOCX file.')
         return NextResponse.redirect(failureURL, 303)
       }
@@ -198,7 +203,7 @@ export async function POST(request: Request) {
         collection: 'candidate-resumes',
         data: {
           alt: `${fullName} Resume`,
-          sourceJob: sourceJobID,
+          sourceJob: sourceJobID ?? undefined,
           uploadedBy: currentUserID ?? undefined,
         },
         file: {
@@ -214,81 +219,150 @@ export async function POST(request: Request) {
       uploadedResumeID = resumeDoc.id
     }
 
-    const candidate = await payload.create({
-      collection: 'candidates',
-      data: {
-        aadhaarNumber,
-        additionalComments,
-        alternateEmail,
-        alternatePhone,
-        applicantGroup,
-        applicantStatus,
-        address,
-        city,
-        clearance,
-        country,
-        currentCompany,
-        currentLocation,
-        currentRole,
-        disabilityStatus,
-        email,
-        expectedPayMax,
-        expectedPayMin,
-        expectedPayCurrency,
-        expectedPayType,
-        expectedPayUnit,
-        expectedSalary,
-        facebookProfileURL,
-        firstName,
-        fullName,
-        gender,
-        gpa,
-        homePhone,
-        jobTitle,
-        linkedInURL,
-        middleName,
-        nationality,
-        nickName,
-        noticePeriodDays,
-        noticePeriodLabel,
-        notes,
-        otherPhone,
-        ownership: ownership ?? undefined,
-        phone,
-        portfolioURL,
-        postalCode,
-        prefix,
-        primarySkills: primarySkills.length > 0 ? primarySkills : undefined,
-        referenceID,
-        referredBy,
-        relocation,
-        resume: uploadedResumeID ?? undefined,
-        raceEthnicity,
-        skypeID,
-        state,
-        source,
-        sourceDetails,
-        sourceJob: sourceJobID,
-        sourcedBy: currentUserID ?? undefined,
-        skills: skills.length > 0 ? skills : undefined,
-        taxTerms,
-        technology,
-        totalExperienceMonths,
-        totalExperienceYears,
-        twitterProfileURL,
-        videoReference,
-        veteranStatus,
-        workAuthorization,
-        workAuthorizationExpiry,
-        workPhone,
-        lastName,
-      },
-      overrideAccess: false,
-      user: internalUser,
-    })
+    const candidateData = {
+      aadhaarNumber,
+      additionalComments,
+      alternateEmail,
+      alternatePhone,
+      applicantGroup,
+      applicantStatus,
+      address,
+      city,
+      clearance,
+      country,
+      currentCompany,
+      currentLocation,
+      currentRole,
+      disabilityStatus,
+      email,
+      expectedPayMax,
+      expectedPayMin,
+      expectedPayCurrency,
+      expectedPayType,
+      expectedPayUnit,
+      expectedSalary,
+      facebookProfileURL,
+      firstName,
+      fullName,
+      gender,
+      gpa,
+      homePhone,
+      jobTitle,
+      linkedInURL,
+      middleName,
+      nationality,
+      nickName,
+      noticePeriodDays,
+      noticePeriodLabel,
+      notes,
+      otherPhone,
+      ownership: ownership ?? undefined,
+      phone,
+      portfolioURL,
+      postalCode,
+      prefix,
+      primarySkills: primarySkills.length > 0 ? primarySkills : undefined,
+      referenceID,
+      referredBy,
+      relocation,
+      raceEthnicity,
+      skypeID,
+      state,
+      source,
+      sourceDetails,
+      sourceJob: sourceJobID ?? undefined,
+      skills: skills.length > 0 ? skills : undefined,
+      taxTerms,
+      technology,
+      totalExperienceMonths,
+      totalExperienceYears,
+      twitterProfileURL,
+      videoReference,
+      veteranStatus,
+      workAuthorization,
+      workAuthorizationExpiry,
+      workPhone,
+      lastName,
+      ...(uploadedResumeID !== null ? { resume: uploadedResumeID } : {}),
+      ...(!candidateID ? { sourcedBy: currentUserID ?? undefined } : {}),
+    }
+
+    const candidate = candidateID
+      ? await payload.update({
+          collection: 'candidates',
+          data: candidateData,
+          id: candidateID,
+          overrideAccess: false,
+          user: internalUser,
+        })
+      : await payload.create({
+          collection: 'candidates',
+          data: candidateData,
+          overrideAccess: false,
+          user: internalUser,
+        })
+
+    let applicationCreated = false
+    let applicationWarning = ''
+
+    if (!candidateID && sourceJobID) {
+      try {
+        const sourceJob = await payload.findByID({
+          collection: 'jobs',
+          depth: 0,
+          id: sourceJobID,
+          overrideAccess: false,
+          select: {
+            clientBillRate: true,
+            payRate: true,
+            primaryRecruiter: true,
+          },
+          user: internalUser,
+        })
+        const jobPrimaryRecruiterID = toNumericID(extractRelationshipID(sourceJob.primaryRecruiter))
+        const applicationRecruiterID = hasInternalRole(internalUser, ['recruiter'])
+          ? currentUserID
+          : jobPrimaryRecruiterID ?? currentUserID
+
+        if (!applicationRecruiterID) {
+          throw new Error('No recruiter is available for the selected job.')
+        }
+
+        await payload.create({
+          collection: 'applications',
+          data: {
+            candidate: candidate.id,
+            clientBillRate: sourceJob.clientBillRate || undefined,
+            job: sourceJobID,
+            latestComment: 'Application auto-created from candidate intake.',
+            notes: notes || undefined,
+            payRate: sourceJob.payRate || undefined,
+            pipelineSource: source,
+            recruiter: applicationRecruiterID,
+            stage: 'sourced',
+            submissionType: 'candidateIntake',
+          },
+          overrideAccess: false,
+          user: internalUser,
+        })
+
+        applicationCreated = true
+      } catch (error) {
+        applicationWarning =
+          error instanceof Error
+            ? error.message
+            : 'Candidate saved, but application could not be created for the selected job.'
+      }
+    }
 
     const successURL = new URL(`${APP_ROUTES.internal.candidates.detailBase}/${candidate.id}`, request.url)
-    successURL.searchParams.set('success', 'candidateCreated')
+    successURL.searchParams.set(
+      'success',
+      candidateID ? 'candidateUpdated' : applicationCreated ? 'candidateCreatedWithApplication' : 'candidateCreated',
+    )
+    if (applicationWarning) {
+      successURL.searchParams.set('warning', applicationWarning)
+    }
     return NextResponse.redirect(successURL, 303)
   } catch (error) {
     if (uploadedResumeID !== null) {
@@ -304,7 +378,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const failureURL = buildCreateRedirectURL(request)
+    const failureURL = candidateID ? buildEditRedirectURL(request, candidateID) : buildCreateRedirectURL(request)
     failureURL.searchParams.set(
       'error',
       error instanceof Error ? error.message : 'Unable to save candidate. Please retry.',

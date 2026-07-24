@@ -481,6 +481,11 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                   <Link className="client-grid-action" href={`${APP_ROUTES.internal.clients.detailBase}/${client.id}`}>
                     See More
                   </Link>
+                  {canManageClients ? (
+                    <Link className="client-grid-action" href={`${APP_ROUTES.internal.clients.editBase}/${client.id}/edit`}>
+                      Edit
+                    </Link>
+                  ) : null}
                 </footer>
               </article>
             )

@@ -71,12 +71,17 @@ type ClientDetailPageProps = {
   params: Promise<{
     id: string
   }>
+  searchParams?: Promise<{
+    error?: string
+    success?: string
+  }>
 }
 
-export default async function ClientDetailPage({ params }: ClientDetailPageProps) {
+export default async function ClientDetailPage({ params, searchParams }: ClientDetailPageProps) {
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const { id } = await params
+  const resolvedSearchParams = (await searchParams) ?? {}
 
   if (!/^\d+$/.test(id)) {
     notFound()
@@ -163,6 +168,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
     ])
 
     const logo = readLogo(client.logo)
+    const canEditClient = user.role === 'admin' || user.role === 'leadRecruiter'
 
     return (
       <section className="client-detail-page">
@@ -188,11 +194,23 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
             <Link className="client-detail-btn" href={APP_ROUTES.internal.clients.list}>
               Back
             </Link>
+            {canEditClient ? (
+              <Link className="client-detail-btn" href={`${APP_ROUTES.internal.clients.editBase}/${client.id}/edit`}>
+                Edit Client
+              </Link>
+            ) : null}
             <Link className="client-detail-btn client-detail-btn-primary" href={`${APP_ROUTES.internal.jobs.assigned}?client=${client.id}`}>
               Jobs
             </Link>
           </div>
         </header>
+
+        {resolvedSearchParams.success === 'clientUpdated' ? (
+          <p className="clients-grid-feedback clients-grid-feedback-success">Client details updated successfully.</p>
+        ) : null}
+        {resolvedSearchParams.error ? (
+          <p className="clients-grid-feedback clients-grid-feedback-error">{resolvedSearchParams.error}</p>
+        ) : null}
 
         <div className="client-detail-grid">
           <article className="client-detail-card">

@@ -336,7 +336,6 @@ export const Candidates: CollectionConfig = {
       name: 'sourceJob',
       type: 'relationship',
       relationTo: 'jobs',
-      required: true,
       index: true,
     },
     {
@@ -606,10 +605,6 @@ export const Candidates: CollectionConfig = {
         const expectedPayMin = Number(typedData.expectedPayMin ?? typedOriginalDoc?.expectedPayMin ?? NaN)
         const expectedPayMax = Number(typedData.expectedPayMax ?? typedOriginalDoc?.expectedPayMax ?? NaN)
 
-        if (!sourceJobID) {
-          throw new APIError('Source job is required for recruiter sourcing.', 400)
-        }
-
         if (!Number.isNaN(expectedPayMin) && !Number.isNaN(expectedPayMax) && expectedPayMin > expectedPayMax) {
           throw new APIError('Expected pay min cannot be greater than expected pay max.', 400)
         }
@@ -700,7 +695,7 @@ export const Candidates: CollectionConfig = {
           normalizedEmail: signals.normalizedEmail,
           normalizedPhone: signals.normalizedPhone,
           resume: resumeID ?? undefined,
-          sourceJob: sourceJobID,
+          sourceJob: sourceJobID ?? null,
           sourcedBy: sourcedByID ?? undefined,
         }
       },

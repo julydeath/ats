@@ -146,6 +146,9 @@ const MAX_JOB_DESCRIPTION_FILE_BYTES = 15 * 1024 * 1024
 
 const buildRedirectURL = (request: Request): URL => new URL(APP_ROUTES.internal.jobs.assigned, request.url)
 
+const buildJobEditRedirectURL = (request: Request, jobID: number): URL =>
+  new URL(`${APP_ROUTES.internal.jobs.editBase}/${jobID}/edit`, request.url)
+
 const getJobDescriptionFileMimeType = (file: File): string | null => {
   const normalizedMimeType = file.type.trim().toLowerCase()
   const extension = Object.keys(JOB_DESCRIPTION_FILE_MIME_BY_EXTENSION).find((suffix) =>
@@ -170,6 +173,8 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData()
+  const jobID = parseNumericID(formData.get('jobId'))
+  const failureURL = jobID ? buildJobEditRedirectURL(request, jobID) : buildRedirectURL(request)
   const clientID = parseNumericID(formData.get('clientId'))
   const title = readString(formData.get('title'))
   const requisitionTitle = readString(formData.get('requisitionTitle')) || undefined
@@ -198,12 +203,13 @@ export async function POST(request: Request) {
   const primaryRecruiterID = parseNumericID(formData.get('primaryRecruiterId'))
   const assignedToIDs = parseMultiNumericIDs(formData.getAll('assignedTo'))
   const jobDescriptionFileInput = formData.get('jobDescriptionFile')
-  let leadRecruiterID = hasInternalRole(internalUser, ['leadRecruiter'])
-    ? currentUserID
-    : parseNumericID(formData.get('leadRecruiterId'))
+  let leadRecruiterID = parseNumericID(formData.get('leadRecruiterId'))
+
+  if (!jobID && hasInternalRole(internalUser, ['leadRecruiter'])) {
+    leadRecruiterID = currentUserID
+  }
 
   if (!clientID || !title || !employmentType || !description) {
-    const failureURL = buildRedirectURL(request)
     failureURL.searchParams.set('error', 'Client, title, employment type, and description are required.')
     return NextResponse.redirect(failureURL, 303)
   }
@@ -228,7 +234,6 @@ export async function POST(request: Request) {
   }
 
   if (!leadRecruiterID) {
-    const failureURL = buildRedirectURL(request)
     failureURL.searchParams.set('error', 'Lead Recruiter assignment is required to create job.')
     return NextResponse.redirect(failureURL, 303)
   }
@@ -240,7 +245,6 @@ export async function POST(request: Request) {
       const jobDescriptionFileMimeType = getJobDescriptionFileMimeType(jobDescriptionFileInput)
 
       if (process.env.VERCEL && !env.S3_UPLOADS_ENABLED) {
-        const failureURL = buildRedirectURL(request)
         failureURL.searchParams.set(
           'error',
           'JD upload storage is not configured for production. Configure S3/R2 storage and retry.',
@@ -249,13 +253,11 @@ export async function POST(request: Request) {
       }
 
       if (!jobDescriptionFileMimeType) {
-        const failureURL = buildRedirectURL(request)
         failureURL.searchParams.set('error', 'JD attachment must be PDF, DOC, DOCX, or TXT.')
         return NextResponse.redirect(failureURL, 303)
       }
 
       if (jobDescriptionFileInput.size > MAX_JOB_DESCRIPTION_FILE_BYTES) {
-        const failureURL = buildRedirectURL(request)
         failureURL.searchParams.set('error', 'JD attachment must be up to 15MB.')
         return NextResponse.redirect(failureURL, 303)
       }
@@ -279,46 +281,58 @@ export async function POST(request: Request) {
       uploadedJobDescriptionFileID = toNumericID(mediaDoc.id)
     }
 
-    const job = await payload.create({
-      collection: 'jobs',
-      data: {
-        businessUnit,
-        clientBillRate,
-        clientJobID,
-        client: clientID,
-        department,
-        description,
-        employmentType,
-        experienceMax,
-        experienceMin,
-        location,
-        openings,
-        owningHeadRecruiter: leadRecruiterID,
-        payRate,
-        payType,
-        primaryRecruiter: primaryRecruiterID ?? undefined,
-        priority,
-        jobDescriptionFile: uploadedJobDescriptionFileID ?? undefined,
-        recruitmentManager: recruitmentManagerID ?? undefined,
-        requisitionTitle,
-        requirementAssignedOn,
-        requiredSkills,
-        salaryRangeLabel,
-        salaryMax,
-        salaryMin,
-        states: states.length > 0 ? states : undefined,
-        status,
-        targetClosureDate,
-        title,
-        assignedTo: assignedToIDs.length > 0 ? assignedToIDs : undefined,
-      },
-      overrideAccess: false,
-      user: internalUser,
-    })
+    const jobData = {
+      businessUnit,
+      clientBillRate,
+      clientJobID,
+      client: clientID,
+      department,
+      description,
+      employmentType,
+      experienceMax,
+      experienceMin,
+      location,
+      openings,
+      owningHeadRecruiter: leadRecruiterID,
+      payRate,
+      payType,
+      primaryRecruiter: primaryRecruiterID ?? null,
+      priority,
+      recruitmentManager: recruitmentManagerID ?? null,
+      requisitionTitle,
+      requirementAssignedOn,
+      requiredSkills,
+      salaryRangeLabel,
+      salaryMax,
+      salaryMin,
+      states: states.length > 0 ? states : jobID ? [] : undefined,
+      status,
+      targetClosureDate,
+      title,
+      assignedTo: assignedToIDs.length > 0 ? assignedToIDs : jobID ? [] : undefined,
+      ...(uploadedJobDescriptionFileID !== null
+        ? { jobDescriptionFile: uploadedJobDescriptionFileID }
+        : {}),
+    }
+
+    const job = jobID
+      ? await payload.update({
+          collection: 'jobs',
+          data: jobData,
+          id: jobID,
+          overrideAccess: false,
+          user: internalUser,
+        })
+      : await payload.create({
+          collection: 'jobs',
+          data: jobData,
+          overrideAccess: false,
+          user: internalUser,
+        })
 
     let autoAssignmentCreated = true
 
-    if (hasInternalRole(internalUser, ['admin'])) {
+    if (!jobID && hasInternalRole(internalUser, ['admin'])) {
       try {
         await payload.create({
           collection: 'job-lead-assignments',
@@ -339,8 +353,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const successURL = buildRedirectURL(request)
-    successURL.searchParams.set('success', 'jobCreated')
+    const successURL = jobID
+      ? new URL(`${APP_ROUTES.internal.jobs.detailBase}/${job.id}`, request.url)
+      : buildRedirectURL(request)
+    successURL.searchParams.set('success', jobID ? 'jobUpdated' : 'jobCreated')
 
     if (!autoAssignmentCreated) {
       successURL.searchParams.set('warning', 'leadAssignmentPending')
@@ -361,10 +377,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const failureURL = buildRedirectURL(request)
     failureURL.searchParams.set(
       'error',
-      error instanceof Error ? error.message : 'Unable to create job. Please retry.',
+      error instanceof Error ? error.message : 'Unable to save job. Please retry.',
     )
     return NextResponse.redirect(failureURL, 303)
   }

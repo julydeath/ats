@@ -6400,6 +6400,19 @@ ul {
   padding: 0 0.9rem;
 }
 
+.jobs-edit-panel {
+  left: auto;
+  max-width: 920px;
+  position: static;
+  top: auto;
+  transform: none;
+  width: 100%;
+}
+
+.jobs-edit-panel .jobs-modal-form {
+  max-height: none;
+}
+
 @media (max-width: 1180px) {
   .ops-body {
     grid-template-columns: 1fr;
@@ -11009,6 +11022,15 @@ ul {
   background: #0f5ec9;
   border: 1px solid #0f5ec9;
   color: #fff;
+}
+
+.clients-edit-panel {
+  left: auto;
+  max-height: none;
+  max-width: 980px;
+  position: static;
+  top: auto;
+  transform: none;
 }
 
 .client-detail-page {

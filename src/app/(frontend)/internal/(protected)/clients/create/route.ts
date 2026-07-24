@@ -82,6 +82,9 @@ const parseRequiredDocuments = (value: FormDataEntryValue[]): ClientRequiredDocu
 const buildClientsRedirectURL = (request: Request): URL =>
   new URL(APP_ROUTES.internal.clients.list, request.url)
 
+const buildClientEditRedirectURL = (request: Request, clientID: number): URL =>
+  new URL(`${APP_ROUTES.internal.clients.editBase}/${clientID}/edit`, request.url)
+
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers: await getPayloadAuthHeaders(request.headers) })
@@ -93,6 +96,7 @@ export async function POST(request: Request) {
 
   const formData = await request.formData()
   const clientID = parseNumericID(formData.get('clientId'))
+  const failureURL = clientID ? buildClientEditRedirectURL(request, clientID) : buildClientsRedirectURL(request)
   const name = readString(formData.get('name'))
   const contactPerson = readString(formData.get('contactPerson'))
   const email = readString(formData.get('email'))
@@ -141,13 +145,11 @@ export async function POST(request: Request) {
   try {
     if (logoInput instanceof File && logoInput.size > 0) {
       if (!LOGO_MIME_TYPES.has(logoInput.type)) {
-        const failureURL = buildClientsRedirectURL(request)
         failureURL.searchParams.set('error', 'Client logo must be JPG, PNG, WEBP, or SVG.')
         return NextResponse.redirect(failureURL, 303)
       }
 
       if (logoInput.size > MAX_LOGO_SIZE_BYTES) {
-        const failureURL = buildClientsRedirectURL(request)
         failureURL.searchParams.set('error', 'Client logo must be up to 5MB.')
         return NextResponse.redirect(failureURL, 303)
       }
@@ -256,13 +258,12 @@ export async function POST(request: Request) {
         user: internalUser,
       })
 
-      const successURL = buildClientsRedirectURL(request)
+      const successURL = new URL(`${APP_ROUTES.internal.clients.detailBase}/${clientID}`, request.url)
       successURL.searchParams.set('success', 'clientUpdated')
       return NextResponse.redirect(successURL, 303)
     }
 
     if (!name || !contactPerson || !email || !phone) {
-      const failureURL = buildClientsRedirectURL(request)
       failureURL.searchParams.set(
         'error',
         'Client name, contact person, email, and phone are required.',
@@ -334,7 +335,6 @@ export async function POST(request: Request) {
       }
     }
 
-    const failureURL = buildClientsRedirectURL(request)
     failureURL.searchParams.set(
       'error',
       error instanceof Error ? error.message : 'Unable to save client. Please retry.',

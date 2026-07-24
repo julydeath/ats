@@ -365,6 +365,7 @@ export const users = pgTable(
     index('users_updated_at_idx').on(columns.updatedAt),
     index('users_created_at_idx').on(columns.createdAt),
     uniqueIndex('users_email_idx').on(columns.email),
+    index('role_isActive_fullName_idx').on(columns.role, columns.isActive, columns.fullName),
   ],
 )
 
@@ -537,6 +538,11 @@ export const clients = pgTable(
     index('clients_created_at_idx').on(columns.createdAt),
     uniqueIndex('clientCode_idx').on(columns.clientCode),
     uniqueIndex('normalizedName_idx').on(columns.normalizedName),
+    index('status_updatedAt_idx').on(columns.status, columns.updatedAt),
+    index('owningHeadRecruiter_status_idx').on(columns.owningHeadRecruiter, columns.status),
+    index('clientLead_status_idx').on(columns.clientLead, columns.status),
+    index('primaryOwner_status_idx').on(columns.primaryOwner, columns.status),
+    index('ownership_status_idx').on(columns.ownership, columns.status),
   ],
 )
 
@@ -671,13 +677,14 @@ export const jobs = pgTable(
     uniqueIndex('jobCode_idx').on(columns.jobCode),
     index('client_dedupeKey_idx').on(columns.client, columns.dedupeKey),
     index('status_priority_idx').on(columns.status, columns.priority),
-    index('status_updatedAt_idx').on(columns.status, columns.updatedAt),
+    index('status_updatedAt_1_idx').on(columns.status, columns.updatedAt),
     index('owningHeadRecruiter_status_updatedAt_idx').on(
       columns.owningHeadRecruiter,
       columns.status,
       columns.updatedAt,
     ),
     index('client_status_updatedAt_idx').on(columns.client, columns.status, columns.updatedAt),
+    index('createdBy_createdAt_idx').on(columns.createdBy, columns.createdAt),
   ],
 )
 
@@ -963,11 +970,9 @@ export const candidate_resumes = pgTable(
   {
     id: serial('id').primaryKey(),
     alt: varchar('alt').notNull(),
-    sourceJob: integer('source_job_id')
-      .notNull()
-      .references(() => jobs.id, {
-        onDelete: 'set null',
-      }),
+    sourceJob: integer('source_job_id').references(() => jobs.id, {
+      onDelete: 'set null',
+    }),
     uploadedBy: integer('uploaded_by_id').references(() => users.id, {
       onDelete: 'set null',
     }),
@@ -1213,11 +1218,9 @@ export const candidates = pgTable(
     }),
     linkedInURL: varchar('linked_in_u_r_l'),
     portfolioURL: varchar('portfolio_u_r_l'),
-    sourceJob: integer('source_job_id')
-      .notNull()
-      .references(() => jobs.id, {
-        onDelete: 'set null',
-      }),
+    sourceJob: integer('source_job_id').references(() => jobs.id, {
+      onDelete: 'set null',
+    }),
     sourcedBy: integer('sourced_by_id').references(() => users.id, {
       onDelete: 'set null',
     }),
@@ -1452,6 +1455,8 @@ export const applications = pgTable(
     index('candidateAccount_stage_idx').on(columns.candidateAccount, columns.stage),
     index('stage_updatedAt_idx').on(columns.stage, columns.updatedAt),
     index('recruiter_stage_updatedAt_idx').on(columns.recruiter, columns.stage, columns.updatedAt),
+    index('recruiter_createdAt_idx').on(columns.recruiter, columns.createdAt),
+    index('job_updatedAt_idx').on(columns.job, columns.updatedAt),
   ],
 )
 
@@ -1514,6 +1519,10 @@ export const application_stage_history = pgTable(
     index('application_stage_history_created_at_idx').on(columns.createdAt),
     index('application_changedAt_idx').on(columns.application, columns.changedAt),
     index('candidateAccount_changedAt_idx').on(columns.candidateAccount, columns.changedAt),
+    index('toStage_changedAt_idx').on(columns.toStage, columns.changedAt),
+    index('actor_changedAt_idx').on(columns.actor, columns.changedAt),
+    index('job_changedAt_idx').on(columns.job, columns.changedAt),
+    index('recruiter_changedAt_idx').on(columns.recruiter, columns.changedAt),
   ],
 )
 
@@ -1730,6 +1739,7 @@ export const interviews = pgTable(
     index('application_startTime_idx').on(columns.application, columns.startTime),
     index('status_startTime_idx').on(columns.status, columns.startTime),
     index('candidate_startTime_idx').on(columns.candidate, columns.startTime),
+    index('recruiter_startTime_idx').on(columns.recruiter, columns.startTime),
   ],
 )
 
@@ -1808,6 +1818,12 @@ export const placements = pgTable(
     uniqueIndex('application_idx').on(columns.application),
     index('status_tentativeStartDate_idx').on(columns.status, columns.tentativeStartDate),
     index('candidate_status_1_idx').on(columns.candidate, columns.status),
+    index('recruiter_createdAt_1_idx').on(columns.recruiter, columns.createdAt),
+    index('recruiter_status_createdAt_idx').on(
+      columns.recruiter,
+      columns.status,
+      columns.createdAt,
+    ),
   ],
 )
 
@@ -2392,6 +2408,11 @@ export const leave_requests = pgTable(
     index('leave_requests_created_at_idx').on(columns.createdAt),
     uniqueIndex('leaveRequestCode_idx').on(columns.leaveRequestCode),
     index('employee_status_startDate_idx').on(columns.employee, columns.status, columns.startDate),
+    index('employee_startDate_endDate_idx').on(
+      columns.employee,
+      columns.startDate,
+      columns.endDate,
+    ),
     index('requestedBy_status_idx').on(columns.requestedBy, columns.status),
   ],
 )
@@ -2745,6 +2766,7 @@ export const payroll_line_items = pgTable(
     uniqueIndex('payrollLineItemCode_idx').on(columns.payrollLineItemCode),
     uniqueIndex('payrollRun_employee_idx').on(columns.payrollRun, columns.employee),
     index('payrollRun_paymentStatus_idx').on(columns.payrollRun, columns.paymentStatus),
+    index('employee_createdAt_idx').on(columns.employee, columns.createdAt),
   ],
 )
 
@@ -2855,6 +2877,7 @@ export const payroll_payout_transactions = pgTable(
     uniqueIndex('payoutTxnCode_idx').on(columns.payoutTxnCode),
     uniqueIndex('payrollRun_lineItem_idx').on(columns.payrollRun, columns.lineItem),
     index('payoutStatus_updatedAt_idx').on(columns.payoutStatus, columns.updatedAt),
+    index('employee_initiatedAt_idx').on(columns.employee, columns.initiatedAt),
   ],
 )
 

@@ -12,10 +12,10 @@ const PAGE_SIZE = 10
 
 type CandidatesListPageProps = {
   searchParams?: Promise<{
+    client?: string
     exp?: string
     page?: string
     q?: string
-    skill?: string
     source?: string
   }>
 }
@@ -88,16 +88,16 @@ const getExperienceBucket = (years: number | null): 'junior' | 'mid' | 'senior' 
 }
 
 const buildQuery = ({
+  client,
   exp,
   page,
   q,
-  skill,
   source,
 }: {
+  client: string
   exp: string
   page: number
   q: string
-  skill: string
   source: string
 }): string => {
   const params = new URLSearchParams()
@@ -106,8 +106,8 @@ const buildQuery = ({
     params.set('q', q)
   }
 
-  if (skill) {
-    params.set('skill', skill)
+  if (client) {
+    params.set('client', client)
   }
 
   if (exp) {
@@ -131,52 +131,102 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
   const searchTerm = (resolvedSearchParams.q || '').trim()
+  const clientFilter = (resolvedSearchParams.client || '').trim()
   const sourceFilter = (resolvedSearchParams.source || '').trim()
-  const skillFilter = (resolvedSearchParams.skill || '').trim()
   const expFilter = (resolvedSearchParams.exp || '').trim()
   const requestedPage = Number.parseInt(String(resolvedSearchParams.page || '1'), 10)
   const canCreateCandidate = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
   const canCreateApplication = user.role === 'admin' || user.role === 'leadRecruiter'
+  const canEditCandidate = user.role === 'admin' || user.role === 'leadRecruiter'
 
-  const candidatesResult = await payload.find({
-    collection: 'candidates',
-    depth: 1,
-    limit: 240,
-    pagination: false,
-    overrideAccess: false,
-    select: {
-      candidateCode: true,
-      currentCompany: true,
-      currentRole: true,
-      email: true,
-      fullName: true,
-      id: true,
-      phone: true,
-      skills: true,
-      source: true,
-      sourceJob: true,
-      totalExperienceYears: true,
-      updatedAt: true,
-    },
-    sort: '-updatedAt',
-    user,
+  const [candidatesResult, clientsResult] = await Promise.all([
+    payload.find({
+      collection: 'candidates',
+      depth: 2,
+      limit: 240,
+      pagination: false,
+      overrideAccess: false,
+      select: {
+        candidateCode: true,
+        currentCompany: true,
+        currentRole: true,
+        email: true,
+        fullName: true,
+        id: true,
+        phone: true,
+        skills: true,
+        source: true,
+        sourceJob: true,
+        totalExperienceYears: true,
+        updatedAt: true,
+      },
+      sort: '-updatedAt',
+      user,
+    }),
+    payload.find({
+      collection: 'clients',
+      depth: 0,
+      limit: 240,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        clientCode: true,
+        id: true,
+        name: true,
+      },
+      sort: 'name',
+      user,
+    }),
+  ])
+  const visibleCandidateIDs = candidatesResult.docs.map((candidate) => candidate.id)
+  const applicationsForCandidates =
+    visibleCandidateIDs.length === 0
+      ? { docs: [] as Array<{ candidate?: unknown; job?: unknown }> }
+      : await payload.find({
+          collection: 'applications',
+          depth: 2,
+          limit: 600,
+          overrideAccess: false,
+          pagination: false,
+          select: {
+            candidate: true,
+            job: true,
+          },
+          user,
+          where: {
+            candidate: {
+              in: visibleCandidateIDs,
+            },
+          },
+        })
+  const applicationClientIDsByCandidateID = new Map<string, Set<string>>()
+
+  applicationsForCandidates.docs.forEach((application) => {
+    const candidateID = extractRelationshipID(application.candidate)
+    const job = application.job as { client?: unknown } | number | string | null | undefined
+    const clientID = typeof job === 'object' && job ? extractRelationshipID(job.client) : null
+
+    if (!candidateID || !clientID) {
+      return
+    }
+
+    const key = String(candidateID)
+    const current = applicationClientIDsByCandidateID.get(key) || new Set<string>()
+    current.add(String(clientID))
+    applicationClientIDsByCandidateID.set(key, current)
   })
 
-  const skillOptions = Array.from(
-    new Set(
-      candidatesResult.docs.flatMap((candidate) => {
-        const skills = Array.isArray(candidate.skills)
-          ? candidate.skills
-              .map((skill) => (typeof skill === 'string' ? skill.trim() : ''))
-              .filter((skill) => skill.length > 0)
-          : []
-        const role = (candidate.currentRole || '').trim()
-        return role ? [...skills, role] : skills
-      }),
-    ),
-  )
-    .sort((a, b) => a.localeCompare(b))
-    .slice(0, 30)
+  const getCandidateClientIDs = (candidate: (typeof candidatesResult.docs)[number]): Set<string> => {
+    const clientIDs = new Set<string>(applicationClientIDsByCandidateID.get(String(candidate.id)) || [])
+    const sourceJob = candidate.sourceJob as { client?: unknown } | number | string | null | undefined
+    const sourceJobClientID = typeof sourceJob === 'object' && sourceJob ? extractRelationshipID(sourceJob.client) : null
+
+    if (sourceJobClientID) {
+      clientIDs.add(String(sourceJobClientID))
+    }
+
+    return clientIDs
+  }
 
   const filteredCandidates = candidatesResult.docs.filter((candidate) => {
     const searchable = [
@@ -190,12 +240,6 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
       .join(' ')
       .toLowerCase()
 
-    const role = (candidate.currentRole || '').trim()
-    const skills = Array.isArray(candidate.skills)
-      ? candidate.skills
-          .map((skill) => (typeof skill === 'string' ? skill.trim() : ''))
-          .filter((skill) => skill.length > 0)
-      : []
     const source = String(candidate.source || '')
     const bucket = getExperienceBucket(
       typeof candidate.totalExperienceYears === 'number' ? candidate.totalExperienceYears : null,
@@ -209,13 +253,8 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
       return false
     }
 
-    if (skillFilter && normalize(role) !== normalize(skillFilter)) {
-      const wantedSkill = normalize(skillFilter)
-      const hasSkillMatch = skills.some((skill) => normalize(skill) === wantedSkill)
-
-      if (!hasSkillMatch) {
-        return false
-      }
+    if (clientFilter && !getCandidateClientIDs(candidate).has(clientFilter)) {
+      return false
     }
 
     if (expFilter && bucket !== expFilter) {
@@ -271,15 +310,15 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
             className="candidate-mgmt-search"
             defaultValue={searchTerm}
             name="q"
-            placeholder="Search by name, skill, company, phone..."
+            placeholder="Search by name, skill, client, company, phone..."
             type="search"
           />
 
-          <select className="candidate-mgmt-select" defaultValue={skillFilter} name="skill">
-            <option value="">Primary Skill</option>
-            {skillOptions.map((skill) => (
-              <option key={`skill-${skill}`} value={skill}>
-                {skill}
+          <select className="candidate-mgmt-select" defaultValue={clientFilter} name="client">
+            <option value="">Client</option>
+            {clientsResult.docs.map((client) => (
+              <option key={`candidate-client-${client.id}`} value={String(client.id)}>
+                {client.clientCode || `CLT-${client.id}`} · {client.name}
               </option>
             ))}
           </select>
@@ -389,6 +428,14 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                           <Link className="candidate-mgmt-action-link" href={`${APP_ROUTES.internal.candidates.detailBase}/${candidate.id}`}>
                             Open
                           </Link>
+                          {canEditCandidate ? (
+                            <Link
+                              className="candidate-mgmt-action-link candidate-mgmt-action-link-secondary"
+                              href={`${APP_ROUTES.internal.candidates.editBase}/${candidate.id}/edit`}
+                            >
+                              Edit
+                            </Link>
+                          ) : null}
                           {canCreateApplication ? (
                             <Link
                               className="candidate-mgmt-action-link candidate-mgmt-action-link-secondary"
@@ -416,10 +463,10 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
               aria-disabled={currentPage <= 1}
               className={`candidate-mgmt-page-btn ${currentPage <= 1 ? 'candidate-mgmt-page-btn-disabled' : ''}`}
               href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
+                client: clientFilter,
                 exp: expFilter,
                 page: Math.max(currentPage - 1, 1),
                 q: searchTerm,
-                skill: skillFilter,
                 source: sourceFilter,
               })}`}
             >
@@ -429,10 +476,10 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
             <Link
               className={`candidate-mgmt-page-btn ${leftPage === currentPage ? 'candidate-mgmt-page-btn-active' : ''}`}
               href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
+                client: clientFilter,
                 exp: expFilter,
                 page: leftPage,
                 q: searchTerm,
-                skill: skillFilter,
                 source: sourceFilter,
               })}`}
             >
@@ -443,10 +490,10 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
               <Link
                 className={`candidate-mgmt-page-btn ${rightPage === currentPage ? 'candidate-mgmt-page-btn-active' : ''}`}
                 href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
+                  client: clientFilter,
                   exp: expFilter,
                   page: rightPage,
                   q: searchTerm,
-                  skill: skillFilter,
                   source: sourceFilter,
                 })}`}
               >
@@ -458,10 +505,10 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
               aria-disabled={currentPage >= totalPages}
               className={`candidate-mgmt-page-btn ${currentPage >= totalPages ? 'candidate-mgmt-page-btn-disabled' : ''}`}
               href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
+                client: clientFilter,
                 exp: expFilter,
                 page: Math.min(currentPage + 1, totalPages),
                 q: searchTerm,
-                skill: skillFilter,
                 source: sourceFilter,
               })}`}
             >

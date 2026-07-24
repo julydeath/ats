@@ -147,8 +147,10 @@ const formatDateTime = (value: string | Date | null | undefined): string => {
 type JobBoardPageProps = {
   params: Promise<{ id: string }>
   searchParams?: Promise<{
+    error?: string
     q?: string
     stage?: string
+    success?: string
     tab?: string
   }>
 }
@@ -199,6 +201,7 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
   const stageFilter = (resolvedSearchParams.stage || '').trim()
   const canAddApplicant =
     user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
+  const canEditJob = user.role === 'admin' || user.role === 'leadRecruiter'
   const boardRole = BOARD_ROLE[user.role]
 
   try {
@@ -456,6 +459,12 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
               <span>Posted {formatDate(job.createdAt)}</span>
               <span>{applications.totalDocs} Applicants</span>
             </p>
+            {resolvedSearchParams.success === 'jobUpdated' ? (
+              <p className="jobs-feedback jobs-feedback-success">Job updated successfully.</p>
+            ) : null}
+            {resolvedSearchParams.error ? (
+              <p className="jobs-feedback jobs-feedback-error">{resolvedSearchParams.error}</p>
+            ) : null}
           </div>
 
           <div className="job-detail-hero-actions">
@@ -493,6 +502,14 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
               >
                 Schedule
               </Link>
+              {canEditJob ? (
+                <Link
+                  className="job-detail-button"
+                  href={`${APP_ROUTES.internal.jobs.editBase}/${job.id}/edit`}
+                >
+                  Edit Job
+                </Link>
+              ) : null}
               <Link
                 className="job-detail-button job-detail-button-ghost"
                 href={APP_ROUTES.internal.jobs.assigned}

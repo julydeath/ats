@@ -32,7 +32,6 @@ export const CandidateResumes: CollectionConfig = {
       name: 'sourceJob',
       type: 'relationship',
       relationTo: 'jobs',
-      required: true,
       index: true,
     },
     {

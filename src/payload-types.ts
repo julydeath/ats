@@ -334,7 +334,7 @@ export interface Candidate {
   resume?: (number | null) | CandidateResume;
   linkedInURL?: string | null;
   portfolioURL?: string | null;
-  sourceJob: number | Job;
+  sourceJob?: (number | null) | Job;
   sourcedBy?: (number | null) | User;
   candidateAccount?: (number | null) | CandidateUser;
   profileCompletedAt?: string | null;
@@ -415,7 +415,7 @@ export interface Candidate {
 export interface CandidateResume {
   id: number;
   alt: string;
-  sourceJob: number | Job;
+  sourceJob?: (number | null) | Job;
   uploadedBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
