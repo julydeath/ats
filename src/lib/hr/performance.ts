@@ -1,5 +1,6 @@
 import { APIError, type PayloadRequest } from 'payload'
 
+import { APPLICATION_FORWARD_STAGES } from '@/lib/constants/recruitment'
 import { readRelationID } from '@/lib/hr/common'
 import type { PerformanceCycle } from '@/payload-types'
 
@@ -140,7 +141,7 @@ export const generatePerformanceSnapshotsForCycle = async ({
           },
           {
             stage: {
-              in: ['screened', 'submittedToClient', 'interviewScheduled', 'interviewCleared', 'offerReleased', 'joined'],
+              in: APPLICATION_FORWARD_STAGES.filter((stage) => stage !== 'sourced'),
             },
           },
           {

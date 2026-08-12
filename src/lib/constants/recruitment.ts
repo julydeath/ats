@@ -156,27 +156,90 @@ export const CANDIDATE_INVITE_STATUS_OPTIONS = CANDIDATE_INVITE_STATUSES.map((va
   value,
 }))
 
+export const CANDIDATE_RESUME_IMPORT_BATCH_STATUSES = [
+  'queued',
+  'processing',
+  'readyForReview',
+  'completed',
+  'completedWithErrors',
+  'failed',
+] as const
+export type CandidateResumeImportBatchStatus =
+  (typeof CANDIDATE_RESUME_IMPORT_BATCH_STATUSES)[number]
+
+export const CANDIDATE_RESUME_IMPORT_BATCH_STATUS_LABELS: Record<
+  CandidateResumeImportBatchStatus,
+  string
+> = {
+  queued: 'Queued',
+  processing: 'Processing',
+  readyForReview: 'Ready for Review',
+  completed: 'Completed',
+  completedWithErrors: 'Completed with Errors',
+  failed: 'Failed',
+}
+
+export const CANDIDATE_RESUME_IMPORT_BATCH_STATUS_OPTIONS =
+  CANDIDATE_RESUME_IMPORT_BATCH_STATUSES.map((value) => ({
+    label: CANDIDATE_RESUME_IMPORT_BATCH_STATUS_LABELS[value],
+    value,
+  }))
+
+export const CANDIDATE_RESUME_IMPORT_ITEM_STATUSES = [
+  'queued',
+  'processing',
+  'needsReview',
+  'candidateCreated',
+  'failed',
+] as const
+export type CandidateResumeImportItemStatus = (typeof CANDIDATE_RESUME_IMPORT_ITEM_STATUSES)[number]
+
+export const CANDIDATE_RESUME_IMPORT_ITEM_STATUS_LABELS: Record<
+  CandidateResumeImportItemStatus,
+  string
+> = {
+  queued: 'Queued',
+  processing: 'Processing',
+  needsReview: 'Needs Review',
+  candidateCreated: 'Candidate Created',
+  failed: 'Failed',
+}
+
+export const CANDIDATE_RESUME_IMPORT_ITEM_STATUS_OPTIONS =
+  CANDIDATE_RESUME_IMPORT_ITEM_STATUSES.map((value) => ({
+    label: CANDIDATE_RESUME_IMPORT_ITEM_STATUS_LABELS[value],
+    value,
+  }))
+
 export const APPLICATION_STAGES = [
   'sourced',
   'screened',
+  'internalRejected',
   'submittedToClient',
-  'interviewScheduled',
-  'interviewCleared',
-  'offerReleased',
-  'joined',
-  'rejected',
+  'clientRejected',
+  'l1Scheduled',
+  'l1Rejected',
+  'l2Scheduled',
+  'l2Rejected',
+  'l3Scheduled',
+  'l3Rejected',
+  'hrDiscussion',
 ] as const
 export type ApplicationStage = (typeof APPLICATION_STAGES)[number]
 
 export const APPLICATION_STAGE_LABELS: Record<ApplicationStage, string> = {
   sourced: 'Sourced',
   screened: 'Screened',
+  internalRejected: 'Internal Rejected',
   submittedToClient: 'Submitted to Client',
-  interviewScheduled: 'Interview Scheduled',
-  interviewCleared: 'Interview Cleared',
-  offerReleased: 'Offer Released',
-  joined: 'Joined',
-  rejected: 'Rejected',
+  clientRejected: 'Client Rejected',
+  l1Scheduled: 'L1 Scheduled',
+  l1Rejected: 'L1 Rejected',
+  l2Scheduled: 'L2 Scheduled',
+  l2Rejected: 'L2 Rejected',
+  l3Scheduled: 'L3 Scheduled',
+  l3Rejected: 'L3 Rejected',
+  hrDiscussion: 'HR Discussion',
 }
 
 export const APPLICATION_STAGE_OPTIONS = APPLICATION_STAGES.map((value) => ({
@@ -184,12 +247,134 @@ export const APPLICATION_STAGE_OPTIONS = APPLICATION_STAGES.map((value) => ({
   value,
 }))
 
+export type ApplicationWorkflowRole = 'admin' | 'leadRecruiter' | 'recruiter'
+
+export const APPLICATION_REJECTION_STAGES = [
+  'internalRejected',
+  'clientRejected',
+  'l1Rejected',
+  'l2Rejected',
+  'l3Rejected',
+] as const satisfies readonly ApplicationStage[]
+
+export const APPLICATION_INTERVIEW_STAGES = [
+  'l1Scheduled',
+  'l2Scheduled',
+  'l3Scheduled',
+] as const satisfies readonly ApplicationStage[]
+
+export const APPLICATION_FORWARD_STAGES = [
+  'sourced',
+  'screened',
+  'submittedToClient',
+  'l1Scheduled',
+  'l2Scheduled',
+  'l3Scheduled',
+  'hrDiscussion',
+] as const satisfies readonly ApplicationStage[]
+
+export const APPLICATION_INVITE_READY_STAGES = [
+  'screened',
+  'submittedToClient',
+  'l1Scheduled',
+  'l2Scheduled',
+  'l3Scheduled',
+  'hrDiscussion',
+] as const satisfies readonly ApplicationStage[]
+
+export const APPLICATION_INTERVIEW_READY_STAGES = [
+  'submittedToClient',
+  'l1Scheduled',
+  'l2Scheduled',
+  'l3Scheduled',
+] as const satisfies readonly ApplicationStage[]
+
+export const APPLICATION_PLACEMENT_READY_STAGES = ['hrDiscussion'] as const satisfies readonly ApplicationStage[]
+
+const APPLICATION_RECRUITER_TRANSITIONS: Partial<Record<ApplicationStage, ApplicationStage[]>> = {
+  screened: ['submittedToClient'],
+  submittedToClient: ['clientRejected', 'l1Scheduled'],
+  l1Scheduled: ['l1Rejected', 'l2Scheduled'],
+  l2Scheduled: ['l2Rejected', 'l3Scheduled'],
+  l3Scheduled: ['l3Rejected', 'hrDiscussion'],
+}
+
+const APPLICATION_LEAD_TRANSITION_OVERRIDES: Partial<Record<ApplicationStage, ApplicationStage[]>> = {
+  sourced: ['screened', 'internalRejected'],
+  screened: ['sourced', 'submittedToClient', 'internalRejected'],
+}
+
+export const APPLICATION_PRIMARY_NEXT_STAGE: Partial<Record<ApplicationStage, ApplicationStage>> = {
+  sourced: 'screened',
+  screened: 'submittedToClient',
+  submittedToClient: 'l1Scheduled',
+  l1Scheduled: 'l2Scheduled',
+  l2Scheduled: 'l3Scheduled',
+  l3Scheduled: 'hrDiscussion',
+}
+
+export const getApplicationStageTargets = ({
+  role,
+  stage,
+}: {
+  role: ApplicationWorkflowRole
+  stage: ApplicationStage
+}): ApplicationStage[] => {
+  if (role === 'admin') {
+    return APPLICATION_STAGES.filter((item) => item !== stage)
+  }
+
+  if (role === 'recruiter') {
+    return APPLICATION_RECRUITER_TRANSITIONS[stage] || []
+  }
+
+  if (role === 'leadRecruiter') {
+    return APPLICATION_LEAD_TRANSITION_OVERRIDES[stage] || APPLICATION_RECRUITER_TRANSITIONS[stage] || []
+  }
+
+  return []
+}
+
+export const getApplicationPrimaryNextStage = (stage: ApplicationStage): ApplicationStage | null =>
+  APPLICATION_PRIMARY_NEXT_STAGE[stage] || null
+
+export const getApplicationRejectionTarget = (stage: ApplicationStage): ApplicationStage | null => {
+  if (stage === 'sourced' || stage === 'screened') return 'internalRejected'
+  if (stage === 'submittedToClient') return 'clientRejected'
+  if (stage === 'l1Scheduled') return 'l1Rejected'
+  if (stage === 'l2Scheduled') return 'l2Rejected'
+  if (stage === 'l3Scheduled') return 'l3Rejected'
+  return null
+}
+
+export const isApplicationRejectedStage = (stage: unknown): stage is (typeof APPLICATION_REJECTION_STAGES)[number] =>
+  typeof stage === 'string' && APPLICATION_REJECTION_STAGES.includes(stage as (typeof APPLICATION_REJECTION_STAGES)[number])
+
+export const isApplicationActiveStage = (stage: unknown): stage is ApplicationStage =>
+  typeof stage === 'string' &&
+  APPLICATION_STAGES.includes(stage as ApplicationStage) &&
+  !isApplicationRejectedStage(stage)
+
 const LEGACY_APPLICATION_STAGE_MAP: Record<string, ApplicationStage> = {
-  candidateApplied: 'joined',
-  candidateInvited: 'interviewScheduled',
+  candidateApplied: 'hrDiscussion',
+  candidateInvited: 'l1Scheduled',
+  clientRejected: 'clientRejected',
+  hrDiscussion: 'hrDiscussion',
+  internalRejected: 'internalRejected',
   internalReviewApproved: 'screened',
   internalReviewPending: 'sourced',
-  internalReviewRejected: 'rejected',
+  internalReviewRejected: 'internalRejected',
+  interviewCleared: 'l2Scheduled',
+  interviewScheduled: 'l1Scheduled',
+  joined: 'hrDiscussion',
+  l1Rejected: 'l1Rejected',
+  l1Scheduled: 'l1Scheduled',
+  l2Rejected: 'l2Rejected',
+  l2Scheduled: 'l2Scheduled',
+  l3Rejected: 'l3Rejected',
+  l3Scheduled: 'l3Scheduled',
+  offerReleased: 'hrDiscussion',
+  rejected: 'internalRejected',
   sentBackForCorrection: 'sourced',
   sourcedByRecruiter: 'sourced',
 }

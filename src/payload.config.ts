@@ -16,6 +16,8 @@ import { ClientLeadAssignments } from './collections/ClientLeadAssignments'
 import { JobLeadAssignments } from './collections/JobLeadAssignments'
 import { RecruiterJobAssignments } from './collections/RecruiterJobAssignments'
 import { CandidateResumes } from './collections/CandidateResumes'
+import { CandidateResumeImportBatches } from './collections/CandidateResumeImportBatches'
+import { CandidateResumeImportItems } from './collections/CandidateResumeImportItems'
 import { Candidates } from './collections/Candidates'
 import { CandidateActivities } from './collections/CandidateActivities'
 import { Applications } from './collections/Applications'
@@ -114,6 +116,8 @@ export default buildConfig({
     JobLeadAssignments,
     RecruiterJobAssignments,
     CandidateResumes,
+    CandidateResumeImportBatches,
+    CandidateResumeImportItems,
     Candidates,
     CandidateActivities,
     Applications,

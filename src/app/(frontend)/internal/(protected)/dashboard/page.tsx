@@ -5,7 +5,13 @@ import { getPayload } from 'payload'
 import { AdminWeeklyLoadChart, LeadVelocityChart } from '@/components/internal/charts/ATSCharts'
 import type { Application, ApplicationStageHistory } from '@/payload-types'
 import { requireInternalUser } from '@/lib/auth/internal-auth'
-import { APPLICATION_STAGE_LABELS } from '@/lib/constants/recruitment'
+import {
+  APPLICATION_FORWARD_STAGES,
+  APPLICATION_STAGE_LABELS,
+  APPLICATION_INTERVIEW_STAGES,
+  isApplicationActiveStage,
+  isApplicationRejectedStage,
+} from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { getHRAnalyticsSummary, normalizeHRAnalyticsFilters } from '@/lib/hr/analytics'
 
@@ -202,8 +208,8 @@ const buildRecruiterPerformance = (
 }
 
 const REVIEW_STAGE_TONE_CLASS: Record<string, 'green' | 'red' | 'blue'> = {
+  internalRejected: 'red',
   screened: 'green',
-  rejected: 'red',
   sourced: 'blue',
 }
 
@@ -269,7 +275,7 @@ export default async function InternalDashboardPage() {
           and: [
             {
               toStage: {
-                in: ['screened', 'rejected', 'sourced'],
+                in: ['screened', 'internalRejected', 'sourced'],
               },
             },
             {
@@ -316,7 +322,12 @@ export default async function InternalDashboardPage() {
             <h1>Lead Recruiter Overview</h1>
             <p>Strategic oversight for the current hiring cycle.</p>
           </div>
-          <div className="role-dashboard-date-chip">Cycle Ends: {toCycleDate(cycleEnds)}</div>
+          <div className="role-dashboard-header-actions">
+            <div className="role-dashboard-date-chip">Cycle Ends: {toCycleDate(cycleEnds)}</div>
+            <Link className="role-dashboard-chip-btn" href={APP_ROUTES.internal.candidates.imports}>
+              Resume Imports
+            </Link>
+          </div>
         </header>
 
         <section className="role-dashboard-kpi-grid role-dashboard-kpi-grid-3">
@@ -470,6 +481,9 @@ export default async function InternalDashboardPage() {
           interviewScheduledAt: true,
           id: true,
           job: true,
+          l1ScheduledAt: true,
+          l2ScheduledAt: true,
+          l3ScheduledAt: true,
           latestComment: true,
           stage: true,
           updatedAt: true,
@@ -482,22 +496,29 @@ export default async function InternalDashboardPage() {
     const typedJobs = assignedJobs.docs
     const typedApplications = recruiterApplications.docs as Pick<
       Application,
-      'candidate' | 'id' | 'interviewScheduledAt' | 'job' | 'latestComment' | 'stage' | 'updatedAt'
+      | 'candidate'
+      | 'id'
+      | 'interviewScheduledAt'
+      | 'job'
+      | 'l1ScheduledAt'
+      | 'l2ScheduledAt'
+      | 'l3ScheduledAt'
+      | 'latestComment'
+      | 'stage'
+      | 'updatedAt'
     >[]
 
-    const activeApplicationsCount = typedApplications.filter(
-      (app) => app.stage !== 'joined' && app.stage !== 'rejected',
-    ).length
-    const placementsCount = typedApplications.filter((app) => app.stage === 'joined').length
+    const activeApplicationsCount = typedApplications.filter((app) => isApplicationActiveStage(app.stage)).length
+    const placementsCount = typedApplications.filter((app) => app.stage === 'hrDiscussion').length
     const sentBackItems = typedApplications
       .filter((app) => app.stage === 'sourced')
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .slice(0, 2)
     const invitedCandidates = typedApplications
-      .filter((app) => app.stage === 'interviewScheduled')
+      .filter((app) => APPLICATION_INTERVIEW_STAGES.includes(app.stage as (typeof APPLICATION_INTERVIEW_STAGES)[number]))
       .sort((a, b) => {
-        const aTime = new Date(a.interviewScheduledAt || a.updatedAt).getTime()
-        const bTime = new Date(b.interviewScheduledAt || b.updatedAt).getTime()
+        const aTime = new Date(a.l1ScheduledAt || a.l2ScheduledAt || a.l3ScheduledAt || a.interviewScheduledAt || a.updatedAt).getTime()
+        const bTime = new Date(b.l1ScheduledAt || b.l2ScheduledAt || b.l3ScheduledAt || b.interviewScheduledAt || b.updatedAt).getTime()
         return aTime - bTime
       })
       .slice(0, 4)
@@ -517,9 +538,9 @@ export default async function InternalDashboardPage() {
       const jobID = String(job.id)
       const jobApplications = applicationsByJob.get(jobID) || []
       const inReviewCount = jobApplications.filter((app) =>
-        ['sourced', 'screened', 'submittedToClient', 'interviewScheduled', 'interviewCleared', 'offerReleased'].includes(app.stage),
+        APPLICATION_FORWARD_STAGES.includes(app.stage as (typeof APPLICATION_FORWARD_STAGES)[number]),
       ).length
-      const placedCount = jobApplications.filter((app) => app.stage === 'joined').length
+      const placedCount = jobApplications.filter((app) => app.stage === 'hrDiscussion').length
       const progressPercent =
         job.openings > 0 ? Math.min(Math.round((placedCount / job.openings) * 100), 100) : 0
       const candidatePreview = jobApplications.slice(0, 4).map((app) => readLabel(app.candidate, 'CD'))
@@ -545,8 +566,11 @@ export default async function InternalDashboardPage() {
             <button className="role-dashboard-chip-btn" type="button">
               This Month
             </button>
-            <Link className="role-dashboard-chip-btn" href={APP_ROUTES.internal.applications.list}>
-              Export Data
+            <Link className="role-dashboard-chip-btn" href={APP_ROUTES.internal.candidates.imports}>
+              Resume Imports
+            </Link>
+            <Link className="role-dashboard-chip-btn" href={APP_ROUTES.internal.candidates.importsNew}>
+              Bulk Upload
             </Link>
           </div>
         </header>
@@ -563,9 +587,9 @@ export default async function InternalDashboardPage() {
             <span>0% change</span>
           </article>
           <article className="role-dashboard-kpi-card">
-            <p>Placements</p>
+            <p>HR Discussions</p>
             <strong>{placementsCount}</strong>
-            <span>+5%</span>
+            <span>Final pipeline stage</span>
           </article>
         </section>
 
@@ -596,7 +620,7 @@ export default async function InternalDashboardPage() {
                     </div>
                     <div className="role-dashboard-job-meta">
                       <p>{item.inReviewCount} in review</p>
-                      <p>{item.progressPercent}% filled</p>
+                      <p>{item.progressPercent}% HR stage</p>
                     </div>
                     <Link href={`${APP_ROUTES.internal.jobs.detailBase}/${item.job.id}`}>Open Job Board</Link>
                   </article>
@@ -634,7 +658,13 @@ export default async function InternalDashboardPage() {
               ) : (
                 <div className="role-dashboard-interview-list">
                   {invitedCandidates.map((application) => {
-                    const interviewDate = toMonthDay(application.interviewScheduledAt || application.updatedAt)
+                    const interviewDate = toMonthDay(
+                      application.l1ScheduledAt ||
+                        application.l2ScheduledAt ||
+                        application.l3ScheduledAt ||
+                        application.interviewScheduledAt ||
+                        application.updatedAt,
+                    )
                     return (
                       <article className="role-dashboard-interview-row" key={`interview-${application.id}`}>
                         <span>
@@ -795,11 +825,15 @@ export default async function InternalDashboardPage() {
   const dateRangeLabel = `${toDayMonth(weekStart)} - ${toDayMonth(new Date())}`
   const pendingReviews = pendingReviewsCount.totalDocs
   const stageTitleByKey: Record<string, string> = {
-    interviewCleared: 'Interview Cleared',
-    interviewScheduled: 'Interview Scheduled',
-    joined: 'Candidate Joined',
-    offerReleased: 'Offer Released',
-    rejected: 'Candidate Rejected',
+    clientRejected: 'Client Rejected',
+    hrDiscussion: 'HR Discussion',
+    internalRejected: 'Internal Rejected',
+    l1Rejected: 'L1 Rejected',
+    l1Scheduled: 'L1 Scheduled',
+    l2Rejected: 'L2 Rejected',
+    l2Scheduled: 'L2 Scheduled',
+    l3Rejected: 'L3 Rejected',
+    l3Scheduled: 'L3 Scheduled',
     screened: 'Candidate Screened',
     sourced: 'New Candidate Sourced',
     submittedToClient: 'Submitted To Client',
@@ -811,11 +845,11 @@ export default async function InternalDashboardPage() {
     time: toRelativeTime(item.updatedAt),
     title: stageTitleByKey[item.stage] || 'Application Updated',
     tone:
-      item.stage === 'joined'
+      item.stage === 'hrDiscussion'
         ? 'green'
         : item.stage === 'sourced'
           ? 'blue'
-          : item.stage === 'rejected'
+          : isApplicationRejectedStage(item.stage)
             ? 'orange'
             : 'slate',
   }))
@@ -934,7 +968,8 @@ export default async function InternalDashboardPage() {
               <Link href={APP_ROUTES.internal.clients.list}>Add Client</Link>
               <Link href={APP_ROUTES.internal.assignments.head}>Assign Leads</Link>
               <Link href={`${APP_ROUTES.internal.jobs.assigned}#create-job`}>Post Job</Link>
-              <Link href={APP_ROUTES.internal.candidates.new}>Bulk Upload</Link>
+              <Link href={APP_ROUTES.internal.candidates.imports}>Resume Imports</Link>
+              <Link href={APP_ROUTES.internal.candidates.importsNew}>Bulk Upload</Link>
             </div>
             <div className="role-dashboard-task-list">
               <p>Pending Tasks</p>

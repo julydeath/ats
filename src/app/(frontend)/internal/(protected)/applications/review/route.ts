@@ -10,10 +10,10 @@ type ReviewAction = 'approve' | 'reject' | 'sendBack'
 
 const STAGE_BY_ACTION: Record<
   ReviewAction,
-  'screened' | 'rejected' | 'sourced'
+  'screened' | 'internalRejected' | 'sourced'
 > = {
   approve: 'screened',
-  reject: 'rejected',
+  reject: 'internalRejected',
   sendBack: 'sourced',
 }
 

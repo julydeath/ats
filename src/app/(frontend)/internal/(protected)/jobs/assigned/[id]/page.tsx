@@ -167,16 +167,10 @@ const TAB_LABELS: Record<JobTab, string> = {
   schedule: 'Schedule',
 }
 
-const STAGE_FILTER_OPTIONS: Array<{ label: string; value: string }> = [
-  { label: 'Sourced', value: 'sourced' },
-  { label: 'Screened', value: 'screened' },
-  { label: 'Submitted to Client', value: 'submittedToClient' },
-  { label: 'Interview Scheduled', value: 'interviewScheduled' },
-  { label: 'Interview Cleared', value: 'interviewCleared' },
-  { label: 'Offer Released', value: 'offerReleased' },
-  { label: 'Joined', value: 'joined' },
-  { label: 'Rejected', value: 'rejected' },
-]
+const STAGE_FILTER_OPTIONS: Array<{ label: string; value: ApplicationStage }> = APPLICATION_STAGES.map((value) => ({
+  label: APPLICATION_STAGE_LABELS[value],
+  value,
+}))
 
 const BOARD_ROLE: Record<InternalRole, 'admin' | 'leadRecruiter' | 'recruiter'> = {
   admin: 'admin',

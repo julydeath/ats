@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import {
+  APPLICATION_INTERVIEW_READY_STAGES,
   INTERVIEW_MODE_OPTIONS,
   INTERVIEW_ROUND_OPTIONS,
   INTERVIEW_STATUS_OPTIONS,
@@ -168,7 +169,7 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
           user,
           where: {
             stage: {
-              in: ['submittedToClient', 'interviewScheduled', 'interviewCleared'],
+              in: [...APPLICATION_INTERVIEW_READY_STAGES],
             },
           },
         })

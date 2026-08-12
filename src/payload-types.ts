@@ -77,6 +77,8 @@ export interface Config {
     'job-lead-assignments': JobLeadAssignment;
     'recruiter-job-assignments': RecruiterJobAssignment;
     'candidate-resumes': CandidateResume;
+    'candidate-resume-import-batches': CandidateResumeImportBatch;
+    'candidate-resume-import-items': CandidateResumeImportItem;
     candidates: Candidate;
     'candidate-activities': CandidateActivity;
     applications: Application;
@@ -120,6 +122,8 @@ export interface Config {
     'job-lead-assignments': JobLeadAssignmentsSelect<false> | JobLeadAssignmentsSelect<true>;
     'recruiter-job-assignments': RecruiterJobAssignmentsSelect<false> | RecruiterJobAssignmentsSelect<true>;
     'candidate-resumes': CandidateResumesSelect<false> | CandidateResumesSelect<true>;
+    'candidate-resume-import-batches': CandidateResumeImportBatchesSelect<false> | CandidateResumeImportBatchesSelect<true>;
+    'candidate-resume-import-items': CandidateResumeImportItemsSelect<false> | CandidateResumeImportItemsSelect<true>;
     candidates: CandidatesSelect<false> | CandidatesSelect<true>;
     'candidate-activities': CandidateActivitiesSelect<false> | CandidateActivitiesSelect<true>;
     applications: ApplicationsSelect<false> | ApplicationsSelect<true>;
@@ -654,6 +658,65 @@ export interface RecruiterJobAssignment {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidate-resume-import-batches".
+ */
+export interface CandidateResumeImportBatch {
+  id: number;
+  batchCode?: string | null;
+  status: 'queued' | 'processing' | 'readyForReview' | 'completed' | 'completedWithErrors' | 'failed';
+  sourceJob?: (number | null) | Job;
+  uploadedBy?: (number | null) | User;
+  totalCount?: number | null;
+  queuedCount?: number | null;
+  processingCount?: number | null;
+  parsedCount?: number | null;
+  failedCount?: number | null;
+  createdCount?: number | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidate-resume-import-items".
+ */
+export interface CandidateResumeImportItem {
+  id: number;
+  itemCode?: string | null;
+  batch: number | CandidateResumeImportBatch;
+  resume: number | CandidateResume;
+  sourceJob?: (number | null) | Job;
+  uploadedBy?: (number | null) | User;
+  status: 'queued' | 'processing' | 'needsReview' | 'candidateCreated' | 'failed';
+  parsedData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  extractedTextPreview?: string | null;
+  warnings?:
+    | {
+        message: string;
+        id?: string | null;
+      }[]
+    | null;
+  error?: string | null;
+  attemptCount?: number | null;
+  startedAt?: string | null;
+  processedAt?: string | null;
+  candidateCreatedAt?: string | null;
+  candidate?: (number | null) | Candidate;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "candidate-activities".
  */
 export interface CandidateActivity {
@@ -690,12 +753,16 @@ export interface Application {
   stage:
     | 'sourced'
     | 'screened'
+    | 'internalRejected'
     | 'submittedToClient'
-    | 'interviewScheduled'
-    | 'interviewCleared'
-    | 'offerReleased'
-    | 'joined'
-    | 'rejected';
+    | 'clientRejected'
+    | 'l1Scheduled'
+    | 'l1Rejected'
+    | 'l2Scheduled'
+    | 'l2Rejected'
+    | 'l3Scheduled'
+    | 'l3Rejected'
+    | 'hrDiscussion';
   notes?: string | null;
   latestComment?: string | null;
   pipelineSource?: string | null;
@@ -711,6 +778,15 @@ export interface Application {
   offerReleasedAt?: string | null;
   joinedAt?: string | null;
   rejectedAt?: string | null;
+  internalRejectedAt?: string | null;
+  clientRejectedAt?: string | null;
+  l1ScheduledAt?: string | null;
+  l1RejectedAt?: string | null;
+  l2ScheduledAt?: string | null;
+  l2RejectedAt?: string | null;
+  l3ScheduledAt?: string | null;
+  l3RejectedAt?: string | null;
+  hrDiscussionAt?: string | null;
   clientSubmittedAt?: string | null;
   interviewAt?: string | null;
   confirmedAt?: string | null;
@@ -739,23 +815,31 @@ export interface ApplicationStageHistory {
     | (
         | 'sourced'
         | 'screened'
+        | 'internalRejected'
         | 'submittedToClient'
-        | 'interviewScheduled'
-        | 'interviewCleared'
-        | 'offerReleased'
-        | 'joined'
-        | 'rejected'
+        | 'clientRejected'
+        | 'l1Scheduled'
+        | 'l1Rejected'
+        | 'l2Scheduled'
+        | 'l2Rejected'
+        | 'l3Scheduled'
+        | 'l3Rejected'
+        | 'hrDiscussion'
       )
     | null;
   toStage:
     | 'sourced'
     | 'screened'
+    | 'internalRejected'
     | 'submittedToClient'
-    | 'interviewScheduled'
-    | 'interviewCleared'
-    | 'offerReleased'
-    | 'joined'
-    | 'rejected';
+    | 'clientRejected'
+    | 'l1Scheduled'
+    | 'l1Rejected'
+    | 'l2Scheduled'
+    | 'l2Rejected'
+    | 'l3Scheduled'
+    | 'l3Rejected'
+    | 'hrDiscussion';
   comment?: string | null;
   actor?: (number | null) | User;
   changedAt: string;
@@ -1417,6 +1501,14 @@ export interface PayloadLockedDocument {
         value: number | CandidateResume;
       } | null)
     | ({
+        relationTo: 'candidate-resume-import-batches';
+        value: number | CandidateResumeImportBatch;
+      } | null)
+    | ({
+        relationTo: 'candidate-resume-import-items';
+        value: number | CandidateResumeImportItem;
+      } | null)
+    | ({
         relationTo: 'candidates';
         value: number | Candidate;
       } | null)
@@ -1830,6 +1922,55 @@ export interface CandidateResumesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidate-resume-import-batches_select".
+ */
+export interface CandidateResumeImportBatchesSelect<T extends boolean = true> {
+  batchCode?: T;
+  status?: T;
+  sourceJob?: T;
+  uploadedBy?: T;
+  totalCount?: T;
+  queuedCount?: T;
+  processingCount?: T;
+  parsedCount?: T;
+  failedCount?: T;
+  createdCount?: T;
+  startedAt?: T;
+  completedAt?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "candidate-resume-import-items_select".
+ */
+export interface CandidateResumeImportItemsSelect<T extends boolean = true> {
+  itemCode?: T;
+  batch?: T;
+  resume?: T;
+  sourceJob?: T;
+  uploadedBy?: T;
+  status?: T;
+  parsedData?: T;
+  extractedTextPreview?: T;
+  warnings?:
+    | T
+    | {
+        message?: T;
+        id?: T;
+      };
+  error?: T;
+  attemptCount?: T;
+  startedAt?: T;
+  processedAt?: T;
+  candidateCreatedAt?: T;
+  candidate?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "candidates_select".
  */
 export interface CandidatesSelect<T extends boolean = true> {
@@ -2022,6 +2163,15 @@ export interface ApplicationsSelect<T extends boolean = true> {
   offerReleasedAt?: T;
   joinedAt?: T;
   rejectedAt?: T;
+  internalRejectedAt?: T;
+  clientRejectedAt?: T;
+  l1ScheduledAt?: T;
+  l1RejectedAt?: T;
+  l2ScheduledAt?: T;
+  l2RejectedAt?: T;
+  l3ScheduledAt?: T;
+  l3RejectedAt?: T;
+  hrDiscussionAt?: T;
   clientSubmittedAt?: T;
   interviewAt?: T;
   confirmedAt?: T;

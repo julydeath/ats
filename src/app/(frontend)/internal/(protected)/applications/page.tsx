@@ -3,7 +3,13 @@ import Link from 'next/link'
 import { getPayload } from 'payload'
 
 import { requireInternalRole } from '@/lib/auth/internal-auth'
-import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
+import {
+  APPLICATION_STAGES,
+  APPLICATION_STAGE_LABELS,
+  getApplicationStageTargets,
+  isApplicationRejectedStage,
+  type ApplicationStage,
+} from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { INTERNAL_ROLE_LABELS, type InternalRole } from '@/lib/constants/roles'
 
@@ -37,28 +43,11 @@ const getAllowedTargets = ({
   role: InternalRole
   stage: ApplicationStage
 }): ApplicationStage[] => {
-  if (role === 'admin') {
-    return ['sourced', 'screened', 'submittedToClient', 'interviewScheduled', 'interviewCleared', 'offerReleased', 'joined', 'rejected'].filter(
-      (item) => item !== stage,
-    ) as ApplicationStage[]
-  }
-
-  if (role === 'recruiter') {
-    if (stage === 'screened') return ['submittedToClient']
-    if (stage === 'submittedToClient') return ['interviewScheduled', 'rejected']
-    if (stage === 'interviewScheduled') return ['interviewCleared', 'rejected']
-    if (stage === 'interviewCleared') return ['offerReleased', 'rejected']
-    if (stage === 'offerReleased') return ['joined', 'rejected']
+  if (role !== 'admin' && role !== 'leadRecruiter' && role !== 'recruiter') {
     return []
   }
 
-  if (stage === 'sourced') return ['screened', 'rejected']
-  if (stage === 'screened') return ['sourced', 'submittedToClient', 'rejected']
-  if (stage === 'submittedToClient') return ['interviewScheduled', 'rejected']
-  if (stage === 'interviewScheduled') return ['interviewCleared', 'rejected']
-  if (stage === 'interviewCleared') return ['offerReleased', 'rejected']
-  if (stage === 'offerReleased') return ['joined', 'rejected']
-  return []
+  return getApplicationStageTargets({ role, stage })
 }
 
 type StageColumn = {
@@ -68,14 +57,26 @@ type StageColumn = {
 }
 
 const BOARD_COLUMNS: readonly StageColumn[] = [
-  { key: 'sourced', label: 'Sourced', tone: 'slate' },
-  { key: 'screened', label: 'Screened', tone: 'orange' },
-  { key: 'submittedToClient', label: 'Submitted to Client', tone: 'teal' },
-  { key: 'interviewScheduled', label: 'Interview Scheduled', tone: 'blue' },
-  { key: 'interviewCleared', label: 'Interview Cleared', tone: 'blue' },
-  { key: 'offerReleased', label: 'Offer Released', tone: 'green' },
-  { key: 'joined', label: 'Joined', tone: 'green' },
-  { key: 'rejected', label: 'Rejected', tone: 'red' },
+  ...APPLICATION_STAGES.map(
+    (key): StageColumn => ({
+      key,
+      label: APPLICATION_STAGE_LABELS[key],
+      tone:
+        key === 'sourced'
+          ? 'slate'
+          : key === 'screened'
+            ? 'orange'
+            : key === 'submittedToClient'
+              ? 'teal'
+              : isApplicationRejectedStage(key)
+                ? 'red'
+                : key === 'hrDiscussion'
+                  ? 'green'
+                  : key === 'l1Scheduled'
+                    ? 'purple'
+                    : 'blue',
+    }),
+  ),
 ]
 
 type ApplicationsListPageProps = {

@@ -6,6 +6,7 @@ import {
   type ApplicationStage,
   INTERVIEW_MODE_OPTIONS,
   INTERVIEW_ROUND_OPTIONS,
+  type InterviewRound,
   INTERVIEW_STATUS_OPTIONS,
   type InterviewStatus,
 } from '@/lib/constants/recruitment'
@@ -40,13 +41,41 @@ const toISOOrNull = (value: unknown): string | null => {
 const isUpcomingStatus = (status: InterviewStatus): boolean =>
   status === 'scheduled' || status === 'rescheduled' || status === 'completed'
 
-const stageFromInterviewStatus = (status: InterviewStatus): ApplicationStage | null => {
+const scheduledStageFromRound = (round: InterviewRound): ApplicationStage => {
+  if (round === 'technicalRound2') {
+    return 'l2Scheduled'
+  }
+
+  if (round === 'managerial' || round === 'final') {
+    return 'l3Scheduled'
+  }
+
+  if (round === 'hr') {
+    return 'hrDiscussion'
+  }
+
+  return 'l1Scheduled'
+}
+
+const completedStageFromRound = (round: InterviewRound): ApplicationStage => {
+  if (round === 'technicalRound2') {
+    return 'l3Scheduled'
+  }
+
+  if (round === 'managerial' || round === 'final' || round === 'hr') {
+    return 'hrDiscussion'
+  }
+
+  return 'l2Scheduled'
+}
+
+const stageFromInterviewStatus = (status: InterviewStatus, round: InterviewRound): ApplicationStage | null => {
   if (status === 'scheduled' || status === 'rescheduled') {
-    return 'interviewScheduled'
+    return scheduledStageFromRound(round)
   }
 
   if (status === 'completed') {
-    return 'interviewCleared'
+    return completedStageFromRound(round)
   }
 
   return null
@@ -294,8 +323,9 @@ export const Interviews: CollectionConfig = {
       async ({ doc, req }) => {
         const applicationID = extractRelationshipID(doc.application)
         const status = String(doc.status || 'scheduled') as InterviewStatus
+        const round = String(doc.interviewRound || 'screening') as InterviewRound
         const startTimeISO = toISOOrNull(String(doc.startTime || ''))
-        const transitionStage = stageFromInterviewStatus(status)
+        const transitionStage = stageFromInterviewStatus(status, round)
 
         if (!applicationID || !startTimeISO || !isUpcomingStatus(status)) {
           return doc

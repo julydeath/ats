@@ -6,6 +6,7 @@ import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { CANDIDATE_SOURCES, type CandidateSource } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
+import { updateResumeImportBatchStats } from '@/lib/candidates/resume-imports'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const RESUME_MIME_TYPES = new Set<string>([
@@ -82,6 +83,43 @@ const buildCreateRedirectURL = (request: Request): URL => new URL(APP_ROUTES.int
 const buildEditRedirectURL = (request: Request, candidateID: number): URL =>
   new URL(`${APP_ROUTES.internal.candidates.editBase}/${candidateID}/edit`, request.url)
 
+const buildImportReviewRedirectURL = ({
+  importBatchID,
+  importItemID,
+  request,
+}: {
+  importBatchID: number | null
+  importItemID: number | null
+  request: Request
+}): URL | null => {
+  if (!importBatchID || !importItemID) {
+    return null
+  }
+
+  return new URL(
+    `${APP_ROUTES.internal.candidates.imports}/${importBatchID}/items/${importItemID}/review`,
+    request.url,
+  )
+}
+
+const buildFailureRedirectURL = ({
+  candidateID,
+  importBatchID,
+  importItemID,
+  request,
+}: {
+  candidateID: number | null
+  importBatchID: number | null
+  importItemID: number | null
+  request: Request
+}): URL => {
+  if (candidateID) {
+    return buildEditRedirectURL(request, candidateID)
+  }
+
+  return buildImportReviewRedirectURL({ importBatchID, importItemID, request }) || buildCreateRedirectURL(request)
+}
+
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers: await getPayloadAuthHeaders(request.headers) })
@@ -93,6 +131,9 @@ export async function POST(request: Request) {
 
   const formData = await request.formData()
   const candidateID = parseNumericID(formData.get('candidateId'))
+  const importBatchID = parseNumericID(formData.get('importBatchId'))
+  const importItemID = parseNumericID(formData.get('importItemId'))
+  const existingResumeID = parseNumericID(formData.get('resumeId'))
 
   const fullName = readString(formData.get('fullName'))
   const prefix = readString(formData.get('prefix')) || undefined
@@ -165,13 +206,13 @@ export async function POST(request: Request) {
   const primarySkills = parseList(primarySkillsInput).slice(0, 20)
 
   if (!fullName) {
-    const failureURL = candidateID ? buildEditRedirectURL(request, candidateID) : buildCreateRedirectURL(request)
+    const failureURL = buildFailureRedirectURL({ candidateID, importBatchID, importItemID, request })
     failureURL.searchParams.set('error', 'Candidate name is required.')
     return NextResponse.redirect(failureURL, 303)
   }
 
   if (!email && !phone) {
-    const failureURL = candidateID ? buildEditRedirectURL(request, candidateID) : buildCreateRedirectURL(request)
+    const failureURL = buildFailureRedirectURL({ candidateID, importBatchID, importItemID, request })
     failureURL.searchParams.set('error', 'Provide at least one contact method: email or phone.')
     return NextResponse.redirect(failureURL, 303)
   }
@@ -181,18 +222,29 @@ export async function POST(request: Request) {
     expectedPayMax !== undefined &&
     expectedPayMin > expectedPayMax
   ) {
-    const failureURL = candidateID ? buildEditRedirectURL(request, candidateID) : buildCreateRedirectURL(request)
+    const failureURL = buildFailureRedirectURL({ candidateID, importBatchID, importItemID, request })
     failureURL.searchParams.set('error', 'Expected pay min cannot be greater than expected pay max.')
     return NextResponse.redirect(failureURL, 303)
   }
 
   const resumeInput = formData.get('resume')
-  let uploadedResumeID: number | null = null
+  let createdResumeID: number | null = null
+  let candidateResumeID = existingResumeID
 
   try {
+    if (existingResumeID) {
+      await payload.findByID({
+        collection: 'candidate-resumes',
+        depth: 0,
+        id: existingResumeID,
+        overrideAccess: false,
+        user: internalUser,
+      })
+    }
+
     if (resumeInput instanceof File && resumeInput.size > 0) {
       if (!RESUME_MIME_TYPES.has(resumeInput.type)) {
-        const failureURL = candidateID ? buildEditRedirectURL(request, candidateID) : buildCreateRedirectURL(request)
+        const failureURL = buildFailureRedirectURL({ candidateID, importBatchID, importItemID, request })
         failureURL.searchParams.set('error', 'Resume must be a PDF, DOC, or DOCX file.')
         return NextResponse.redirect(failureURL, 303)
       }
@@ -216,7 +268,8 @@ export async function POST(request: Request) {
         user: internalUser,
       })
 
-      uploadedResumeID = resumeDoc.id
+      createdResumeID = resumeDoc.id
+      candidateResumeID = resumeDoc.id
     }
 
     const candidateData = {
@@ -283,7 +336,7 @@ export async function POST(request: Request) {
       workAuthorizationExpiry,
       workPhone,
       lastName,
-      ...(uploadedResumeID !== null ? { resume: uploadedResumeID } : {}),
+      ...(candidateResumeID !== null ? { resume: candidateResumeID } : {}),
       ...(!candidateID ? { sourcedBy: currentUserID ?? undefined } : {}),
     }
 
@@ -355,6 +408,52 @@ export async function POST(request: Request) {
       }
     }
 
+    if (!candidateID && importItemID) {
+      try {
+        const importItem = await payload.findByID({
+          collection: 'candidate-resume-import-items',
+          depth: 0,
+          id: importItemID,
+          overrideAccess: false,
+          select: {
+            batch: true,
+          },
+          user: internalUser,
+        })
+        const batchID = toNumericID(extractRelationshipID(importItem.batch)) || importBatchID
+
+        if (importBatchID && batchID && importBatchID !== batchID) {
+          throw new Error('Import item does not belong to this batch.')
+        }
+
+        await payload.update({
+          collection: 'candidate-resume-import-items',
+          data: {
+            candidate: candidate.id,
+            candidateCreatedAt: new Date().toISOString(),
+            error: null,
+            status: 'candidateCreated',
+          },
+          id: importItemID,
+          overrideAccess: false,
+          user: internalUser,
+        })
+
+        if (batchID) {
+          await updateResumeImportBatchStats({
+            batchID,
+            payload,
+          })
+        }
+      } catch (error) {
+        const importWarning =
+          error instanceof Error ? error.message : 'Candidate saved, but import status could not be updated.'
+        applicationWarning = applicationWarning
+          ? `${applicationWarning} ${importWarning}`
+          : importWarning
+      }
+    }
+
     const successURL = new URL(`${APP_ROUTES.internal.candidates.detailBase}/${candidate.id}`, request.url)
     successURL.searchParams.set(
       'success',
@@ -365,11 +464,11 @@ export async function POST(request: Request) {
     }
     return NextResponse.redirect(successURL, 303)
   } catch (error) {
-    if (uploadedResumeID !== null) {
+    if (createdResumeID !== null) {
       try {
         await payload.delete({
           collection: 'candidate-resumes',
-          id: uploadedResumeID,
+          id: createdResumeID,
           overrideAccess: false,
           user: internalUser,
         })
@@ -378,7 +477,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const failureURL = candidateID ? buildEditRedirectURL(request, candidateID) : buildCreateRedirectURL(request)
+    const failureURL = buildFailureRedirectURL({ candidateID, importBatchID, importItemID, request })
     failureURL.searchParams.set(
       'error',
       error instanceof Error ? error.message : 'Unable to save candidate. Please retry.',

@@ -88,12 +88,22 @@ export type CandidateFormInitialData = {
 }
 
 type CandidateCreateFormProps = {
+  cancelHref?: string
+  descriptionOverride?: string
   errorMessage?: string
+  formAction?: string
+  hiddenFields?: Array<{
+    name: string
+    value: number | string
+  }>
   initialData?: CandidateFormInitialData
   jobs: JobOption[]
   mode?: 'create' | 'edit'
   owners: OwnerOption[]
   selectedJobID: string
+  showParser?: boolean
+  submitLabelOverride?: string
+  titleOverride?: string
 }
 
 type ParserResponse = {
@@ -157,12 +167,19 @@ const countParsedValue = (value: unknown): boolean => {
 }
 
 export const CandidateCreateForm = ({
+  cancelHref = APP_ROUTES.internal.candidates.list,
+  descriptionOverride,
   errorMessage,
+  formAction = APP_ROUTES.internal.candidates.create,
+  hiddenFields = [],
   initialData,
   jobs,
   mode = 'create',
   owners,
   selectedJobID,
+  showParser = true,
+  submitLabelOverride,
+  titleOverride,
 }: CandidateCreateFormProps) => {
   const [isParsing, setIsParsing] = useState(false)
   const [parseError, setParseError] = useState<string | null>(null)
@@ -297,11 +314,13 @@ export const CandidateCreateForm = ({
   const isEditMode = mode === 'edit'
   const formJobID = initialData?.sourceJobID ? String(initialData.sourceJobID) : selectedJobID
   const formOwnerID = initialData?.ownershipID ? String(initialData.ownershipID) : ''
-  const formTitle = isEditMode ? 'Edit Candidate' : 'Add Candidate'
-  const formDescription = isEditMode
-    ? 'Update the candidate master profile and optionally refresh parsed resume details.'
-    : 'Create one candidate master profile and optionally auto-fill details from resume parser.'
-  const submitLabel = isEditMode ? 'Update Candidate' : 'Save Candidate'
+  const formTitle = titleOverride || (isEditMode ? 'Edit Candidate' : 'Add Candidate')
+  const formDescription =
+    descriptionOverride ||
+    (isEditMode
+      ? 'Update the candidate master profile and optionally refresh parsed resume details.'
+      : 'Create one candidate master profile and optionally auto-fill details from resume parser.')
+  const submitLabel = submitLabelOverride || (isEditMode ? 'Update Candidate' : 'Save Candidate')
 
   const applyParsedData = (data: ParsedResumeData) => {
     let appliedCount = 0
@@ -475,6 +494,9 @@ export const CandidateCreateForm = ({
           <p>{formDescription}</p>
         </div>
         <div className="candidate-intake-header-actions">
+          <Link className="candidate-intake-head-btn" href={APP_ROUTES.internal.candidates.importsNew}>
+            Bulk Import
+          </Link>
           <Link className="candidate-intake-head-btn" href={APP_ROUTES.internal.jobs.assigned}>
             Jobs
           </Link>
@@ -496,12 +518,15 @@ export const CandidateCreateForm = ({
       ) : null}
 
       <form
-        action={APP_ROUTES.internal.candidates.create}
+        action={formAction}
         className="candidate-intake-form"
         encType="multipart/form-data"
         method="post"
       >
         {initialData?.id ? <input name="candidateId" type="hidden" value={String(initialData.id)} /> : null}
+        {hiddenFields.map((field) => (
+          <input key={`hidden-${field.name}`} name={field.name} type="hidden" value={String(field.value)} />
+        ))}
         <div className="candidate-intake-grid">
           <div className="candidate-intake-main">
             <section className="candidate-intake-card">
@@ -849,58 +874,62 @@ export const CandidateCreateForm = ({
           </div>
 
           <aside className="candidate-intake-side">
-            <article className="candidate-intake-card">
-              <h2>Resume Upload + Parser</h2>
-              <div className="candidate-intake-parser">
-                <label>
-                  <span>Resume (PDF / DOC / DOCX)</span>
-                  <input
-                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    name="resume"
-                    ref={resumeRef}
-                    type="file"
-                  />
-                </label>
-                <button
-                  className="candidate-intake-parse-btn"
-                  disabled={isParsing}
-                  onClick={(event) => {
-                    event.preventDefault()
-                    void handleParseResume()
-                  }}
-                  type="button"
-                >
-                  {isParsing ? 'Parsing Resume...' : 'Parse Resume & Autofill'}
-                </button>
-                <p className="candidate-intake-parser-help">
-                  Parser currently extracts best results from PDF or DOCX. DOC upload works, but extraction may be limited.
-                </p>
-              </div>
-            </article>
+            {showParser ? (
+              <>
+                <article className="candidate-intake-card">
+                  <h2>Resume Upload + Parser</h2>
+                  <div className="candidate-intake-parser">
+                    <label>
+                      <span>Resume (PDF / DOC / DOCX)</span>
+                      <input
+                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        name="resume"
+                        ref={resumeRef}
+                        type="file"
+                      />
+                    </label>
+                    <button
+                      className="candidate-intake-parse-btn"
+                      disabled={isParsing}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        void handleParseResume()
+                      }}
+                      type="button"
+                    >
+                      {isParsing ? 'Parsing Resume...' : 'Parse Resume & Autofill'}
+                    </button>
+                    <p className="candidate-intake-parser-help">
+                      Parser currently extracts best results from PDF or DOCX. DOC upload works, but extraction may be limited.
+                    </p>
+                  </div>
+                </article>
 
-            <article className="candidate-intake-card">
-              <h2>Parser Snapshot</h2>
-              <div className="candidate-intake-parser-summary">
-                <p>
-                  Coverage: <strong>{parsedData ? `${parserCoverage} fields detected` : 'Not parsed yet'}</strong>
-                </p>
-                {parseWarnings.length > 0 ? (
-                  <ul>
-                    {parseWarnings.map((warning, index) => (
-                      <li key={`warning-${index + 1}`}>{warning}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No parser warnings.</p>
-                )}
-                {textPreview ? (
-                  <details>
-                    <summary>See extracted text preview</summary>
-                    <pre>{textPreview}</pre>
-                  </details>
-                ) : null}
-              </div>
-            </article>
+                <article className="candidate-intake-card">
+                  <h2>Parser Snapshot</h2>
+                  <div className="candidate-intake-parser-summary">
+                    <p>
+                      Coverage: <strong>{parsedData ? `${parserCoverage} fields detected` : 'Not parsed yet'}</strong>
+                    </p>
+                    {parseWarnings.length > 0 ? (
+                      <ul>
+                        {parseWarnings.map((warning, index) => (
+                          <li key={`warning-${index + 1}`}>{warning}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>No parser warnings.</p>
+                    )}
+                    {textPreview ? (
+                      <details>
+                        <summary>See extracted text preview</summary>
+                        <pre>{textPreview}</pre>
+                      </details>
+                    ) : null}
+                  </div>
+                </article>
+              </>
+            ) : null}
 
             <article className="candidate-intake-card">
               <h2>Visible Jobs</h2>
@@ -923,7 +952,7 @@ export const CandidateCreateForm = ({
         </div>
 
         <footer className="candidate-intake-footer">
-          <Link className="candidate-intake-cancel" href={APP_ROUTES.internal.candidates.list}>
+          <Link className="candidate-intake-cancel" href={cancelHref}>
             Cancel
           </Link>
           <button

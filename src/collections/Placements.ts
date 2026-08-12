@@ -304,7 +304,7 @@ export const Placements: CollectionConfig = {
           data: {
             latestComment: `Placement ${String(doc.placementCode || `PLC-${doc.id}`)} recorded with ${status} status.`,
             placedAt: placementMoment,
-            stage: 'joined',
+            stage: 'hrDiscussion',
           },
           id: applicationID,
           overrideAccess: true,

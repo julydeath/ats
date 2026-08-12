@@ -287,11 +287,11 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
 
         <div className="candidate-mgmt-header-actions">
           {canCreateCandidate ? (
-            <Link className="candidate-mgmt-upload-card" href={APP_ROUTES.internal.candidates.new}>
+            <Link className="candidate-mgmt-upload-card" href={APP_ROUTES.internal.candidates.importsNew}>
               <span className="candidate-mgmt-upload-icon">↑</span>
               <span>
-                <strong>Resume Upload</strong>
-                <small>Drag & drop or browse files</small>
+                <strong>Bulk Resume Upload</strong>
+                <small>Upload up to 5 resumes</small>
               </span>
             </Link>
           ) : null}

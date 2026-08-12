@@ -64,6 +64,12 @@ const ADMIN_NAV: readonly InternalNavGroup[] = [
         icon: 'candidates',
       },
       {
+        label: 'Resume Imports',
+        href: APP_ROUTES.internal.candidates.imports,
+        description: 'Review bulk resume parsing batches.',
+        icon: 'candidates',
+      },
+      {
         label: 'Applications',
         href: APP_ROUTES.internal.applications.list,
         description: 'Track stage pipeline and candidate progress.',
@@ -156,6 +162,12 @@ const LEAD_RECRUITER_NAV: readonly InternalNavGroup[] = [
         icon: 'candidates',
       },
       {
+        label: 'Resume Imports',
+        href: APP_ROUTES.internal.candidates.imports,
+        description: 'Review bulk resume parsing batches.',
+        icon: 'candidates',
+      },
+      {
         label: 'Recruiters',
         href: APP_ROUTES.internal.assignments.lead,
         description: 'Assign jobs to recruiters and rebalance capacity.',
@@ -245,6 +257,12 @@ const RECRUITER_NAV: readonly InternalNavGroup[] = [
         label: 'Candidates',
         href: APP_ROUTES.internal.candidates.list,
         description: 'Create and update candidate profiles.',
+        icon: 'candidates',
+      },
+      {
+        label: 'Resume Imports',
+        href: APP_ROUTES.internal.candidates.imports,
+        description: 'Review bulk resume parsing batches.',
         icon: 'candidates',
       },
       {

@@ -194,7 +194,7 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
       user,
       where: {
         toStage: {
-          in: ['screened', 'rejected', 'sourced'],
+          in: ['screened', 'internalRejected', 'sourced'],
         },
       },
     }),

@@ -96,6 +96,14 @@ export const enum_recruiter_job_assignments_status = pgEnum(
   'enum_recruiter_job_assignments_status',
   ['active', 'inactive'],
 )
+export const enum_candidate_resume_import_batches_status = pgEnum(
+  'enum_candidate_resume_import_batches_status',
+  ['queued', 'processing', 'readyForReview', 'completed', 'completedWithErrors', 'failed'],
+)
+export const enum_candidate_resume_import_items_status = pgEnum(
+  'enum_candidate_resume_import_items_status',
+  ['queued', 'processing', 'needsReview', 'candidateCreated', 'failed'],
+)
 export const enum_candidates_source = pgEnum('enum_candidates_source', [
   'naukri',
   'linkedin',
@@ -127,24 +135,32 @@ export const enum_candidate_activities_status = pgEnum('enum_candidate_activitie
 export const enum_applications_stage = pgEnum('enum_applications_stage', [
   'sourced',
   'screened',
+  'internalRejected',
   'submittedToClient',
-  'interviewScheduled',
-  'interviewCleared',
-  'offerReleased',
-  'joined',
-  'rejected',
+  'clientRejected',
+  'l1Scheduled',
+  'l1Rejected',
+  'l2Scheduled',
+  'l2Rejected',
+  'l3Scheduled',
+  'l3Rejected',
+  'hrDiscussion',
 ])
 export const enum_application_stage_history_from_stage = pgEnum(
   'enum_application_stage_history_from_stage',
   [
     'sourced',
     'screened',
+    'internalRejected',
     'submittedToClient',
-    'interviewScheduled',
-    'interviewCleared',
-    'offerReleased',
-    'joined',
-    'rejected',
+    'clientRejected',
+    'l1Scheduled',
+    'l1Rejected',
+    'l2Scheduled',
+    'l2Rejected',
+    'l3Scheduled',
+    'l3Rejected',
+    'hrDiscussion',
   ],
 )
 export const enum_application_stage_history_to_stage = pgEnum(
@@ -152,12 +168,16 @@ export const enum_application_stage_history_to_stage = pgEnum(
   [
     'sourced',
     'screened',
+    'internalRejected',
     'submittedToClient',
-    'interviewScheduled',
-    'interviewCleared',
-    'offerReleased',
-    'joined',
-    'rejected',
+    'clientRejected',
+    'l1Scheduled',
+    'l1Rejected',
+    'l2Scheduled',
+    'l2Rejected',
+    'l3Scheduled',
+    'l3Rejected',
+    'hrDiscussion',
   ],
 )
 export const enum_candidate_invites_status = pgEnum('enum_candidate_invites_status', [
@@ -1001,6 +1021,124 @@ export const candidate_resumes = pgTable(
   ],
 )
 
+export const candidate_resume_import_batches = pgTable(
+  'candidate_resume_import_batches',
+  {
+    id: serial('id').primaryKey(),
+    batchCode: varchar('batch_code'),
+    status: enum_candidate_resume_import_batches_status('status').notNull().default('queued'),
+    sourceJob: integer('source_job_id').references(() => jobs.id, {
+      onDelete: 'set null',
+    }),
+    uploadedBy: integer('uploaded_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    totalCount: numeric('total_count', { mode: 'number' }).default(0),
+    queuedCount: numeric('queued_count', { mode: 'number' }).default(0),
+    processingCount: numeric('processing_count', { mode: 'number' }).default(0),
+    parsedCount: numeric('parsed_count', { mode: 'number' }).default(0),
+    failedCount: numeric('failed_count', { mode: 'number' }).default(0),
+    createdCount: numeric('created_count', { mode: 'number' }).default(0),
+    startedAt: timestamp('started_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    completedAt: timestamp('completed_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    notes: varchar('notes'),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    uniqueIndex('candidate_resume_import_batches_batch_code_idx').on(columns.batchCode),
+    index('candidate_resume_import_batches_status_idx').on(columns.status),
+    index('candidate_resume_import_batches_source_job_idx').on(columns.sourceJob),
+    index('candidate_resume_import_batches_uploaded_by_idx').on(columns.uploadedBy),
+    index('candidate_resume_import_batches_started_at_idx').on(columns.startedAt),
+    index('candidate_resume_import_batches_completed_at_idx').on(columns.completedAt),
+    index('candidate_resume_import_batches_updated_at_idx').on(columns.updatedAt),
+    index('candidate_resume_import_batches_created_at_idx').on(columns.createdAt),
+  ],
+)
+
+export const candidate_resume_import_items_warnings = pgTable(
+  'candidate_resume_import_items_warnings',
+  {
+    _order: integer('_order').notNull(),
+    _parentID: integer('_parent_id').notNull(),
+    id: varchar('id').primaryKey(),
+    message: varchar('message').notNull(),
+  },
+  (columns) => [
+    index('candidate_resume_import_items_warnings_order_idx').on(columns._order),
+    index('candidate_resume_import_items_warnings_parent_id_idx').on(columns._parentID),
+    foreignKey({
+      columns: [columns['_parentID']],
+      foreignColumns: [candidate_resume_import_items.id],
+      name: 'candidate_resume_import_items_warnings_parent_id_fk',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const candidate_resume_import_items = pgTable(
+  'candidate_resume_import_items',
+  {
+    id: serial('id').primaryKey(),
+    itemCode: varchar('item_code'),
+    batch: integer('batch_id')
+      .notNull()
+      .references(() => candidate_resume_import_batches.id, {
+        onDelete: 'set null',
+      }),
+    resume: integer('resume_id')
+      .notNull()
+      .references(() => candidate_resumes.id, {
+        onDelete: 'set null',
+      }),
+    sourceJob: integer('source_job_id').references(() => jobs.id, {
+      onDelete: 'set null',
+    }),
+    uploadedBy: integer('uploaded_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    status: enum_candidate_resume_import_items_status('status').notNull().default('queued'),
+    parsedData: jsonb('parsed_data'),
+    extractedTextPreview: varchar('extracted_text_preview'),
+    error: varchar('error'),
+    attemptCount: numeric('attempt_count', { mode: 'number' }).default(0),
+    startedAt: timestamp('started_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    processedAt: timestamp('processed_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    candidateCreatedAt: timestamp('candidate_created_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    candidate: integer('candidate_id').references(() => candidates.id, {
+      onDelete: 'set null',
+    }),
+    updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'string', withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    uniqueIndex('candidate_resume_import_items_item_code_idx').on(columns.itemCode),
+    index('candidate_resume_import_items_batch_idx').on(columns.batch),
+    index('candidate_resume_import_items_resume_idx').on(columns.resume),
+    index('candidate_resume_import_items_source_job_idx').on(columns.sourceJob),
+    index('candidate_resume_import_items_uploaded_by_idx').on(columns.uploadedBy),
+    index('candidate_resume_import_items_status_idx').on(columns.status),
+    index('candidate_resume_import_items_started_at_idx').on(columns.startedAt),
+    index('candidate_resume_import_items_processed_at_idx').on(columns.processedAt),
+    index('candidate_resume_import_items_candidate_created_at_idx').on(columns.candidateCreatedAt),
+    index('candidate_resume_import_items_candidate_idx').on(columns.candidate),
+    index('candidate_resume_import_items_updated_at_idx').on(columns.updatedAt),
+    index('candidate_resume_import_items_created_at_idx').on(columns.createdAt),
+  ],
+)
+
 export const candidates_education_details = pgTable(
   'candidates_education_details',
   {
@@ -1405,6 +1543,39 @@ export const applications = pgTable(
     }),
     joinedAt: timestamp('joined_at', { mode: 'string', withTimezone: true, precision: 3 }),
     rejectedAt: timestamp('rejected_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    internalRejectedAt: timestamp('internal_rejected_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    clientRejectedAt: timestamp('client_rejected_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    l1ScheduledAt: timestamp('l1_scheduled_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    l1RejectedAt: timestamp('l1_rejected_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    l2ScheduledAt: timestamp('l2_scheduled_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    l2RejectedAt: timestamp('l2_rejected_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    l3ScheduledAt: timestamp('l3_scheduled_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
+    l3RejectedAt: timestamp('l3_rejected_at', { mode: 'string', withTimezone: true, precision: 3 }),
+    hrDiscussionAt: timestamp('hr_discussion_at', {
+      mode: 'string',
+      withTimezone: true,
+      precision: 3,
+    }),
     clientSubmittedAt: timestamp('client_submitted_at', {
       mode: 'string',
       withTimezone: true,
@@ -2954,6 +3125,8 @@ export const payload_locked_documents_rels = pgTable(
     'job-lead-assignmentsID': integer('job_lead_assignments_id'),
     'recruiter-job-assignmentsID': integer('recruiter_job_assignments_id'),
     'candidate-resumesID': integer('candidate_resumes_id'),
+    'candidate-resume-import-batchesID': integer('candidate_resume_import_batches_id'),
+    'candidate-resume-import-itemsID': integer('candidate_resume_import_items_id'),
     candidatesID: integer('candidates_id'),
     'candidate-activitiesID': integer('candidate_activities_id'),
     applicationsID: integer('applications_id'),
@@ -3002,6 +3175,12 @@ export const payload_locked_documents_rels = pgTable(
     ),
     index('payload_locked_documents_rels_candidate_resumes_id_idx').on(
       columns['candidate-resumesID'],
+    ),
+    index('payload_locked_documents_rels_candidate_resume_import_ba_idx').on(
+      columns['candidate-resume-import-batchesID'],
+    ),
+    index('payload_locked_documents_rels_candidate_resume_import_it_idx').on(
+      columns['candidate-resume-import-itemsID'],
     ),
     index('payload_locked_documents_rels_candidates_id_idx').on(columns.candidatesID),
     index('payload_locked_documents_rels_candidate_activities_id_idx').on(
@@ -3107,6 +3286,16 @@ export const payload_locked_documents_rels = pgTable(
       columns: [columns['candidate-resumesID']],
       foreignColumns: [candidate_resumes.id],
       name: 'payload_locked_documents_rels_candidate_resumes_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['candidate-resume-import-batchesID']],
+      foreignColumns: [candidate_resume_import_batches.id],
+      name: 'payload_locked_documents_rels_candidate_resume_import_bat_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [columns['candidate-resume-import-itemsID']],
+      foreignColumns: [candidate_resume_import_items.id],
+      name: 'payload_locked_documents_rels_candidate_resume_import_ite_fk',
     }).onDelete('cascade'),
     foreignKey({
       columns: [columns['candidatesID']],
@@ -3594,6 +3783,64 @@ export const relations_candidate_resumes = relations(candidate_resumes, ({ one }
     relationName: 'uploadedBy',
   }),
 }))
+export const relations_candidate_resume_import_batches = relations(
+  candidate_resume_import_batches,
+  ({ one }) => ({
+    sourceJob: one(jobs, {
+      fields: [candidate_resume_import_batches.sourceJob],
+      references: [jobs.id],
+      relationName: 'sourceJob',
+    }),
+    uploadedBy: one(users, {
+      fields: [candidate_resume_import_batches.uploadedBy],
+      references: [users.id],
+      relationName: 'uploadedBy',
+    }),
+  }),
+)
+export const relations_candidate_resume_import_items_warnings = relations(
+  candidate_resume_import_items_warnings,
+  ({ one }) => ({
+    _parentID: one(candidate_resume_import_items, {
+      fields: [candidate_resume_import_items_warnings._parentID],
+      references: [candidate_resume_import_items.id],
+      relationName: 'warnings',
+    }),
+  }),
+)
+export const relations_candidate_resume_import_items = relations(
+  candidate_resume_import_items,
+  ({ one, many }) => ({
+    batch: one(candidate_resume_import_batches, {
+      fields: [candidate_resume_import_items.batch],
+      references: [candidate_resume_import_batches.id],
+      relationName: 'batch',
+    }),
+    resume: one(candidate_resumes, {
+      fields: [candidate_resume_import_items.resume],
+      references: [candidate_resumes.id],
+      relationName: 'resume',
+    }),
+    sourceJob: one(jobs, {
+      fields: [candidate_resume_import_items.sourceJob],
+      references: [jobs.id],
+      relationName: 'sourceJob',
+    }),
+    uploadedBy: one(users, {
+      fields: [candidate_resume_import_items.uploadedBy],
+      references: [users.id],
+      relationName: 'uploadedBy',
+    }),
+    warnings: many(candidate_resume_import_items_warnings, {
+      relationName: 'warnings',
+    }),
+    candidate: one(candidates, {
+      fields: [candidate_resume_import_items.candidate],
+      references: [candidates.id],
+      relationName: 'candidate',
+    }),
+  }),
+)
 export const relations_candidates_education_details = relations(
   candidates_education_details,
   ({ one }) => ({
@@ -4285,6 +4532,16 @@ export const relations_payload_locked_documents_rels = relations(
       references: [candidate_resumes.id],
       relationName: 'candidate-resumes',
     }),
+    'candidate-resume-import-batchesID': one(candidate_resume_import_batches, {
+      fields: [payload_locked_documents_rels['candidate-resume-import-batchesID']],
+      references: [candidate_resume_import_batches.id],
+      relationName: 'candidate-resume-import-batches',
+    }),
+    'candidate-resume-import-itemsID': one(candidate_resume_import_items, {
+      fields: [payload_locked_documents_rels['candidate-resume-import-itemsID']],
+      references: [candidate_resume_import_items.id],
+      relationName: 'candidate-resume-import-items',
+    }),
     candidatesID: one(candidates, {
       fields: [payload_locked_documents_rels.candidatesID],
       references: [candidates.id],
@@ -4475,6 +4732,8 @@ type DatabaseSchema = {
   enum_client_lead_assignments_status: typeof enum_client_lead_assignments_status
   enum_job_lead_assignments_status: typeof enum_job_lead_assignments_status
   enum_recruiter_job_assignments_status: typeof enum_recruiter_job_assignments_status
+  enum_candidate_resume_import_batches_status: typeof enum_candidate_resume_import_batches_status
+  enum_candidate_resume_import_items_status: typeof enum_candidate_resume_import_items_status
   enum_candidates_source: typeof enum_candidates_source
   enum_candidate_activities_type: typeof enum_candidate_activities_type
   enum_candidate_activities_priority: typeof enum_candidate_activities_priority
@@ -4530,6 +4789,9 @@ type DatabaseSchema = {
   job_lead_assignments: typeof job_lead_assignments
   recruiter_job_assignments: typeof recruiter_job_assignments
   candidate_resumes: typeof candidate_resumes
+  candidate_resume_import_batches: typeof candidate_resume_import_batches
+  candidate_resume_import_items_warnings: typeof candidate_resume_import_items_warnings
+  candidate_resume_import_items: typeof candidate_resume_import_items
   candidates_education_details: typeof candidates_education_details
   candidates_certifications: typeof candidates_certifications
   candidates_work_experience: typeof candidates_work_experience
@@ -4596,6 +4858,9 @@ type DatabaseSchema = {
   relations_job_lead_assignments: typeof relations_job_lead_assignments
   relations_recruiter_job_assignments: typeof relations_recruiter_job_assignments
   relations_candidate_resumes: typeof relations_candidate_resumes
+  relations_candidate_resume_import_batches: typeof relations_candidate_resume_import_batches
+  relations_candidate_resume_import_items_warnings: typeof relations_candidate_resume_import_items_warnings
+  relations_candidate_resume_import_items: typeof relations_candidate_resume_import_items
   relations_candidates_education_details: typeof relations_candidates_education_details
   relations_candidates_certifications: typeof relations_candidates_certifications
   relations_candidates_work_experience: typeof relations_candidates_work_experience

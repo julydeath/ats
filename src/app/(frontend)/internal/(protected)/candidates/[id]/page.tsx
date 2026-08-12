@@ -5,7 +5,11 @@ import { getPayload } from 'payload'
 
 import { ApplicationFlowProgress } from '@/components/internal/ApplicationFlowProgress'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
-import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
+import {
+  APPLICATION_STAGE_LABELS,
+  isApplicationRejectedStage,
+  type ApplicationStage,
+} from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
@@ -107,15 +111,22 @@ const stageToneClass = (stage: ApplicationStage | null): string => {
     return 'candidate-profile-status-neutral'
   }
 
-  if (stage === 'interviewCleared' || stage === 'offerReleased' || stage === 'joined') {
+  if (stage === 'hrDiscussion') {
     return 'candidate-profile-status-good'
   }
 
-  if (stage === 'sourced' || stage === 'screened' || stage === 'submittedToClient' || stage === 'interviewScheduled') {
+  if (
+    stage === 'sourced' ||
+    stage === 'screened' ||
+    stage === 'submittedToClient' ||
+    stage === 'l1Scheduled' ||
+    stage === 'l2Scheduled' ||
+    stage === 'l3Scheduled'
+  ) {
     return 'candidate-profile-status-warn'
   }
 
-  if (stage === 'rejected') {
+  if (isApplicationRejectedStage(stage)) {
     return 'candidate-profile-status-bad'
   }
 

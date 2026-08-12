@@ -3,7 +3,11 @@ import Link from 'next/link'
 import { getPayload } from 'payload'
 
 import { requireInternalRole } from '@/lib/auth/internal-auth'
-import { PLACEMENT_STATUS_OPTIONS, PLACEMENT_TYPE_OPTIONS } from '@/lib/constants/recruitment'
+import {
+  APPLICATION_PLACEMENT_READY_STAGES,
+  PLACEMENT_STATUS_OPTIONS,
+  PLACEMENT_TYPE_OPTIONS,
+} from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
@@ -158,7 +162,7 @@ export default async function PlacementsPage({ searchParams }: PlacementsPagePro
           user,
           where: {
             stage: {
-              in: ['offerReleased', 'joined'],
+              in: [...APPLICATION_PLACEMENT_READY_STAGES],
             },
           },
         })

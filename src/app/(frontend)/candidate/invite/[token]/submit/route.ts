@@ -4,7 +4,10 @@ import { getPayload } from 'payload'
 
 import { EXTERNAL_CANDIDATE_ROLE } from '@/lib/constants/roles'
 import { APP_ROUTES } from '@/lib/constants/routes'
-import type { ApplicationStage } from '@/lib/constants/recruitment'
+import {
+  APPLICATION_INVITE_READY_STAGES,
+  type ApplicationStage,
+} from '@/lib/constants/recruitment'
 import {
   buildCandidateDashboardLink,
   buildCandidateLoginLink,
@@ -120,26 +123,16 @@ export async function POST(
       }),
     ])
 
-    if (
-      String(application.stage) !== 'screened' &&
-      String(application.stage) !== 'submittedToClient' &&
-      String(application.stage) !== 'interviewScheduled' &&
-      String(application.stage) !== 'interviewCleared' &&
-      String(application.stage) !== 'offerReleased' &&
-      String(application.stage) !== 'joined'
-    ) {
+    const currentApplicationStage = String(application.stage) as ApplicationStage
+
+    if (!APPLICATION_INVITE_READY_STAGES.includes(currentApplicationStage as (typeof APPLICATION_INVITE_READY_STAGES)[number])) {
       const failureURL = buildInviteRedirectURL(request, token)
       failureURL.searchParams.set('error', 'Application is not in an invite-ready stage.')
       return NextResponse.redirect(failureURL)
     }
 
     const nextApplicationStage: ApplicationStage =
-      String(application.stage) === 'interviewScheduled' ||
-      String(application.stage) === 'interviewCleared' ||
-      String(application.stage) === 'offerReleased' ||
-      String(application.stage) === 'joined'
-        ? (String(application.stage) as ApplicationStage)
-        : 'submittedToClient'
+      currentApplicationStage === 'screened' ? 'submittedToClient' : currentApplicationStage
 
     const existingAccountID = toNumericID(extractRelationshipID(candidate.candidateAccount))
     let accountID = existingAccountID

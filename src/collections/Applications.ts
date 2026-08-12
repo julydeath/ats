@@ -10,6 +10,8 @@ import {
 import {
   APPLICATION_STAGES,
   APPLICATION_STAGE_OPTIONS,
+  getApplicationStageTargets,
+  isApplicationRejectedStage,
   normalizeApplicationStage,
   type ApplicationStage,
 } from '@/lib/constants/recruitment'
@@ -19,11 +21,15 @@ import { extractRelationshipID } from '@/lib/utils/relationships'
 const DEFAULT_STAGE: ApplicationStage = 'sourced'
 const SCREENED_STAGE: ApplicationStage = 'screened'
 const SUBMITTED_TO_CLIENT_STAGE: ApplicationStage = 'submittedToClient'
-const INTERVIEW_SCHEDULED_STAGE: ApplicationStage = 'interviewScheduled'
-const INTERVIEW_CLEARED_STAGE: ApplicationStage = 'interviewCleared'
-const OFFER_RELEASED_STAGE: ApplicationStage = 'offerReleased'
-const JOINED_STAGE: ApplicationStage = 'joined'
-const REJECTED_STAGE: ApplicationStage = 'rejected'
+const INTERNAL_REJECTED_STAGE: ApplicationStage = 'internalRejected'
+const CLIENT_REJECTED_STAGE: ApplicationStage = 'clientRejected'
+const L1_SCHEDULED_STAGE: ApplicationStage = 'l1Scheduled'
+const L1_REJECTED_STAGE: ApplicationStage = 'l1Rejected'
+const L2_SCHEDULED_STAGE: ApplicationStage = 'l2Scheduled'
+const L2_REJECTED_STAGE: ApplicationStage = 'l2Rejected'
+const L3_SCHEDULED_STAGE: ApplicationStage = 'l3Scheduled'
+const L3_REJECTED_STAGE: ApplicationStage = 'l3Rejected'
+const HR_DISCUSSION_STAGE: ApplicationStage = 'hrDiscussion'
 
 const toNumericID = (value: unknown): number | null => {
   if (typeof value === 'number') {
@@ -50,42 +56,20 @@ const normalizeStage = (value: unknown): ApplicationStage => {
   return normalized
 }
 
-const canRecruiterTransition = (previousStage: ApplicationStage, nextStage: ApplicationStage): boolean => {
+const canRoleTransition = ({
+  role,
+  previousStage,
+  nextStage,
+}: {
+  role: 'leadRecruiter' | 'recruiter'
+  previousStage: ApplicationStage
+  nextStage: ApplicationStage
+}): boolean => {
   if (previousStage === nextStage) {
     return true
   }
 
-  if (previousStage === SCREENED_STAGE && nextStage === SUBMITTED_TO_CLIENT_STAGE) return true
-  if (previousStage === SUBMITTED_TO_CLIENT_STAGE && (nextStage === INTERVIEW_SCHEDULED_STAGE || nextStage === REJECTED_STAGE))
-    return true
-  if (previousStage === INTERVIEW_SCHEDULED_STAGE && (nextStage === INTERVIEW_CLEARED_STAGE || nextStage === REJECTED_STAGE))
-    return true
-  if (previousStage === INTERVIEW_CLEARED_STAGE && (nextStage === OFFER_RELEASED_STAGE || nextStage === REJECTED_STAGE))
-    return true
-  if (previousStage === OFFER_RELEASED_STAGE && (nextStage === JOINED_STAGE || nextStage === REJECTED_STAGE))
-    return true
-
-  return false
-}
-
-const canLeadTransition = (previousStage: ApplicationStage, nextStage: ApplicationStage): boolean => {
-  if (previousStage === nextStage) {
-    return true
-  }
-
-  if (canRecruiterTransition(previousStage, nextStage)) {
-    return true
-  }
-
-  if (previousStage === DEFAULT_STAGE && (nextStage === SCREENED_STAGE || nextStage === REJECTED_STAGE)) {
-    return true
-  }
-
-  if (previousStage === SCREENED_STAGE && nextStage === DEFAULT_STAGE) {
-    return true
-  }
-
-  return false
+  return getApplicationStageTargets({ role, stage: previousStage }).includes(nextStage)
 }
 
 const validateStageTransition = ({
@@ -116,9 +100,9 @@ const validateStageTransition = ({
   }
 
   if (hasInternalRole(user, ['recruiter'])) {
-    if (!canRecruiterTransition(previousStage, nextStage)) {
+    if (!canRoleTransition({ role: 'recruiter', previousStage, nextStage })) {
       throw new APIError(
-        'Recruiter can move applications only after lead screening through client submission, interview, offer, join/reject flow.',
+        'Recruiter can move applications only after lead screening through client submission and L1/L2/L3 stages.',
         403,
       )
     }
@@ -127,7 +111,7 @@ const validateStageTransition = ({
   }
 
   if (hasInternalRole(user, ['leadRecruiter'])) {
-    if (!canLeadTransition(previousStage, nextStage)) {
+    if (!canRoleTransition({ role: 'leadRecruiter', previousStage, nextStage })) {
       throw new APIError('Lead Recruiter can screen sourced candidates and manage full downstream application flow.', 403)
     }
 
@@ -287,6 +271,69 @@ export const Applications: CollectionConfig = {
     },
     {
       name: 'rejectedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'internalRejectedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'clientRejectedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'l1ScheduledAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'l1RejectedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'l2ScheduledAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'l2RejectedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'l3ScheduledAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'l3RejectedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'hrDiscussionAt',
       type: 'date',
       admin: {
         readOnly: true,
@@ -490,13 +537,18 @@ export const Applications: CollectionConfig = {
         const isSourced = stageChanged && nextStage === DEFAULT_STAGE
         const isScreened = stageChanged && nextStage === SCREENED_STAGE
         const isSubmittedToClient = stageChanged && nextStage === SUBMITTED_TO_CLIENT_STAGE
-        const isInterviewScheduled = stageChanged && nextStage === INTERVIEW_SCHEDULED_STAGE
-        const isInterviewCleared = stageChanged && nextStage === INTERVIEW_CLEARED_STAGE
-        const isOfferReleased = stageChanged && nextStage === OFFER_RELEASED_STAGE
-        const isJoined = stageChanged && nextStage === JOINED_STAGE
-        const isRejected = stageChanged && nextStage === REJECTED_STAGE
+        const isInternalRejected = stageChanged && nextStage === INTERNAL_REJECTED_STAGE
+        const isClientRejected = stageChanged && nextStage === CLIENT_REJECTED_STAGE
+        const isL1Scheduled = stageChanged && nextStage === L1_SCHEDULED_STAGE
+        const isL1Rejected = stageChanged && nextStage === L1_REJECTED_STAGE
+        const isL2Scheduled = stageChanged && nextStage === L2_SCHEDULED_STAGE
+        const isL2Rejected = stageChanged && nextStage === L2_REJECTED_STAGE
+        const isL3Scheduled = stageChanged && nextStage === L3_SCHEDULED_STAGE
+        const isL3Rejected = stageChanged && nextStage === L3_REJECTED_STAGE
+        const isHRDiscussion = stageChanged && nextStage === HR_DISCUSSION_STAGE
+        const isRejected = stageChanged && isApplicationRejectedStage(nextStage)
         const isLeadReviewDecision =
-          stageChanged && (nextStage === SCREENED_STAGE || nextStage === REJECTED_STAGE)
+          stageChanged && (nextStage === SCREENED_STAGE || nextStage === INTERNAL_REJECTED_STAGE)
         const nowISO = new Date().toISOString()
 
         return {
@@ -504,19 +556,28 @@ export const Applications: CollectionConfig = {
           applicationCode: typedData.applicationCode ?? typedOriginalDoc?.applicationCode,
           candidate: candidateID,
           candidateAccount: candidateAccountID ?? undefined,
-          candidateAppliedAt: isJoined ? nowISO : typedOriginalDoc?.candidateAppliedAt,
-          candidateInvitedAt: isInterviewScheduled ? nowISO : typedOriginalDoc?.candidateInvitedAt,
+          candidateAppliedAt: typedOriginalDoc?.candidateAppliedAt,
+          candidateInvitedAt: isL1Scheduled ? nowISO : typedOriginalDoc?.candidateInvitedAt,
+          clientRejectedAt: isClientRejected ? nowISO : typedOriginalDoc?.clientRejectedAt,
           createdBy: typedData.createdBy ?? typedOriginalDoc?.createdBy ?? currentUserID ?? undefined,
           clientSubmittedAt: isSubmittedToClient ? nowISO : typedOriginalDoc?.clientSubmittedAt,
-          confirmedAt: isInterviewCleared ? nowISO : typedOriginalDoc?.confirmedAt,
-          interviewAt: isInterviewScheduled ? nowISO : typedOriginalDoc?.interviewAt,
-          interviewClearedAt: isInterviewCleared ? nowISO : typedOriginalDoc?.interviewClearedAt,
-          interviewScheduledAt: isInterviewScheduled ? nowISO : typedOriginalDoc?.interviewScheduledAt,
+          confirmedAt: isHRDiscussion ? nowISO : typedOriginalDoc?.confirmedAt,
+          hrDiscussionAt: isHRDiscussion ? nowISO : typedOriginalDoc?.hrDiscussionAt,
+          internalRejectedAt: isInternalRejected ? nowISO : typedOriginalDoc?.internalRejectedAt,
+          interviewAt: isL1Scheduled || isL2Scheduled || isL3Scheduled ? nowISO : typedOriginalDoc?.interviewAt,
+          interviewClearedAt: isHRDiscussion ? nowISO : typedOriginalDoc?.interviewClearedAt,
+          interviewScheduledAt: isL1Scheduled ? nowISO : typedOriginalDoc?.interviewScheduledAt,
           job: jobID,
-          joinedAt: isJoined ? nowISO : typedOriginalDoc?.joinedAt,
+          joinedAt: typedOriginalDoc?.joinedAt,
+          l1RejectedAt: isL1Rejected ? nowISO : typedOriginalDoc?.l1RejectedAt,
+          l1ScheduledAt: isL1Scheduled ? nowISO : typedOriginalDoc?.l1ScheduledAt,
+          l2RejectedAt: isL2Rejected ? nowISO : typedOriginalDoc?.l2RejectedAt,
+          l2ScheduledAt: isL2Scheduled ? nowISO : typedOriginalDoc?.l2ScheduledAt,
+          l3RejectedAt: isL3Rejected ? nowISO : typedOriginalDoc?.l3RejectedAt,
+          l3ScheduledAt: isL3Scheduled ? nowISO : typedOriginalDoc?.l3ScheduledAt,
           notJoinedAt: isRejected ? nowISO : typedOriginalDoc?.notJoinedAt,
-          offerReleasedAt: isOfferReleased ? nowISO : typedOriginalDoc?.offerReleasedAt,
-          placedAt: isJoined ? nowISO : typedOriginalDoc?.placedAt,
+          offerReleasedAt: isHRDiscussion ? nowISO : typedOriginalDoc?.offerReleasedAt,
+          placedAt: typedOriginalDoc?.placedAt,
           rejectedAt: isRejected ? nowISO : typedOriginalDoc?.rejectedAt,
           recruiter: recruiterID,
           reviewedAt: isLeadReviewDecision ? nowISO : typedOriginalDoc?.reviewedAt,
@@ -532,7 +593,7 @@ export const Applications: CollectionConfig = {
       },
     ],
     afterChange: [
-      async ({ doc, operation, req, context }) => {
+      async ({ doc, req, context }) => {
         const stageTransition = context.applicationStageTransition as
           | {
               changed?: boolean

@@ -4,7 +4,11 @@ import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 
 import { requireInternalRole } from '@/lib/auth/internal-auth'
-import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
+import {
+  APPLICATION_STAGE_LABELS,
+  getApplicationStageTargets,
+  type ApplicationStage,
+} from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import type { InternalRole } from '@/lib/constants/roles'
 
@@ -51,28 +55,11 @@ const getAllowedTargets = ({
   role: InternalRole
   stage: ApplicationStage
 }): ApplicationStage[] => {
-  if (role === 'admin') {
-    return ['sourced', 'screened', 'submittedToClient', 'interviewScheduled', 'interviewCleared', 'offerReleased', 'joined', 'rejected'].filter(
-      (item) => item !== stage,
-    ) as ApplicationStage[]
-  }
-
-  if (role === 'recruiter') {
-    if (stage === 'screened') return ['submittedToClient']
-    if (stage === 'submittedToClient') return ['interviewScheduled', 'rejected']
-    if (stage === 'interviewScheduled') return ['interviewCleared', 'rejected']
-    if (stage === 'interviewCleared') return ['offerReleased', 'rejected']
-    if (stage === 'offerReleased') return ['joined', 'rejected']
+  if (role !== 'admin' && role !== 'leadRecruiter' && role !== 'recruiter') {
     return []
   }
 
-  if (stage === 'sourced') return ['screened', 'rejected']
-  if (stage === 'screened') return ['sourced', 'submittedToClient', 'rejected']
-  if (stage === 'submittedToClient') return ['interviewScheduled', 'rejected']
-  if (stage === 'interviewScheduled') return ['interviewCleared', 'rejected']
-  if (stage === 'interviewCleared') return ['offerReleased', 'rejected']
-  if (stage === 'offerReleased') return ['joined', 'rejected']
-  return []
+  return getApplicationStageTargets({ role, stage })
 }
 
 type ApplicationDetailPageProps = {
@@ -107,12 +94,21 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
           applicationCode: true,
           candidate: true,
           clientBillRate: true,
+          clientRejectedAt: true,
           id: true,
+          hrDiscussionAt: true,
           interviewAt: true,
           interviewClearedAt: true,
           interviewScheduledAt: true,
+          internalRejectedAt: true,
           job: true,
           joinedAt: true,
+          l1RejectedAt: true,
+          l1ScheduledAt: true,
+          l2RejectedAt: true,
+          l2ScheduledAt: true,
+          l3RejectedAt: true,
+          l3ScheduledAt: true,
           latestComment: true,
           notes: true,
           offerReleasedAt: true,
@@ -249,28 +245,44 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
                 {formatDateTime(application.screenedAt)}
               </p>
               <p>
+                <span>Internal Rejected At</span>
+                {formatDateTime(application.internalRejectedAt || (stage === 'internalRejected' ? application.rejectedAt : null))}
+              </p>
+              <p>
                 <span>Submitted To Client At</span>
                 {formatDateTime(application.submittedToClientAt || application.submittedAt)}
               </p>
               <p>
-                <span>Interview Scheduled At</span>
-                {formatDateTime(application.interviewScheduledAt || application.interviewAt)}
+                <span>Client Rejected At</span>
+                {formatDateTime(application.clientRejectedAt || (stage === 'clientRejected' ? application.rejectedAt : null))}
               </p>
               <p>
-                <span>Interview Cleared At</span>
-                {formatDateTime(application.interviewClearedAt)}
+                <span>L1 Scheduled At</span>
+                {formatDateTime(application.l1ScheduledAt || application.interviewScheduledAt || application.interviewAt)}
               </p>
               <p>
-                <span>Offer Released At</span>
-                {formatDateTime(application.offerReleasedAt)}
+                <span>L1 Rejected At</span>
+                {formatDateTime(application.l1RejectedAt || (stage === 'l1Rejected' ? application.rejectedAt : null))}
               </p>
               <p>
-                <span>Joined At</span>
-                {formatDateTime(application.joinedAt)}
+                <span>L2 Scheduled At</span>
+                {formatDateTime(application.l2ScheduledAt || application.interviewClearedAt)}
               </p>
               <p>
-                <span>Rejected At</span>
-                {formatDateTime(application.rejectedAt)}
+                <span>L2 Rejected At</span>
+                {formatDateTime(application.l2RejectedAt || (stage === 'l2Rejected' ? application.rejectedAt : null))}
+              </p>
+              <p>
+                <span>L3 Scheduled At</span>
+                {formatDateTime(application.l3ScheduledAt)}
+              </p>
+              <p>
+                <span>L3 Rejected At</span>
+                {formatDateTime(application.l3RejectedAt || (stage === 'l3Rejected' ? application.rejectedAt : null))}
+              </p>
+              <p>
+                <span>HR Discussion At</span>
+                {formatDateTime(application.hrDiscussionAt || application.offerReleasedAt || application.joinedAt)}
               </p>
               <p>
                 <span>Last Updated</span>

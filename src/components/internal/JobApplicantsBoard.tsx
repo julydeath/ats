@@ -15,7 +15,15 @@ import { CSS } from '@dnd-kit/utilities'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 
 import { ApplicationFlowProgress } from '@/components/internal/ApplicationFlowProgress'
-import { APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
+import {
+  APPLICATION_STAGES,
+  APPLICATION_STAGE_LABELS,
+  getApplicationPrimaryNextStage,
+  getApplicationRejectionTarget,
+  getApplicationStageTargets,
+  isApplicationRejectedStage,
+  type ApplicationStage,
+} from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 
 type BoardFlowEntry = {
@@ -73,15 +81,22 @@ type MoveArgs = {
   toStage: ApplicationStage
 }
 
+const getStageTone = (key: ApplicationStage): StageColumn['tone'] => {
+  if (key === 'sourced') return 'gray'
+  if (key === 'screened') return 'orange'
+  if (key === 'submittedToClient') return 'teal'
+  if (isApplicationRejectedStage(key)) return 'red'
+  if (key === 'l1Scheduled') return 'purple'
+  if (key === 'l2Scheduled') return 'blue'
+  return 'green'
+}
+
 const STAGE_COLUMNS: readonly StageColumn[] = [
-  { key: 'sourced', label: 'Sourced', tone: 'gray' },
-  { key: 'screened', label: 'Screened', tone: 'orange' },
-  { key: 'submittedToClient', label: 'Submitted to Client', tone: 'teal' },
-  { key: 'interviewScheduled', label: 'Interview Scheduled', tone: 'purple' },
-  { key: 'interviewCleared', label: 'Interview Cleared', tone: 'blue' },
-  { key: 'offerReleased', label: 'Offer Released', tone: 'green' },
-  { key: 'joined', label: 'Joined', tone: 'green' },
-  { key: 'rejected', label: 'Rejected', tone: 'red' },
+  ...APPLICATION_STAGES.map((key): StageColumn => ({
+    key,
+    label: APPLICATION_STAGE_LABELS[key],
+    tone: getStageTone(key),
+  })),
 ]
 
 const initializeBoard = (cards: BoardCard[]) =>
@@ -110,32 +125,7 @@ const getAllowedTransitionTargets = ({
   boardRole: JobApplicantsBoardProps['boardRole']
   fromStage: ApplicationStage
 }): ApplicationStage[] => {
-  if (boardRole === 'admin') {
-    return STAGE_COLUMNS.map((column) => column.key)
-  }
-
-  if (boardRole === 'recruiter') {
-    if (fromStage === 'screened') return ['submittedToClient']
-    if (fromStage === 'submittedToClient') return ['interviewScheduled', 'rejected']
-    if (fromStage === 'interviewScheduled') return ['interviewCleared', 'rejected']
-    if (fromStage === 'interviewCleared') return ['offerReleased', 'rejected']
-    if (fromStage === 'offerReleased') return ['joined', 'rejected']
-    return []
-  }
-
-  if (boardRole === 'leadRecruiter') {
-    if (fromStage === 'sourced') return ['screened', 'rejected']
-    if (fromStage === 'screened') return ['sourced', 'submittedToClient', 'rejected']
-
-    const recruiterTargets = getAllowedTransitionTargets({ boardRole: 'recruiter', fromStage })
-    if (fromStage !== 'rejected' && !recruiterTargets.includes('rejected')) {
-      return [...recruiterTargets, 'rejected']
-    }
-
-    return recruiterTargets
-  }
-
-  return []
+  return getApplicationStageTargets({ role: boardRole, stage: fromStage })
 }
 
 const canTransition = ({
@@ -160,7 +150,7 @@ const getRoleDragHint = (role: JobApplicantsBoardProps['boardRole']) => {
   }
 
   if (role === 'recruiter') {
-    return 'Recruiter can update downstream stages after lead screening and keep interview/offer status current.'
+    return 'Recruiter can update downstream stages after lead screening and keep client/L1/L2/L3 status current.'
   }
 
   return 'Lead screens sourced candidates and can also step in for full pipeline movement when needed.'
@@ -189,15 +179,13 @@ const getPreferredNextStage = ({
     return null
   }
 
-  const orderedStages = STAGE_COLUMNS.map((column) => column.key)
-  const currentIndex = orderedStages.indexOf(fromStage)
-
-  for (let index = currentIndex + 1; index < orderedStages.length; index += 1) {
-    const stage = orderedStages[index]
-    if (allowed.includes(stage)) {
-      return stage
-    }
+  const primaryNextStage = getApplicationPrimaryNextStage(fromStage)
+  if (primaryNextStage && allowed.includes(primaryNextStage)) {
+    return primaryNextStage
   }
+
+  const forwardStage = allowed.find((stage) => !isApplicationRejectedStage(stage))
+  if (forwardStage) return forwardStage
 
   return allowed[0] || null
 }
@@ -361,6 +349,11 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
       fromStage: selectedCard.stage,
     })
   }, [boardRole, selectedCard])
+
+  const selectedRejectionTarget = useMemo(
+    () => (selectedCard ? getApplicationRejectionTarget(selectedCard.stage) : null),
+    [selectedCard],
+  )
 
   const selectedPreferredNextStage = useMemo(() => {
     if (!selectedCard) {
@@ -541,9 +534,9 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
   const handleArchive = async () => {
     if (
       !selectedCard ||
-      selectedCard.stage === 'rejected' ||
+      !selectedRejectionTarget ||
       pendingApplicationID === selectedCard.id ||
-      !selectedTransitionTargets.includes('rejected')
+      !selectedTransitionTargets.includes(selectedRejectionTarget)
     ) {
       return
     }
@@ -551,8 +544,8 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
     await persistMove({
       applicationId: selectedCard.id,
       fromStage: selectedCard.stage,
-      latestComment: drawerComment.trim() || 'Moved to rejected',
-      toStage: 'rejected',
+      latestComment: drawerComment.trim() || `Moved to ${APPLICATION_STAGE_LABELS[selectedRejectionTarget]}`,
+      toStage: selectedRejectionTarget,
     })
     setDrawerComment('')
   }
@@ -677,8 +670,8 @@ export const JobApplicantsBoard = ({ boardRole, cards, jobId }: JobApplicantsBoa
                     className="job-candidate-action-button job-candidate-action-ghost"
                     disabled={
                       pendingApplicationID === selectedCard.id ||
-                      selectedCard.stage === 'rejected' ||
-                      !selectedTransitionTargets.includes('rejected')
+                      !selectedRejectionTarget ||
+                      !selectedTransitionTargets.includes(selectedRejectionTarget)
                     }
                     onClick={handleArchive}
                     type="button"
