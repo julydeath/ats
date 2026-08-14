@@ -6,7 +6,7 @@ export default function HomePage() {
   return (
     <section className="public-home">
       <div className="public-card">
-        <p className="eyebrow">Realizing Dreams Inspirix HR Services</p>
+        <p className="eyebrow">Realizing Dreams Inspirex HR Services</p>
         <h1>Recruitment Operations Platform</h1>
         <p className="muted">
           Internal workflow and external candidate invite portal are active.
