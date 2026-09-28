@@ -2,7 +2,11 @@ import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
 
-import { HRLeaveDonutChart, HRPayrollBarChart, HRTrendChart } from '@/components/internal/charts/ATSCharts'
+import {
+  HRLeaveDonutChart,
+  HRPayrollBarChart,
+  HRTrendChart,
+} from '@/components/internal/charts/ATSCharts'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { INTERNAL_ROLES, INTERNAL_ROLE_LABELS, type InternalRole } from '@/lib/constants/roles'
@@ -65,9 +69,9 @@ export default async function InternalHRAnalyticsPage({ searchParams }: HRAnalyt
     })),
   ]
 
-  const availableStates = Array.from(new Set(summary.employeeSelectors.map((item) => item.state))).sort((a, b) =>
-    a.localeCompare(b),
-  )
+  const availableStates = Array.from(
+    new Set(summary.employeeSelectors.map((item) => item.state)),
+  ).sort((a, b) => a.localeCompare(b))
 
   const filteredEmployeeSelectors = summary.employeeSelectors.filter((item) => {
     if (filters.role !== 'all' && item.role !== filters.role) return false
@@ -89,6 +93,21 @@ export default async function InternalHRAnalyticsPage({ searchParams }: HRAnalyt
     label: point.label,
     net: point.net,
   }))
+  const exportSearchParams = new URLSearchParams({
+    from: filters.fromISO,
+    role: filters.role,
+    to: filters.toISO,
+  })
+
+  if (filters.employeeId) {
+    exportSearchParams.set('employeeId', String(filters.employeeId))
+  }
+
+  if (filters.state) {
+    exportSearchParams.set('state', filters.state)
+  }
+
+  const analyticsExportHref = `${APP_ROUTES.api.internal.hr.analyticsExport}?${exportSearchParams.toString()}`
 
   return (
     <section className="hr-analytics-page">
@@ -98,10 +117,14 @@ export default async function InternalHRAnalyticsPage({ searchParams }: HRAnalyt
           <h1>Attendance, Performance, Leave, and Payroll</h1>
           <p>Admin control center with role-wise and employee-wise operational insights.</p>
           <p className="panel-subtitle">
-            Showing analytics from {new Date(range.fromISO).toLocaleDateString('en-IN')} to {new Date(range.toISO).toLocaleDateString('en-IN')}.
+            Showing analytics from {new Date(range.fromISO).toLocaleDateString('en-IN')} to{' '}
+            {new Date(range.toISO).toLocaleDateString('en-IN')}.
           </p>
         </div>
         <div className="hr-analytics-header-actions">
+          <a className="button" href={analyticsExportHref}>
+            Download Excel
+          </a>
           <Link className="button button-secondary" href={APP_ROUTES.internal.dashboard}>
             Back to Dashboard
           </Link>
@@ -124,11 +147,21 @@ export default async function InternalHRAnalyticsPage({ searchParams }: HRAnalyt
         </label>
         <label>
           From
-          <input className="input" defaultValue={toDateInputValue(range.from)} name="from" type="date" />
+          <input
+            className="input"
+            defaultValue={toDateInputValue(range.from)}
+            name="from"
+            type="date"
+          />
         </label>
         <label>
           To
-          <input className="input" defaultValue={toDateInputValue(range.to)} name="to" type="date" />
+          <input
+            className="input"
+            defaultValue={toDateInputValue(range.to)}
+            name="to"
+            type="date"
+          />
         </label>
         <label>
           Role
@@ -241,7 +274,9 @@ export default async function InternalHRAnalyticsPage({ searchParams }: HRAnalyt
             <h2>Attendance vs Workflow Trend</h2>
             <span>{trendPoints.length} day window</span>
           </div>
-          <p className="graph-caption">Compares attendance throughput against hiring workflow activity volume.</p>
+          <p className="graph-caption">
+            Compares attendance throughput against hiring workflow activity volume.
+          </p>
           {trendPoints.length === 0 ? (
             <p className="hr-analytics-empty">No trend data available for selected filters.</p>
           ) : (
@@ -254,7 +289,9 @@ export default async function InternalHRAnalyticsPage({ searchParams }: HRAnalyt
             <h2>Leave Breakdown</h2>
             <span>Approved + pending request mix</span>
           </div>
-          <p className="graph-caption">Distribution of leave requests by leave category in selected range.</p>
+          <p className="graph-caption">
+            Distribution of leave requests by leave category in selected range.
+          </p>
           {summary.leaveBreakdown.length === 0 ? (
             <p className="hr-analytics-empty">No leave requests available.</p>
           ) : (
@@ -267,7 +304,9 @@ export default async function InternalHRAnalyticsPage({ searchParams }: HRAnalyt
             <h2>Payroll Trend</h2>
             <span>Net payable by month</span>
           </div>
-          <p className="graph-caption">Monthly payroll net payable trend based on completed payroll data.</p>
+          <p className="graph-caption">
+            Monthly payroll net payable trend based on completed payroll data.
+          </p>
           {summary.payrollTrend.length === 0 ? (
             <p className="hr-analytics-empty">No payroll runs generated in this period.</p>
           ) : (

@@ -12216,6 +12216,13 @@ ul {
   margin-top: 0.32rem;
 }
 
+.hr-analytics-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
 .hr-analytics-filters {
   align-items: end;
   background: #fff;
@@ -12965,6 +12972,14 @@ ul {
 
   .hr-analytics-header {
     display: grid;
+  }
+
+  .hr-analytics-header-actions {
+    justify-content: stretch;
+  }
+
+  .hr-analytics-header-actions .button {
+    flex: 1 1 180px;
   }
 
   .hr-analytics-filter-actions {
