@@ -18,6 +18,7 @@ type ResumeImportBatchPageProps = {
     id: string
   }>
   searchParams?: Promise<{
+    error?: string
     success?: string
   }>
 }
@@ -115,7 +116,10 @@ const getParsedSummary = (parsedData: unknown): string[] => {
     .filter(Boolean)
 }
 
-export default async function ResumeImportBatchPage({ params, searchParams }: ResumeImportBatchPageProps) {
+export default async function ResumeImportBatchPage({
+  params,
+  searchParams,
+}: ResumeImportBatchPageProps) {
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const { id } = await params
@@ -152,7 +156,8 @@ export default async function ResumeImportBatchPage({ params, searchParams }: Re
       }),
     ])
 
-    const totalCount = typeof batch.totalCount === 'number' ? batch.totalCount : itemsResult.docs.length
+    const totalCount =
+      typeof batch.totalCount === 'number' ? batch.totalCount : itemsResult.docs.length
     const parsedCount = typeof batch.parsedCount === 'number' ? batch.parsedCount : 0
     const failedCount = typeof batch.failedCount === 'number' ? batch.failedCount : 0
     const createdCount = typeof batch.createdCount === 'number' ? batch.createdCount : 0
@@ -176,7 +181,10 @@ export default async function ResumeImportBatchPage({ params, searchParams }: Re
           </div>
 
           <div className="candidate-import-header-actions">
-            <Link className="candidate-intake-head-btn" href={APP_ROUTES.internal.candidates.importsNew}>
+            <Link
+              className="candidate-intake-head-btn"
+              href={APP_ROUTES.internal.candidates.importsNew}
+            >
               New Import
             </Link>
             <Link className="candidate-intake-head-btn" href={APP_ROUTES.internal.candidates.list}>
@@ -190,12 +198,24 @@ export default async function ResumeImportBatchPage({ params, searchParams }: Re
             Upload saved. Parsing is running in the background.
           </p>
         ) : null}
+        {resolvedSearchParams.success === 'processing' ? (
+          <p className="candidate-intake-message candidate-intake-message-success">
+            Processing finished. Review any parsed resumes below.
+          </p>
+        ) : null}
+        {resolvedSearchParams.error ? (
+          <p className="candidate-intake-message candidate-intake-message-error">
+            {resolvedSearchParams.error}
+          </p>
+        ) : null}
 
         <section className="candidate-import-progress-card">
           <div className="candidate-import-progress-top">
             <div>
               <span>Status</span>
-              <strong>{getStatusLabel(batchStatus, CANDIDATE_RESUME_IMPORT_BATCH_STATUS_LABELS)}</strong>
+              <strong>
+                {getStatusLabel(batchStatus, CANDIDATE_RESUME_IMPORT_BATCH_STATUS_LABELS)}
+              </strong>
             </div>
             <div>
               <span>Progress</span>
@@ -231,12 +251,22 @@ export default async function ResumeImportBatchPage({ params, searchParams }: Re
           </div>
 
           <div className="candidate-import-progress-actions">
-            <Link className="candidate-intake-cancel" href={`${APP_ROUTES.internal.candidates.imports}/${batch.id}`}>
+            <Link
+              className="candidate-intake-cancel"
+              href={`${APP_ROUTES.internal.candidates.imports}/${batch.id}`}
+            >
               Refresh
             </Link>
             {canContinue ? (
-              <form action={`${APP_ROUTES.internal.candidates.imports}/${batch.id}/process`} method="post">
-                <button className="candidate-intake-submit" data-pending-label="Processing..." type="submit">
+              <form
+                action={`${APP_ROUTES.internal.candidates.imports}/${batch.id}/process`}
+                method="post"
+              >
+                <button
+                  className="candidate-intake-submit"
+                  data-pending-label="Processing..."
+                  type="submit"
+                >
                   Continue Processing
                 </button>
               </form>
@@ -255,7 +285,9 @@ export default async function ResumeImportBatchPage({ params, searchParams }: Re
               <p className="candidate-import-empty">No resumes found in this import.</p>
             ) : (
               itemsResult.docs.map((item) => {
-                const itemStatus = String(item.status || 'queued') as CandidateResumeImportItemStatus
+                const itemStatus = String(
+                  item.status || 'queued',
+                ) as CandidateResumeImportItemStatus
                 const resumeID = extractRelationshipID(item.resume)
                 const candidateID = extractRelationshipID(item.candidate)
                 const summary = getParsedSummary(item.parsedData)
@@ -264,7 +296,9 @@ export default async function ResumeImportBatchPage({ params, searchParams }: Re
                 return (
                   <article className="candidate-import-item" key={`resume-import-item-${item.id}`}>
                     <div className="candidate-import-item-main">
-                      <span className={`candidate-import-status candidate-import-status-${itemStatus}`}>
+                      <span
+                        className={`candidate-import-status candidate-import-status-${itemStatus}`}
+                      >
                         {getStatusLabel(itemStatus, CANDIDATE_RESUME_IMPORT_ITEM_STATUS_LABELS)}
                       </span>
                       <h3>{toLabel(item.resume, `Resume ${resumeID || item.id}`)}</h3>
@@ -304,7 +338,10 @@ export default async function ResumeImportBatchPage({ params, searchParams }: Re
                       ) : null}
 
                       {itemStatus === 'failed' ? (
-                        <form action={`${APP_ROUTES.internal.candidates.imports}/${batch.id}/process`} method="post">
+                        <form
+                          action={`${APP_ROUTES.internal.candidates.imports}/${batch.id}/process`}
+                          method="post"
+                        >
                           <input name="itemId" type="hidden" value={String(item.id)} />
                           <button className="candidate-mgmt-action-link" type="submit">
                             Retry

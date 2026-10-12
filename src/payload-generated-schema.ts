@@ -507,6 +507,9 @@ export const clients = pgTable(
     paymentTerms: varchar('payment_terms'),
     practice: varchar('practice'),
     status: enum_clients_status('status').notNull().default('active'),
+    createdBy: integer('created_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
     owningHeadRecruiter: integer('owning_head_recruiter_id').references(() => users.id, {
       onDelete: 'set null',
     }),
@@ -547,6 +550,7 @@ export const clients = pgTable(
     index('clients_phone_idx').on(columns.phone),
     index('clients_location_idx').on(columns.location),
     index('clients_status_idx').on(columns.status),
+    index('clients_created_by_idx').on(columns.createdBy),
     index('clients_owning_head_recruiter_idx').on(columns.owningHeadRecruiter),
     index('clients_primary_owner_idx').on(columns.primaryOwner),
     index('clients_ownership_idx').on(columns.ownership),
@@ -3562,6 +3566,11 @@ export const relations_clients = relations(clients, ({ one, many }) => ({
     fields: [clients.logo],
     references: [media.id],
     relationName: 'logo',
+  }),
+  createdBy: one(users, {
+    fields: [clients.createdBy],
+    references: [users.id],
+    relationName: 'createdBy',
   }),
   owningHeadRecruiter: one(users, {
     fields: [clients.owningHeadRecruiter],

@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  calculateWorkedMinutes,
-  classifyAttendanceFromWorkedMinutes,
-} from '@/lib/hr/attendance'
+import { calculateWorkedMinutes, classifyAttendanceFromWorkedMinutes } from '@/lib/hr/attendance'
 import { computeLeaveDays } from '@/lib/hr/leave'
-import { computePayrollLinePreview } from '@/lib/hr/payroll'
+import { computePayrollLinePreview, deriveRunStatusFromPayoutStatuses } from '@/lib/hr/payroll'
 import { computePerformanceFinalScore } from '@/lib/hr/performance'
 import { mapRazorpayPayoutStatus } from '@/lib/payments/razorpayx'
 
@@ -117,5 +114,11 @@ describe('HR Utility Calculations', () => {
     expect(mapRazorpayPayoutStatus('queued')).toBe('processing')
     expect(mapRazorpayPayoutStatus('failed')).toBe('failed')
     expect(mapRazorpayPayoutStatus('reversed')).toBe('reversed')
+  })
+
+  it('keeps payroll runs pending while Razorpay payouts are still processing', () => {
+    expect(deriveRunStatusFromPayoutStatuses(['processing', 'processed'])).toBe('disbursing')
+    expect(deriveRunStatusFromPayoutStatuses(['processed', 'failed'])).toBe('partiallyPaid')
+    expect(deriveRunStatusFromPayoutStatuses(['processed', 'processed'])).toBe('completed')
   })
 })

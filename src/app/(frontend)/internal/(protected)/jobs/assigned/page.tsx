@@ -11,6 +11,11 @@ import {
   JOB_STATUS_OPTIONS,
 } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
+import {
+  formatAuditActorName,
+  formatAuditActorRole,
+  formatAuditDate,
+} from '@/lib/utils/record-audit'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
@@ -141,7 +146,8 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
     : '30'
   const isCreateModalOpen = resolvedSearchParams.create === '1'
   const canCreateJobs = user.role === 'admin' || user.role === 'leadRecruiter'
-  const canSourceCandidates = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
+  const canSourceCandidates =
+    user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
   const canReassignJobs = user.role === 'admin' || user.role === 'leadRecruiter'
 
   const rangeStart = new Date()
@@ -205,154 +211,149 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
   const whereQuery: Where =
     whereConditions.length === 1 ? whereConditions[0] : { and: whereConditions }
 
-  const [
-    jobsResult,
-    clientsResult,
-    leadsResult,
-    recruitersResult,
-    stageHistory,
-    weeklyCandidates,
-  ] = await Promise.all([
-    payload.find({
-      collection: 'jobs',
-      depth: 1,
-      limit: 120,
-      overrideAccess: false,
-      pagination: false,
-      select: {
-        businessUnit: true,
-        client: true,
-        clientJobID: true,
-        createdAt: true,
-        employmentType: true,
-        id: true,
-        jobCode: true,
-        location: true,
-        openings: true,
-        owningHeadRecruiter: true,
-        priority: true,
-        requisitionTitle: true,
-        status: true,
-        targetClosureDate: true,
-        title: true,
-        updatedAt: true,
-      },
-      sort: '-updatedAt',
-      user,
-      where: whereQuery,
-    }),
-    payload.find({
-      collection: 'clients',
-      depth: 0,
-      limit: 120,
-      overrideAccess: false,
-      pagination: false,
-      select: {
-        clientCode: true,
-        id: true,
-        name: true,
-      },
-      sort: 'name',
-      user,
-      where: {
-        status: {
-          equals: 'active',
+  const [jobsResult, clientsResult, leadsResult, recruitersResult, stageHistory, weeklyCandidates] =
+    await Promise.all([
+      payload.find({
+        collection: 'jobs',
+        depth: 1,
+        limit: 120,
+        overrideAccess: false,
+        pagination: false,
+        select: {
+          businessUnit: true,
+          client: true,
+          clientJobID: true,
+          createdAt: true,
+          createdBy: true,
+          employmentType: true,
+          id: true,
+          jobCode: true,
+          location: true,
+          openings: true,
+          owningHeadRecruiter: true,
+          priority: true,
+          requisitionTitle: true,
+          status: true,
+          targetClosureDate: true,
+          title: true,
+          updatedAt: true,
         },
-      },
-    }),
-    isCreateModalOpen && user.role === 'admin'
-      ? payload.find({
-          collection: 'users',
-          depth: 0,
-          limit: 80,
-          overrideAccess: false,
-          pagination: false,
-          select: {
-            email: true,
-            fullName: true,
-            id: true,
-          },
-          sort: 'fullName',
-          user,
-          where: {
-            and: [
-              {
-                role: {
-                  equals: 'leadRecruiter',
-                },
-              },
-              {
-                isActive: {
-                  equals: true,
-                },
-              },
-            ],
-          },
-        })
-      : Promise.resolve(null),
-    isCreateModalOpen && canCreateJobs
-      ? payload.find({
-          collection: 'users',
-          depth: 0,
-          limit: 120,
-          overrideAccess: false,
-          pagination: false,
-          select: {
-            email: true,
-            fullName: true,
-            id: true,
-          },
-          sort: 'fullName',
-          user,
-          where: {
-            and: [
-              {
-                role: {
-                  equals: 'recruiter',
-                },
-              },
-              {
-                isActive: {
-                  equals: true,
-                },
-              },
-            ],
-          },
-        })
-      : Promise.resolve({
-          docs: [] as Array<{ email?: string; fullName?: string; id: number | string }>,
-        }),
-    payload.find({
-      collection: 'application-stage-history',
-      depth: 1,
-      limit: 6,
-      overrideAccess: false,
-      pagination: false,
-      select: {
-        candidate: true,
-        changedAt: true,
-        job: true,
-        toStage: true,
-      },
-      sort: '-changedAt',
-      user,
-    }),
-    payload.count({
-      collection: 'candidates',
-      overrideAccess: false,
-      user,
-      where: {
-        createdAt: {
-          greater_than_equal: (() => {
-            const value = new Date()
-            value.setDate(value.getDate() - 7)
-            value.setHours(0, 0, 0, 0)
-            return value.toISOString()
-          })(),
+        sort: '-updatedAt',
+        user,
+        where: whereQuery,
+      }),
+      payload.find({
+        collection: 'clients',
+        depth: 0,
+        limit: 120,
+        overrideAccess: false,
+        pagination: false,
+        select: {
+          clientCode: true,
+          id: true,
+          name: true,
         },
-      },
-    }),
-  ])
+        sort: 'name',
+        user,
+        where: {
+          status: {
+            equals: 'active',
+          },
+        },
+      }),
+      isCreateModalOpen && user.role === 'admin'
+        ? payload.find({
+            collection: 'users',
+            depth: 0,
+            limit: 80,
+            overrideAccess: false,
+            pagination: false,
+            select: {
+              email: true,
+              fullName: true,
+              id: true,
+            },
+            sort: 'fullName',
+            user,
+            where: {
+              and: [
+                {
+                  role: {
+                    equals: 'leadRecruiter',
+                  },
+                },
+                {
+                  isActive: {
+                    equals: true,
+                  },
+                },
+              ],
+            },
+          })
+        : Promise.resolve(null),
+      isCreateModalOpen && canCreateJobs
+        ? payload.find({
+            collection: 'users',
+            depth: 0,
+            limit: 120,
+            overrideAccess: false,
+            pagination: false,
+            select: {
+              email: true,
+              fullName: true,
+              id: true,
+            },
+            sort: 'fullName',
+            user,
+            where: {
+              and: [
+                {
+                  role: {
+                    equals: 'recruiter',
+                  },
+                },
+                {
+                  isActive: {
+                    equals: true,
+                  },
+                },
+              ],
+            },
+          })
+        : Promise.resolve({
+            docs: [] as Array<{ email?: string; fullName?: string; id: number | string }>,
+          }),
+      payload.find({
+        collection: 'application-stage-history',
+        depth: 1,
+        limit: 6,
+        overrideAccess: false,
+        pagination: false,
+        select: {
+          candidate: true,
+          changedAt: true,
+          job: true,
+          toStage: true,
+        },
+        sort: '-changedAt',
+        user,
+      }),
+      payload.count({
+        collection: 'candidates',
+        overrideAccess: false,
+        user,
+        where: {
+          createdAt: {
+            greater_than_equal: (() => {
+              const value = new Date()
+              value.setDate(value.getDate() - 7)
+              value.setHours(0, 0, 0, 0)
+              return value.toISOString()
+            })(),
+          },
+        },
+      }),
+    ])
 
   const jobs = jobsResult.docs as Array<
     Pick<
@@ -370,6 +371,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       | 'openings'
       | 'employmentType'
       | 'createdAt'
+      | 'createdBy'
       | 'updatedAt'
       | 'owningHeadRecruiter'
       | 'targetClosureDate'
@@ -389,15 +391,23 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       jobs
         .filter(
           (job) =>
-            typeof job.owningHeadRecruiter === 'number' || typeof job.owningHeadRecruiter === 'string',
+            typeof job.owningHeadRecruiter === 'number' ||
+            typeof job.owningHeadRecruiter === 'string',
         )
         .map((job) => toRelationshipKey(job.owningHeadRecruiter))
         .filter((id): id is string => Boolean(id)),
     ),
   )
-  const [fallbackClientsResult, fallbackLeadsResult, recruiterAssignmentsResult, applicationsResult] = await Promise.all([
+  const [
+    fallbackClientsResult,
+    fallbackLeadsResult,
+    recruiterAssignmentsResult,
+    applicationsResult,
+  ] = await Promise.all([
     unresolvedClientIDs.length === 0
-      ? Promise.resolve({ docs: [] as Array<{ clientCode?: string | null; id: number | string; name?: string }> })
+      ? Promise.resolve({
+          docs: [] as Array<{ clientCode?: string | null; id: number | string; name?: string }>,
+        })
       : payload.find({
           collection: 'clients',
           depth: 0,
@@ -416,7 +426,9 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           },
         }),
     unresolvedLeadIDs.length === 0
-      ? Promise.resolve({ docs: [] as Array<{ email?: string; fullName?: string; id: number | string }> })
+      ? Promise.resolve({
+          docs: [] as Array<{ email?: string; fullName?: string; id: number | string }>,
+        })
       : payload.find({
           collection: 'users',
           depth: 0,
@@ -496,7 +508,10 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
     ]),
   )
   const fallbackLeadNameByID = new Map(
-    fallbackLeadsResult.docs.map((lead) => [String(lead.id), lead.fullName || lead.email || String(lead.id)]),
+    fallbackLeadsResult.docs.map((lead) => [
+      String(lead.id),
+      lead.fullName || lead.email || String(lead.id),
+    ]),
   )
   const readRelationshipLabel = ({
     fallbackMap,
@@ -578,9 +593,9 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       ? 'Job created successfully.'
       : resolvedSearchParams.success === 'jobUpdated'
         ? 'Job updated successfully.'
-      : resolvedSearchParams.success === 'jobReactivated'
-        ? 'Existing job was reactivated successfully.'
-        : ''
+        : resolvedSearchParams.success === 'jobReactivated'
+          ? 'Existing job was reactivated successfully.'
+          : ''
 
   return (
     <section className="jobs-workspace-page">
@@ -703,6 +718,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                 <th>Client Name</th>
                 <th>Lead Recruiter</th>
                 <th>Team</th>
+                <th>Added By</th>
                 <th>Status</th>
                 <th>Candidates</th>
                 <th>Actions</th>
@@ -711,7 +727,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
             <tbody>
               {jobs.length === 0 ? (
                 <tr>
-                  <td className="jobs-table-empty" colSpan={7}>
+                  <td className="jobs-table-empty" colSpan={8}>
                     No jobs found for current filters.
                   </td>
                 </tr>
@@ -720,6 +736,9 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                   const jobID = String(job.id)
                   const recruiters = recruiterNamesByJobID.get(jobID) || []
                   const candidatesCount = candidatesCountByJobID.get(jobID) || 0
+                  const addedBy = formatAuditActorName(job.createdBy)
+                  const addedByRole = formatAuditActorRole(job.createdBy)
+                  const addedOn = formatAuditDate(job.createdAt)
 
                   return (
                     <tr key={`job-row-${job.id}`}>
@@ -765,6 +784,11 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                             <span className="jobs-team-more">+{recruiters.length - 3}</span>
                           ) : null}
                         </div>
+                      </td>
+                      <td className="jobs-table-subtitle">
+                        {addedBy}
+                        <br />
+                        {addedByRole} · {addedOn}
                       </td>
                       <td>
                         <span className={`jobs-status-pill jobs-status-pill-${job.status}`}>
@@ -1035,7 +1059,11 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                 <div className="jobs-modal-grid">
                   <label className="jobs-modal-field" htmlFor="create-job-recruitment-manager">
                     <span>Recruitment Manager</span>
-                    <select defaultValue="" id="create-job-recruitment-manager" name="recruitmentManagerId">
+                    <select
+                      defaultValue=""
+                      id="create-job-recruitment-manager"
+                      name="recruitmentManagerId"
+                    >
                       <option value="">Unassigned</option>
                       {leadsOptions.map((lead) => (
                         <option key={`create-job-manager-${lead.id}`} value={String(lead.id)}>
@@ -1047,10 +1075,17 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
 
                   <label className="jobs-modal-field" htmlFor="create-job-primary-recruiter">
                     <span>Primary Recruiter</span>
-                    <select defaultValue="" id="create-job-primary-recruiter" name="primaryRecruiterId">
+                    <select
+                      defaultValue=""
+                      id="create-job-primary-recruiter"
+                      name="primaryRecruiterId"
+                    >
                       <option value="">Unassigned</option>
                       {recruiterUserOptions.map((recruiter) => (
-                        <option key={`create-job-primary-recruiter-${recruiter.id}`} value={String(recruiter.id)}>
+                        <option
+                          key={`create-job-primary-recruiter-${recruiter.id}`}
+                          value={String(recruiter.id)}
+                        >
                           {recruiter.fullName || recruiter.email}
                         </option>
                       ))}
@@ -1062,7 +1097,10 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                   <span>Assigned Recruiters</span>
                   <select id="create-job-assigned-to" multiple name="assignedTo" size={4}>
                     {recruiterUserOptions.map((recruiter) => (
-                      <option key={`create-job-assigned-to-${recruiter.id}`} value={String(recruiter.id)}>
+                      <option
+                        key={`create-job-assigned-to-${recruiter.id}`}
+                        value={String(recruiter.id)}
+                      >
                         {recruiter.fullName || recruiter.email}
                       </option>
                     ))}
@@ -1127,22 +1165,42 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                 <div className="jobs-modal-grid">
                   <label className="jobs-modal-field" htmlFor="create-job-client-bill-rate">
                     <span>Client Bill Rate</span>
-                    <input id="create-job-client-bill-rate" name="clientBillRate" placeholder="e.g. USD 75/hour" type="text" />
+                    <input
+                      id="create-job-client-bill-rate"
+                      name="clientBillRate"
+                      placeholder="e.g. USD 75/hour"
+                      type="text"
+                    />
                   </label>
                   <label className="jobs-modal-field" htmlFor="create-job-pay-rate">
                     <span>Pay Rate</span>
-                    <input id="create-job-pay-rate" name="payRate" placeholder="e.g. INR 18 LPA" type="text" />
+                    <input
+                      id="create-job-pay-rate"
+                      name="payRate"
+                      placeholder="e.g. INR 18 LPA"
+                      type="text"
+                    />
                   </label>
                 </div>
 
                 <div className="jobs-modal-grid">
                   <label className="jobs-modal-field" htmlFor="create-job-pay-type">
                     <span>Pay Type</span>
-                    <input id="create-job-pay-type" name="payType" placeholder="Hourly / Monthly / Yearly" type="text" />
+                    <input
+                      id="create-job-pay-type"
+                      name="payType"
+                      placeholder="Hourly / Monthly / Yearly"
+                      type="text"
+                    />
                   </label>
                   <label className="jobs-modal-field" htmlFor="create-job-salary-range-label">
                     <span>Salary Range Label</span>
-                    <input id="create-job-salary-range-label" name="salaryRangeLabel" placeholder="10-14 LPA, 60-75 USD/hr" type="text" />
+                    <input
+                      id="create-job-salary-range-label"
+                      name="salaryRangeLabel"
+                      placeholder="10-14 LPA, 60-75 USD/hr"
+                      type="text"
+                    />
                   </label>
                 </div>
 

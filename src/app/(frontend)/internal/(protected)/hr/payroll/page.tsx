@@ -17,6 +17,7 @@ import {
 } from '@/lib/constants/hr'
 import { isDateInGraphRange, resolveGraphDateRange, toDateInputValue } from '@/lib/hr/graph-filters'
 import { isRazorpayXConfigured } from '@/lib/payments/razorpayx'
+import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const formatDate = (value?: string | null): string => {
   if (!value) return '—'
@@ -52,8 +53,7 @@ const formatDateTime = (value?: string | null): string => {
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : null
 
-const asString = (value: unknown): string =>
-  typeof value === 'string' ? value : ''
+const asString = (value: unknown): string => (typeof value === 'string' ? value : '')
 
 const maskAccountNumber = (value: unknown): string => {
   const digits = asString(value).replace(/\s+/g, '')
@@ -120,8 +120,30 @@ const getCycleLabel = (lineItem: Record<string, unknown>): string => {
   return '—'
 }
 
+const normalizeStateKey = (value: unknown): string => asString(value).trim().toLowerCase()
+
+const getEmployeeProfileName = (employee: Record<string, unknown>): string => {
+  const employeeUser = asRecord(employee.user)
+  return (
+    asString(employeeUser?.fullName) ||
+    asString(employeeUser?.email) ||
+    asString(employee.employeeCode) ||
+    'Employee'
+  )
+}
+
+const getReadinessClassName = (isReady: boolean): string =>
+  `payroll-analysis-card ${isReady ? 'payroll-analysis-card-ready' : 'payroll-analysis-card-warning'}`
+
 type PayrollPageProps = {
-  searchParams?: Promise<{ error?: string; from?: string; month?: string; period?: string; success?: string; to?: string }>
+  searchParams?: Promise<{
+    error?: string
+    from?: string
+    month?: string
+    period?: string
+    success?: string
+    to?: string
+  }>
 }
 
 export default async function InternalHRPayrollPage({ searchParams }: PayrollPageProps) {
@@ -143,61 +165,120 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
           <p className="eyebrow">HRMS · Payroll</p>
           <h1>Payroll Access Restricted</h1>
           <p className="panel-intro">
-            Payroll and salary details are visible to admins only. You can continue using attendance,
-            leave, and performance modules.
+            Payroll and salary details are visible to admins only. You can continue using
+            attendance, leave, and performance modules.
           </p>
         </article>
       </section>
     )
   }
 
-  const [cycles, runs, ruleSets, lineItems, payouts] = await Promise.all([
-    payload.find({
-      collection: 'payroll-cycles',
-      depth: 0,
-      limit: 24,
-      overrideAccess: false,
-      sort: '-year',
-      user,
-    }),
-    payload.find({
-      collection: 'payroll-runs',
-      depth: 2,
-      limit: 200,
-      overrideAccess: false,
-      sort: '-updatedAt',
-      user,
-    }),
-    payload.find({
-      collection: 'payroll-rule-sets',
-      depth: 0,
-      limit: 20,
-      overrideAccess: false,
-      sort: '-effectiveFrom',
-      user,
-      where: {
-        isActive: {
-          equals: true,
+  const [cycles, runs, ruleSets, lineItems, payouts, payrollEmployees, activeCompensations] =
+    await Promise.all([
+      payload.find({
+        collection: 'payroll-cycles',
+        depth: 0,
+        limit: 24,
+        overrideAccess: false,
+        sort: '-year',
+        user,
+      }),
+      payload.find({
+        collection: 'payroll-runs',
+        depth: 2,
+        limit: 200,
+        overrideAccess: false,
+        sort: '-updatedAt',
+        user,
+      }),
+      payload.find({
+        collection: 'payroll-rule-sets',
+        depth: 0,
+        limit: 20,
+        overrideAccess: false,
+        sort: '-effectiveFrom',
+        user,
+        where: {
+          isActive: {
+            equals: true,
+          },
         },
-      },
-    }),
-    payload.find({
-      collection: 'payroll-line-items',
-      depth: 2,
-      limit: 500,
-      overrideAccess: false,
-      sort: '-updatedAt',
-      user,
-    }),
-    payload.find({
-      collection: 'payroll-payout-transactions',
-      depth: 1,
-      limit: 200,
-      overrideAccess: false,
-      sort: '-updatedAt',
-      user,
-    }),
-  ])
+      }),
+      payload.find({
+        collection: 'payroll-line-items',
+        depth: 2,
+        limit: 500,
+        overrideAccess: false,
+        sort: '-updatedAt',
+        user,
+      }),
+      payload.find({
+        collection: 'payroll-payout-transactions',
+        depth: 1,
+        limit: 200,
+        overrideAccess: false,
+        sort: '-updatedAt',
+        user,
+      }),
+      payload.find({
+        collection: 'employee-profiles',
+        depth: 1,
+        limit: 500,
+        overrideAccess: false,
+        pagination: false,
+        select: {
+          bankAccountNumber: true,
+          bankIFSC: true,
+          bankName: true,
+          designation: true,
+          employeeCode: true,
+          employmentStatus: true,
+          id: true,
+          isPayrollEligible: true,
+          payoutReady: true,
+          user: true,
+          workState: true,
+        },
+        sort: 'employeeCode',
+        user,
+        where: {
+          and: [
+            {
+              employmentStatus: {
+                equals: 'active',
+              },
+            },
+            {
+              isPayrollEligible: {
+                equals: true,
+              },
+            },
+          ],
+        },
+      }),
+      payload.find({
+        collection: 'employee-compensation',
+        depth: 0,
+        limit: 1000,
+        overrideAccess: false,
+        pagination: false,
+        select: {
+          effectiveFrom: true,
+          effectiveTo: true,
+          employee: true,
+          id: true,
+          isActive: true,
+          monthlyGross: true,
+        },
+        sort: '-effectiveFrom',
+        user,
+        where: {
+          isActive: {
+            equals: true,
+          },
+        },
+      }),
+    ])
 
   const filteredCycles = cycles.docs.filter((cycle) =>
     isDateInGraphRange({
@@ -237,9 +318,13 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
     .slice()
     .sort((a, b) => {
       const aDate =
-        typeof a.payrollCycle === 'object' ? new Date(a.payrollCycle.startDate).getTime() : new Date(a.createdAt).getTime()
+        typeof a.payrollCycle === 'object'
+          ? new Date(a.payrollCycle.startDate).getTime()
+          : new Date(a.createdAt).getTime()
       const bDate =
-        typeof b.payrollCycle === 'object' ? new Date(b.payrollCycle.startDate).getTime() : new Date(b.createdAt).getTime()
+        typeof b.payrollCycle === 'object'
+          ? new Date(b.payrollCycle.startDate).getTime()
+          : new Date(b.createdAt).getTime()
       return aDate - bDate
     })
     .slice(-6)
@@ -275,7 +360,9 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
 
   const manualPaymentSummary = filteredLineItems.reduce(
     (acc, item) => {
-      const status = normalizePaymentStatus((item as unknown as Record<string, unknown>).paymentStatus)
+      const status = normalizePaymentStatus(
+        (item as unknown as Record<string, unknown>).paymentStatus,
+      )
       const net = Number(item.netPayable || 0)
 
       acc.totalAmount += net
@@ -319,7 +406,9 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
     >
   >((acc, item) => {
     const runKey =
-      typeof item.payrollRun === 'object' && item.payrollRun ? String(item.payrollRun.id) : String(item.payrollRun)
+      typeof item.payrollRun === 'object' && item.payrollRun
+        ? String(item.payrollRun.id)
+        : String(item.payrollRun)
 
     if (!acc[runKey]) {
       acc[runKey] = {
@@ -331,7 +420,9 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
       }
     }
 
-    const status = normalizePaymentStatus((item as unknown as Record<string, unknown>).paymentStatus)
+    const status = normalizePaymentStatus(
+      (item as unknown as Record<string, unknown>).paymentStatus,
+    )
     const net = Number(item.netPayable || 0)
 
     acc[runKey].totalCount += 1
@@ -347,19 +438,198 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
     return acc
   }, {})
 
+  const payrollEmployeeDocs = payrollEmployees.docs as unknown as Array<Record<string, unknown>>
+  const activeRuleStateKeys = new Set(
+    ruleSets.docs.map((ruleSet) => normalizeStateKey(ruleSet.state)).filter(Boolean),
+  )
+  const employeeStateLabels = Array.from(
+    new Map(
+      payrollEmployeeDocs
+        .map(
+          (employee) =>
+            [normalizeStateKey(employee.workState), asString(employee.workState).trim()] as const,
+        )
+        .filter(([key]) => Boolean(key)),
+    ).entries(),
+  )
+  const missingRuleStates = employeeStateLabels
+    .filter(([key]) => !activeRuleStateKeys.has(key))
+    .map(([, label]) => label)
+  const compensationEmployeeIDs = new Set(
+    activeCompensations.docs
+      .map((compensation) => extractRelationshipID(compensation.employee))
+      .filter((id): id is number | string => typeof id === 'number' || typeof id === 'string')
+      .map(String),
+  )
+  const employeesMissingCompensation = payrollEmployeeDocs.filter(
+    (employee) => !compensationEmployeeIDs.has(String(employee.id)),
+  )
+  const employeesMissingBank = payrollEmployeeDocs.filter(
+    (employee) =>
+      !asString(employee.bankAccountNumber) ||
+      !asString(employee.bankIFSC) ||
+      !asString(employee.bankName),
+  )
+  const employeesNotPayoutReady = payrollEmployeeDocs.filter(
+    (employee) => employee.payoutReady !== true,
+  )
+  const pendingPaymentLines = filteredLineItems
+    .filter(
+      (line) =>
+        normalizePaymentStatus((line as unknown as Record<string, unknown>).paymentStatus) !==
+        'paid',
+    )
+    .slice()
+    .sort((a, b) => Number(b.netPayable || 0) - Number(a.netPayable || 0))
+  const failedPayouts = filteredPayouts.filter((payout) =>
+    ['failed', 'reversed', 'cancelled'].includes(String(payout.payoutStatus || '')),
+  )
+  const readinessItems = [
+    {
+      isReady: ruleSets.docs.length > 0 && missingRuleStates.length === 0,
+      label: 'Rules',
+      meta:
+        missingRuleStates.length > 0
+          ? `Missing rule set for ${missingRuleStates.slice(0, 3).join(', ')}${missingRuleStates.length > 3 ? '...' : ''}`
+          : `${ruleSets.docs.length} active rule set${ruleSets.docs.length === 1 ? '' : 's'} available`,
+      value: `${Math.max(employeeStateLabels.length - missingRuleStates.length, 0)}/${employeeStateLabels.length || ruleSets.docs.length || 0}`,
+    },
+    {
+      isReady: employeesMissingCompensation.length === 0,
+      label: 'Compensation',
+      meta:
+        employeesMissingCompensation.length > 0
+          ? `${employeesMissingCompensation.length} payroll-eligible employee${employeesMissingCompensation.length === 1 ? '' : 's'} missing active compensation`
+          : 'Every active payroll employee has compensation',
+      value: `${payrollEmployeeDocs.length - employeesMissingCompensation.length}/${payrollEmployeeDocs.length}`,
+    },
+    {
+      isReady: employeesMissingBank.length === 0 && employeesNotPayoutReady.length === 0,
+      label: 'Bank Readiness',
+      meta:
+        employeesMissingBank.length > 0 || employeesNotPayoutReady.length > 0
+          ? `${employeesMissingBank.length} missing bank details · ${employeesNotPayoutReady.length} not marked payout-ready`
+          : 'Bank details and payout readiness are complete',
+      value: `${Math.max(payrollEmployeeDocs.length - employeesMissingBank.length, 0)}/${payrollEmployeeDocs.length}`,
+    },
+    {
+      isReady: pendingPaymentLines.length === 0,
+      label: 'Manual Payments',
+      meta:
+        pendingPaymentLines.length > 0
+          ? `${pendingPaymentLines.length} salary row${pendingPaymentLines.length === 1 ? '' : 's'} still need settlement`
+          : 'No manual salary rows pending in this filter',
+      value: formatAmount(manualPaymentSummary.pendingAmount + manualPaymentSummary.notPaidAmount),
+    },
+  ]
+  const pendingWorkItems = [
+    ...(missingRuleStates.length > 0
+      ? [
+          {
+            label: 'Create payroll rules',
+            value: `${missingRuleStates.length} state${missingRuleStates.length === 1 ? '' : 's'}`,
+            meta: missingRuleStates.join(', '),
+          },
+        ]
+      : []),
+    ...(employeesMissingCompensation.length > 0
+      ? [
+          {
+            label: 'Add compensation',
+            value: String(employeesMissingCompensation.length),
+            meta: employeesMissingCompensation.slice(0, 4).map(getEmployeeProfileName).join(', '),
+          },
+        ]
+      : []),
+    ...(employeesMissingBank.length > 0
+      ? [
+          {
+            label: 'Complete bank details',
+            value: String(employeesMissingBank.length),
+            meta: employeesMissingBank.slice(0, 4).map(getEmployeeProfileName).join(', '),
+          },
+        ]
+      : []),
+    ...(pendingPaymentLines.length > 0
+      ? [
+          {
+            label: 'Manual salary transfers',
+            value: formatAmount(
+              manualPaymentSummary.pendingAmount + manualPaymentSummary.notPaidAmount,
+            ),
+            meta: `${pendingPaymentLines.length} outstanding row${pendingPaymentLines.length === 1 ? '' : 's'}`,
+          },
+        ]
+      : []),
+    ...(failedPayouts.length > 0
+      ? [
+          {
+            label: 'Failed payout transactions',
+            value: String(failedPayouts.length),
+            meta: 'Review Recent Payout Transactions before retrying automation.',
+          },
+        ]
+      : []),
+  ]
+
   return (
     <section className="dashboard-grid">
       <article className="panel panel-span-2">
         <p className="eyebrow">HRMS · Payroll</p>
         <h1>India Payroll Engine</h1>
         <p className="panel-intro">
-          Manual monthly salary processing with employee-wise pay register, payout tracking, and future RazorpayX support.
+          Manual monthly salary processing with employee-wise pay register, payout tracking, and
+          future RazorpayX support.
         </p>
         <p className="panel-subtitle">
           Showing data from {formatDate(range.fromISO)} to {formatDate(range.toISO)}.
         </p>
         {resolved.success ? <p className="panel-subtitle">Success: {resolved.success}</p> : null}
-        {resolved.error ? <p className="panel-subtitle" style={{ color: '#b91c1c' }}>Error: {resolved.error}</p> : null}
+        {resolved.error ? (
+          <p className="panel-subtitle" style={{ color: '#b91c1c' }}>
+            Error: {resolved.error}
+          </p>
+        ) : null}
+      </article>
+
+      <article className="panel panel-span-2">
+        <h2>Startup Readiness</h2>
+        <p className="graph-caption">
+          Live checks across rules, employee setup, bank readiness, and manual salary settlement.
+        </p>
+        <div className="payroll-analysis-grid">
+          {readinessItems.map((item) => (
+            <div
+              className={getReadinessClassName(item.isReady)}
+              key={`payroll-readiness-${item.label}`}
+            >
+              <p className="ops-detail-label">{item.label}</p>
+              <p className="payroll-analysis-value">{item.value}</p>
+              <p className="ops-detail-meta">{item.meta}</p>
+            </div>
+          ))}
+        </div>
+      </article>
+
+      <article className="panel panel-span-2">
+        <h2>What Is Still Pending</h2>
+        {pendingWorkItems.length === 0 ? (
+          <p className="panel-subtitle">
+            No setup blockers or manual salary payments are pending in the selected range.
+          </p>
+        ) : (
+          <div className="payroll-pending-list">
+            {pendingWorkItems.map((item) => (
+              <div className="payroll-pending-item" key={`payroll-pending-${item.label}`}>
+                <div>
+                  <p className="payroll-pending-title">{item.label}</p>
+                  <p className="ops-detail-meta">{item.meta}</p>
+                </div>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
+          </div>
+        )}
       </article>
 
       <article className="panel">
@@ -382,7 +652,8 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
           <li>Mark each employee as paid, pending, or not paid</li>
         </ol>
         <p className="panel-subtitle">
-          RazorpayX remains available for future automation. Manual settlement is the primary workflow right now.
+          RazorpayX remains available for future automation. Manual settlement is the primary
+          workflow right now.
         </p>
       </article>
 
@@ -391,9 +662,12 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
         <div className="ops-detail-grid">
           <div className="ops-detail-card">
             <p className="ops-detail-label">Step 1 · Salary Basis</p>
-            <p className="ops-detail-value">Effective employee compensation for the selected payroll cycle</p>
+            <p className="ops-detail-value">
+              Effective employee compensation for the selected payroll cycle
+            </p>
             <p className="ops-detail-meta">
-              Basic + HRA + special allowance + variable + other allowance + reimbursements + custom earnings.
+              Basic + HRA + special allowance + variable + other allowance + reimbursements + custom
+              earnings.
             </p>
           </div>
           <div className="ops-detail-card">
@@ -407,14 +681,16 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
             <p className="ops-detail-label">Step 3 · Statutory Deductions</p>
             <p className="ops-detail-value">PF, ESI, Professional Tax, LWF, TDS</p>
             <p className="ops-detail-meta">
-              Rates and caps come from the payroll rule set for the employee work state and effective date.
+              Rates and caps come from the payroll rule set for the employee work state and
+              effective date.
             </p>
           </div>
           <div className="ops-detail-card">
             <p className="ops-detail-label">Step 4 · Final Net Pay</p>
             <p className="ops-detail-value">Gross earnings minus deductions</p>
             <p className="ops-detail-meta">
-              A payroll line item is created per employee. That line item becomes the run snapshot used for payslip and payout.
+              A payroll line item is created per employee. That line item becomes the run snapshot
+              used for payslip and payout.
             </p>
           </div>
         </div>
@@ -468,7 +744,9 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
         >
           <div>
             <p className="panel-subtitle">Net Pay Trend</p>
-            <p className="graph-caption">Monthly net payable generated from filtered payroll runs.</p>
+            <p className="graph-caption">
+              Monthly net payable generated from filtered payroll runs.
+            </p>
             {payrollTrendChartData.length === 0 ? (
               <p className="panel-subtitle">No run totals available yet.</p>
             ) : (
@@ -477,20 +755,31 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
           </div>
           <div>
             <p className="panel-subtitle">Run Status Distribution</p>
-            <p className="graph-caption">How many runs are in draft, approved, partially paid, completed, or payout stages.</p>
+            <p className="graph-caption">
+              How many runs are in draft, approved, partially paid, completed, or payout stages.
+            </p>
             {runStatusChartData.length === 0 ? (
               <p className="panel-subtitle">No payroll runs available.</p>
             ) : (
-              <SimpleDonutChart ariaLabel="Payroll run status distribution" data={runStatusChartData} />
+              <SimpleDonutChart
+                ariaLabel="Payroll run status distribution"
+                data={runStatusChartData}
+              />
             )}
           </div>
           <div>
             <p className="panel-subtitle">Payout Status Distribution</p>
-            <p className="graph-caption">Optional RazorpayX payout transaction mix for success, processing, and failed attempts.</p>
+            <p className="graph-caption">
+              Optional RazorpayX payout transaction mix for success, processing, and failed
+              attempts.
+            </p>
             {payoutStatusChartData.length === 0 ? (
               <p className="panel-subtitle">No payout transactions available.</p>
             ) : (
-              <SimpleDonutChart ariaLabel="Payout status distribution" data={payoutStatusChartData} />
+              <SimpleDonutChart
+                ariaLabel="Payout status distribution"
+                data={payoutStatusChartData}
+              />
             )}
           </div>
         </div>
@@ -520,16 +809,74 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
             <p className="ops-detail-label">Pending / Not Paid</p>
             <p className="ops-detail-value">
               {manualPaymentSummary.pendingCount + manualPaymentSummary.notPaidCount} ·{' '}
-              {formatAmount(manualPaymentSummary.pendingAmount + manualPaymentSummary.notPaidAmount)}
+              {formatAmount(
+                manualPaymentSummary.pendingAmount + manualPaymentSummary.notPaidAmount,
+              )}
             </p>
-            <p className="ops-detail-meta">Outstanding salary rows still requiring manual action.</p>
+            <p className="ops-detail-meta">
+              Outstanding salary rows still requiring manual action.
+            </p>
           </div>
         </div>
       </article>
 
+      <article className="panel panel-span-2">
+        <h2>Manual Payment Queue</h2>
+        {pendingPaymentLines.length === 0 ? (
+          <p className="panel-subtitle">All visible salary rows are marked paid.</p>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table payroll-queue-table">
+              <thead>
+                <tr>
+                  <th>Priority</th>
+                  <th>Employee</th>
+                  <th>Run</th>
+                  <th>Net Payable</th>
+                  <th>Status</th>
+                  <th>Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingPaymentLines.slice(0, 8).map((line, index) => {
+                  const lineRecord = line as unknown as Record<string, unknown>
+                  const paymentStatus = normalizePaymentStatus(lineRecord.paymentStatus)
+
+                  return (
+                    <tr key={`manual-payment-queue-${line.id}`}>
+                      <td>#{index + 1}</td>
+                      <td>
+                        <div className="payroll-employee-cell">
+                          <strong>{getEmployeeName(lineRecord)}</strong>
+                          <span>
+                            {getEmployeeCode(lineRecord)} · {getEmployeeBankLine(lineRecord)}
+                          </span>
+                        </div>
+                      </td>
+                      <td>{getRunCode(lineRecord)}</td>
+                      <td>{formatAmount(line.netPayable)}</td>
+                      <td>
+                        <span className={payrollPaymentPillClassName(paymentStatus)}>
+                          {PAYROLL_PAYMENT_STATUS_LABELS[paymentStatus]}
+                        </span>
+                      </td>
+                      <td>{line.paymentReference || 'Awaiting UTR / transfer ref'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </article>
+
       <article className="panel">
         <h2>Create Payroll Cycle</h2>
-        <form action={APP_ROUTES.internal.hr.payrollGenerate} className="ops-form-shell ops-form-shell-strong" method="post">
+        <form
+          action={APP_ROUTES.internal.hr.payrollGenerate}
+          className="ops-form-shell ops-form-shell-strong"
+          method="post"
+        >
           <input name="actionType" type="hidden" value="createCycle" />
           <div className="ops-form-grid ops-form-grid-3">
             <label className="ops-form-field">
@@ -563,7 +910,11 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
 
       <article className="panel">
         <h2>Generate Payroll Run</h2>
-        <form action={APP_ROUTES.internal.hr.payrollGenerate} className="ops-form-shell ops-form-shell-strong" method="post">
+        <form
+          action={APP_ROUTES.internal.hr.payrollGenerate}
+          className="ops-form-shell ops-form-shell-strong"
+          method="post"
+        >
           <input name="actionType" type="hidden" value="generateRun" />
           <div className="ops-form-grid ops-form-grid-2">
             <label className="ops-form-field">
@@ -625,6 +976,18 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                     pendingCount: 0,
                     totalCount: 0,
                   }
+                  const canLockRun = run.status === 'draft'
+                  const canApproveRun = run.status === 'locked'
+                  const canDisburseRun =
+                    razorpayReady && (run.status === 'approved' || run.status === 'partiallyPaid')
+                  const actionHint =
+                    run.status === 'approved' || run.status === 'partiallyPaid'
+                      ? 'Manual settlement below'
+                      : run.status === 'completed'
+                        ? 'Settlement complete'
+                        : run.status === 'disbursing'
+                          ? 'Payout processing'
+                          : 'No action available'
 
                   return (
                     <tr key={`run-${run.id}`}>
@@ -634,12 +997,15 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                           ? `${run.payrollCycle.month}/${run.payrollCycle.year}`
                           : run.payrollCycle}
                       </td>
-                      <td>{PAYROLL_RUN_STATUS_LABELS[run.status as PayrollRunStatus] || run.status}</td>
+                      <td>
+                        {PAYROLL_RUN_STATUS_LABELS[run.status as PayrollRunStatus] || run.status}
+                      </td>
                       <td>{run.totalEmployees || 0}</td>
                       <td>
                         <div className="payroll-run-settlement">
                           <strong>
-                            {settlement.paidCount}/{settlement.totalCount || run.totalEmployees || 0} paid
+                            {settlement.paidCount}/
+                            {settlement.totalCount || run.totalEmployees || 0} paid
                           </strong>
                           <span>Paid: {formatAmount(settlement.paidAmount)}</span>
                           <span>Outstanding: {formatAmount(settlement.pendingAmount)}</span>
@@ -649,30 +1015,34 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                       <td>{formatAmount(run.totalNet)}</td>
                       <td>
                         <div className="public-actions">
-                          <form action={APP_ROUTES.internal.hr.payrollLock} method="post">
-                            <input name="runId" type="hidden" value={run.id} />
-                            <button className="button button-secondary" type="submit">
-                              Lock
-                            </button>
-                          </form>
-                          <form action={APP_ROUTES.internal.hr.payrollApprove} method="post">
-                            <input name="runId" type="hidden" value={run.id} />
-                            <button className="button button-secondary" type="submit">
-                              Approve
-                            </button>
-                          </form>
-                          {razorpayReady ? (
+                          {canLockRun ? (
+                            <form action={APP_ROUTES.internal.hr.payrollLock} method="post">
+                              <input name="runId" type="hidden" value={run.id} />
+                              <button className="button button-secondary" type="submit">
+                                Lock
+                              </button>
+                            </form>
+                          ) : null}
+                          {canApproveRun ? (
+                            <form action={APP_ROUTES.internal.hr.payrollApprove} method="post">
+                              <input name="runId" type="hidden" value={run.id} />
+                              <button className="button button-secondary" type="submit">
+                                Approve
+                              </button>
+                            </form>
+                          ) : null}
+                          {canDisburseRun ? (
                             <form action={APP_ROUTES.internal.hr.payrollDisburse} method="post">
                               <input name="runId" type="hidden" value={run.id} />
                               <button className="button" type="submit">
                                 Disburse via RazorpayX
                               </button>
                             </form>
-                          ) : (
+                          ) : !canLockRun && !canApproveRun ? (
                             <span className="status-pill payroll-payment-pill payroll-payment-pill-pending">
-                              Manual mode
+                              {actionHint}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -707,7 +1077,10 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                       {formatDate(cycle.startDate)} - {formatDate(cycle.endDate)}
                     </td>
                     <td>{formatDate(cycle.payoutDate)}</td>
-                    <td>{PAYROLL_CYCLE_STATUS_LABELS[cycle.status as PayrollCycleStatus] || cycle.status}</td>
+                    <td>
+                      {PAYROLL_CYCLE_STATUS_LABELS[cycle.status as PayrollCycleStatus] ||
+                        cycle.status}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -744,7 +1117,7 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                   const paymentStatus = normalizePaymentStatus(lineRecord.paymentStatus)
                   const paymentModeLabel =
                     PAYROLL_PAYMENT_MODE_LABELS[
-                      (lineRecord.paymentMode === 'razorpayx' ? 'razorpayx' : 'manual')
+                      lineRecord.paymentMode === 'razorpayx' ? 'razorpayx' : 'manual'
                     ]
 
                   return (
@@ -777,9 +1150,17 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                       <td>{formatDateTime(line.paidAt)}</td>
                       <td>{line.paymentReference || '—'}</td>
                       <td>
-                        <form action={APP_ROUTES.internal.hr.payrollPaymentStatus} className="row-form payroll-payment-form" method="post">
+                        <form
+                          action={APP_ROUTES.internal.hr.payrollPaymentStatus}
+                          className="row-form payroll-payment-form"
+                          method="post"
+                        >
                           <input name="lineItemId" type="hidden" value={line.id} />
-                          <input name="paymentNotes" type="hidden" value={String(line.paymentNotes || '')} />
+                          <input
+                            name="paymentNotes"
+                            type="hidden"
+                            value={String(line.paymentNotes || '')}
+                          />
                           <input
                             className="table-input"
                             defaultValue={String(line.paymentReference || '')}
@@ -788,13 +1169,28 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                             type="text"
                           />
                           <div className="public-actions">
-                            <button className="button" name="paymentStatus" type="submit" value="paid">
+                            <button
+                              className="button"
+                              name="paymentStatus"
+                              type="submit"
+                              value="paid"
+                            >
                               Mark Paid
                             </button>
-                            <button className="button button-secondary" name="paymentStatus" type="submit" value="pending">
+                            <button
+                              className="button button-secondary"
+                              name="paymentStatus"
+                              type="submit"
+                              value="pending"
+                            >
                               Pending
                             </button>
-                            <button className="button button-secondary" name="paymentStatus" type="submit" value="notPaid">
+                            <button
+                              className="button button-secondary"
+                              name="paymentStatus"
+                              type="submit"
+                              value="notPaid"
+                            >
                               Not Paid
                             </button>
                           </div>
@@ -830,7 +1226,9 @@ export default async function InternalHRPayrollPage({ searchParams }: PayrollPag
                 {filteredPayouts.map((txn) => (
                   <tr key={`txn-${txn.id}`}>
                     <td>{txn.payoutTxnCode}</td>
-                    <td>{typeof txn.employee === 'object' ? txn.employee.employeeCode : txn.employee}</td>
+                    <td>
+                      {typeof txn.employee === 'object' ? txn.employee.employeeCode : txn.employee}
+                    </td>
                     <td>{txn.payoutID || '—'}</td>
                     <td>{txn.payoutStatus}</td>
                     <td>{txn.attemptCount || 0}</td>

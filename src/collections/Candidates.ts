@@ -2,13 +2,20 @@ import { APIError, type CollectionConfig, type Where } from 'payload'
 
 import { isCandidateAuthenticated, type CandidateUserLike } from '@/access/candidateRoles'
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
-import { candidatesCreateAccess, candidatesManageAccess, candidatesReadAccess } from '@/access/visibility'
+import {
+  candidatesCreateAccess,
+  candidatesManageAccess,
+  candidatesReadAccess,
+} from '@/access/visibility'
 import { buildCandidateDuplicateSignals } from '@/lib/candidates/dedupe'
 import { CANDIDATE_SOURCE_OPTIONS } from '@/lib/constants/recruitment'
 import { resolveBusinessCode } from '@/lib/utils/business-codes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
-const getCandidateSignals = (data?: Record<string, unknown>, originalDoc?: Record<string, unknown>) =>
+const getCandidateSignals = (
+  data?: Record<string, unknown>,
+  originalDoc?: Record<string, unknown>,
+) =>
   buildCandidateDuplicateSignals({
     email: data?.email ?? originalDoc?.email,
     fullName: data?.fullName ?? originalDoc?.fullName,
@@ -26,7 +33,16 @@ export const Candidates: CollectionConfig = {
     delete: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin']),
   },
   admin: {
-    defaultColumns: ['candidateCode', 'fullName', 'email', 'phone', 'source', 'sourceJob', 'sourcedBy', 'updatedAt'],
+    defaultColumns: [
+      'candidateCode',
+      'fullName',
+      'email',
+      'phone',
+      'source',
+      'sourceJob',
+      'sourcedBy',
+      'createdAt',
+    ],
     group: 'Candidates',
     useAsTitle: 'fullName',
   },
@@ -598,19 +614,34 @@ export const Candidates: CollectionConfig = {
         const typedOriginalDoc = originalDoc as Record<string, unknown> | undefined
         const user = req.user as InternalUserLike
         const candidateUser = req.user as CandidateUserLike
-        const sourceJobID = extractRelationshipID(typedData.sourceJob ?? typedOriginalDoc?.sourceJob)
+        const sourceJobID = extractRelationshipID(
+          typedData.sourceJob ?? typedOriginalDoc?.sourceJob,
+        )
         const resumeID = extractRelationshipID(typedData.resume ?? typedOriginalDoc?.resume)
-        const sourcedByID = extractRelationshipID(typedData.sourcedBy ?? typedOriginalDoc?.sourcedBy ?? user?.id)
+        const sourcedByID = extractRelationshipID(
+          typedData.sourcedBy ?? typedOriginalDoc?.sourcedBy ?? user?.id,
+        )
         const signals = getCandidateSignals(typedData, typedOriginalDoc)
-        const expectedPayMin = Number(typedData.expectedPayMin ?? typedOriginalDoc?.expectedPayMin ?? NaN)
-        const expectedPayMax = Number(typedData.expectedPayMax ?? typedOriginalDoc?.expectedPayMax ?? NaN)
+        const expectedPayMin = Number(
+          typedData.expectedPayMin ?? typedOriginalDoc?.expectedPayMin ?? NaN,
+        )
+        const expectedPayMax = Number(
+          typedData.expectedPayMax ?? typedOriginalDoc?.expectedPayMax ?? NaN,
+        )
 
-        if (!Number.isNaN(expectedPayMin) && !Number.isNaN(expectedPayMax) && expectedPayMin > expectedPayMax) {
+        if (
+          !Number.isNaN(expectedPayMin) &&
+          !Number.isNaN(expectedPayMax) &&
+          expectedPayMin > expectedPayMax
+        ) {
           throw new APIError('Expected pay min cannot be greater than expected pay max.', 400)
         }
 
         if (!signals.normalizedEmail && !signals.normalizedPhone) {
-          throw new APIError('Either email or phone number is required for candidate dedupe checks.', 400)
+          throw new APIError(
+            'Either email or phone number is required for candidate dedupe checks.',
+            400,
+          )
         }
 
         if (operation === 'update' && isCandidateAuthenticated(candidateUser)) {
@@ -636,9 +667,13 @@ export const Candidates: CollectionConfig = {
 
           if (
             'resume' in typedData &&
-            String(extractRelationshipID(typedData.resume)) !== String(extractRelationshipID(typedOriginalDoc?.resume))
+            String(extractRelationshipID(typedData.resume)) !==
+              String(extractRelationshipID(typedOriginalDoc?.resume))
           ) {
-            throw new APIError('Candidate cannot re-link resume through direct profile updates.', 403)
+            throw new APIError(
+              'Candidate cannot re-link resume through direct profile updates.',
+              403,
+            )
           }
         }
 

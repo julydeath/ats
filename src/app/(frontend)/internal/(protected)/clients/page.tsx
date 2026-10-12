@@ -5,6 +5,11 @@ import { getPayload, type Where } from 'payload'
 
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APP_ROUTES } from '@/lib/constants/routes'
+import {
+  formatAuditActorName,
+  formatAuditActorRole,
+  formatAuditDate,
+} from '@/lib/utils/record-audit'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
 const PAGE_SIZE = 9
@@ -142,7 +147,11 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
 
   if (searchTerm) {
     whereConditions.push({
-      or: [{ name: { contains: searchTerm } }, { location: { contains: searchTerm } }, { contactPerson: { contains: searchTerm } }],
+      or: [
+        { name: { contains: searchTerm } },
+        { location: { contains: searchTerm } },
+        { contactPerson: { contains: searchTerm } },
+      ],
     })
   }
 
@@ -155,9 +164,21 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   }
 
   const whereQuery: Where | undefined =
-    whereConditions.length === 0 ? undefined : whereConditions.length === 1 ? whereConditions[0] : { and: whereConditions }
+    whereConditions.length === 0
+      ? undefined
+      : whereConditions.length === 1
+        ? whereConditions[0]
+        : { and: whereConditions }
 
-  const [clientsResult, leadsResult, usersResult, totalCount, activeCount, inactiveCount, unassignedCount] = await Promise.all([
+  const [
+    clientsResult,
+    leadsResult,
+    usersResult,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    unassignedCount,
+  ] = await Promise.all([
     payload.find({
       collection: 'clients',
       depth: 1,
@@ -174,6 +195,8 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
         companySize: true,
         contactPerson: true,
         country: true,
+        createdAt: true,
+        createdBy: true,
         email: true,
         id: true,
         industry: true,
@@ -357,15 +380,24 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                 Assign Leads
               </Link>
             ) : null}
-            <Link className="clients-grid-header-btn clients-grid-header-btn-primary" href={`${APP_ROUTES.internal.clients.list}?create=1`}>
+            <Link
+              className="clients-grid-header-btn clients-grid-header-btn-primary"
+              href={`${APP_ROUTES.internal.clients.list}?create=1`}
+            >
               + Add Client
             </Link>
           </div>
         ) : null}
       </header>
 
-      {successMessage ? <p className="clients-grid-feedback clients-grid-feedback-success">{successMessage}</p> : null}
-      {resolvedSearchParams.error ? <p className="clients-grid-feedback clients-grid-feedback-error">{resolvedSearchParams.error}</p> : null}
+      {successMessage ? (
+        <p className="clients-grid-feedback clients-grid-feedback-success">{successMessage}</p>
+      ) : null}
+      {resolvedSearchParams.error ? (
+        <p className="clients-grid-feedback clients-grid-feedback-error">
+          {resolvedSearchParams.error}
+        </p>
+      ) : null}
 
       <section className="clients-grid-kpis">
         <article className="clients-grid-kpi">
@@ -407,22 +439,29 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       </article>
 
       {clientsResult.docs.length === 0 ? (
-        <article className="clients-grid-empty">
-          No clients found for this filter set.
-        </article>
+        <article className="clients-grid-empty">No clients found for this filter set.</article>
       ) : (
         <section className="clients-grid-cards">
           {clientsResult.docs.map((client) => {
             const logo = readLogoMeta(client.logo)
             const leadLabel = readLabel(client.owningHeadRecruiter, 'Unassigned')
             const stats = jobStatsByClientID.get(String(client.id)) || { active: 0, total: 0 }
+            const addedBy = formatAuditActorName(client.createdBy)
+            const addedByRole = formatAuditActorRole(client.createdBy)
+            const addedOn = formatAuditDate(client.createdAt)
 
             return (
               <article className="client-grid-card" key={`client-${client.id}`}>
                 <header className="client-grid-card-head">
                   <div className="client-grid-logo-wrap">
                     {logo.url ? (
-                      <Image alt={logo.alt} className="client-grid-logo" height={36} src={logo.url} width={36} />
+                      <Image
+                        alt={logo.alt}
+                        className="client-grid-logo"
+                        height={36}
+                        src={logo.url}
+                        width={36}
+                      />
                     ) : (
                       <span className="client-grid-logo-fallback">{getInitials(client.name)}</span>
                     )}
@@ -430,7 +469,8 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                   <div className="client-grid-card-title-wrap">
                     <h3>{client.name}</h3>
                     <p>
-                      {client.clientCode || `CLT-${client.id}`} · {client.industry || client.category || 'Industry not set'}
+                      {client.clientCode || `CLT-${client.id}`} ·{' '}
+                      {client.industry || client.category || 'Industry not set'}
                     </p>
                   </div>
                   <span
@@ -472,17 +512,34 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                     <span>Jobs</span>
                     {stats.active} active / {stats.total} total
                   </p>
+                  <p>
+                    <span>Added By</span>
+                    {addedBy} · {addedByRole}
+                  </p>
+                  <p>
+                    <span>Added On</span>
+                    {addedOn}
+                  </p>
                 </div>
 
                 <footer className="client-grid-actions">
-                  <Link className="client-grid-action client-grid-action-primary" href={`${APP_ROUTES.internal.jobs.assigned}?client=${client.id}`}>
+                  <Link
+                    className="client-grid-action client-grid-action-primary"
+                    href={`${APP_ROUTES.internal.jobs.assigned}?client=${client.id}`}
+                  >
                     Jobs
                   </Link>
-                  <Link className="client-grid-action" href={`${APP_ROUTES.internal.clients.detailBase}/${client.id}`}>
+                  <Link
+                    className="client-grid-action"
+                    href={`${APP_ROUTES.internal.clients.detailBase}/${client.id}`}
+                  >
                     See More
                   </Link>
                   {canManageClients ? (
-                    <Link className="client-grid-action" href={`${APP_ROUTES.internal.clients.editBase}/${client.id}/edit`}>
+                    <Link
+                      className="client-grid-action"
+                      href={`${APP_ROUTES.internal.clients.editBase}/${client.id}/edit`}
+                    >
                       Edit
                     </Link>
                   ) : null}
@@ -501,7 +558,11 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
         <div className="clients-grid-pagination-links">
           <Link
             aria-disabled={currentPage <= 1}
-            className={currentPage <= 1 ? 'clients-grid-page-link clients-grid-page-link-disabled' : 'clients-grid-page-link'}
+            className={
+              currentPage <= 1
+                ? 'clients-grid-page-link clients-grid-page-link-disabled'
+                : 'clients-grid-page-link'
+            }
             href={`${APP_ROUTES.internal.clients.list}${buildClientsQuery({ page: previousPage, q: searchTerm, status: statusFilter })}`}
           >
             ‹
@@ -509,7 +570,11 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
           <span className="clients-grid-page-indicator">{currentPage}</span>
           <Link
             aria-disabled={currentPage >= totalPages}
-            className={currentPage >= totalPages ? 'clients-grid-page-link clients-grid-page-link-disabled' : 'clients-grid-page-link'}
+            className={
+              currentPage >= totalPages
+                ? 'clients-grid-page-link clients-grid-page-link-disabled'
+                : 'clients-grid-page-link'
+            }
             href={`${APP_ROUTES.internal.clients.list}${buildClientsQuery({ page: nextPage, q: searchTerm, status: statusFilter })}`}
           >
             ›
@@ -518,7 +583,12 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       </footer>
 
       {isCreateModalOpen && canManageClients ? (
-        <section aria-label="Create Client Profile" aria-modal="true" className="clients-create-modal-layer" role="dialog">
+        <section
+          aria-label="Create Client Profile"
+          aria-modal="true"
+          className="clients-create-modal-layer"
+          role="dialog"
+        >
           <div className="clients-create-modal-backdrop" />
           <article className="clients-create-modal">
             <div className="clients-create-modal-head">
@@ -549,14 +619,23 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                 </label>
                 <label>
                   <span>Category</span>
-                  <input name="category" placeholder="Strategic, Preferred, Project..." type="text" />
+                  <input
+                    name="category"
+                    placeholder="Strategic, Preferred, Project..."
+                    type="text"
+                  />
                 </label>
               </div>
 
               <div className="clients-create-modal-grid">
                 <label>
                   <span>Contact Person *</span>
-                  <input name="contactPerson" placeholder="Primary stakeholder" required type="text" />
+                  <input
+                    name="contactPerson"
+                    placeholder="Primary stakeholder"
+                    required
+                    type="text"
+                  />
                 </label>
                 <label>
                   <span>Phone *</span>
@@ -693,7 +772,11 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                 </label>
                 <label>
                   <span>Logo</span>
-                  <input accept=".jpg,.jpeg,.png,.webp,.svg,image/jpeg,image/png,image/webp,image/svg+xml" name="logo" type="file" />
+                  <input
+                    accept=".jpg,.jpeg,.png,.webp,.svg,image/jpeg,image/png,image/webp,image/svg+xml"
+                    name="logo"
+                    type="file"
+                  />
                 </label>
               </div>
 
@@ -753,7 +836,11 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                 </label>
                 <label>
                   <span>Billing Terms</span>
-                  <textarea name="billingTerms" placeholder="Net 30, milestone based, etc." rows={2} />
+                  <textarea
+                    name="billingTerms"
+                    placeholder="Net 30, milestone based, etc."
+                    rows={2}
+                  />
                 </label>
               </div>
 
@@ -769,26 +856,53 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                 <div className="clients-create-modal-field-block">
                   <span>Platform Controls</span>
                   <div className="clients-create-modal-flags">
-                    <label><input defaultChecked name="sendRequirement" type="checkbox" /> Send Requirement</label>
-                    <label><input defaultChecked name="sendHotlist" type="checkbox" /> Send Hotlist</label>
-                    <label><input name="allowAccessToAllUsers" type="checkbox" /> Allow Access To All Users</label>
-                    <label><input defaultChecked name="displayOnJob" type="checkbox" /> Display On Job</label>
-                    <label><input name="stopContactNotification" type="checkbox" /> Stop Contact Notification</label>
-                    <label><input name="defaultJobAddress" type="checkbox" /> Use Address As Default Job Address</label>
+                    <label>
+                      <input defaultChecked name="sendRequirement" type="checkbox" /> Send
+                      Requirement
+                    </label>
+                    <label>
+                      <input defaultChecked name="sendHotlist" type="checkbox" /> Send Hotlist
+                    </label>
+                    <label>
+                      <input name="allowAccessToAllUsers" type="checkbox" /> Allow Access To All
+                      Users
+                    </label>
+                    <label>
+                      <input defaultChecked name="displayOnJob" type="checkbox" /> Display On Job
+                    </label>
+                    <label>
+                      <input name="stopContactNotification" type="checkbox" /> Stop Contact
+                      Notification
+                    </label>
+                    <label>
+                      <input name="defaultJobAddress" type="checkbox" /> Use Address As Default Job
+                      Address
+                    </label>
                   </div>
                 </div>
               </div>
 
               <label>
                 <span>Notes</span>
-                <textarea name="notes" placeholder="Client expectations, constraints, SLA notes..." rows={3} />
+                <textarea
+                  name="notes"
+                  placeholder="Client expectations, constraints, SLA notes..."
+                  rows={3}
+                />
               </label>
 
               <div className="clients-create-modal-footer">
-                <Link className="clients-create-modal-cancel" href={APP_ROUTES.internal.clients.list}>
+                <Link
+                  className="clients-create-modal-cancel"
+                  href={APP_ROUTES.internal.clients.list}
+                >
                   Discard
                 </Link>
-                <button className="clients-create-modal-submit" data-pending-label="Creating..." type="submit">
+                <button
+                  className="clients-create-modal-submit"
+                  data-pending-label="Creating..."
+                  type="submit"
+                >
                   Create Client
                 </button>
               </div>

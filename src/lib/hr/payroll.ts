@@ -1,8 +1,12 @@
 import crypto from 'crypto'
 import { APIError, type PayloadRequest, type Where } from 'payload'
 
-import { type PayrollPaymentStatus } from '@/lib/constants/hr'
-import { createRazorpayXPayout, isRazorpayXConfigured, mapRazorpayPayoutStatus } from '@/lib/payments/razorpayx'
+import { type PayrollPaymentStatus, type PayrollRunStatus } from '@/lib/constants/hr'
+import {
+  createRazorpayXPayout,
+  isRazorpayXConfigured,
+  mapRazorpayPayoutStatus,
+} from '@/lib/payments/razorpayx'
 import { readRelationID } from '@/lib/hr/common'
 import type {
   EmployeeCompensation,
@@ -280,10 +284,16 @@ const computeLine = ({
   const proratedOther = round(otherAllowanceMonthly * attendanceFactor)
   const reimbursements = round(reimbursementMonthly * attendanceFactor)
   const grossEarnings = round(
-    proratedBasic + proratedHra + proratedSpecial + proratedVariable + proratedOther + customEarningsTotal + reimbursements,
+    proratedBasic +
+      proratedHra +
+      proratedSpecial +
+      proratedVariable +
+      proratedOther +
+      customEarningsTotal +
+      reimbursements,
   )
 
-  const lopDeduction = round(monthlyGross - (monthlyGross * attendanceFactor))
+  const lopDeduction = round(monthlyGross - monthlyGross * attendanceFactor)
 
   const pfEnabled = compensation.pfEnabled !== false && ruleSet.pfEnabled !== false
   const pfRateEmployee = toNumber(ruleSet.pfEmployeeRate, 12)
@@ -303,7 +313,9 @@ const computeLine = ({
 
   const professionalTaxEnabled =
     compensation.professionalTaxEnabled !== false && ruleSet.professionalTaxEnabled !== false
-  const professionalTax = professionalTaxEnabled ? round(toNumber(ruleSet.professionalTaxMonthly, 200)) : 0
+  const professionalTax = professionalTaxEnabled
+    ? round(toNumber(ruleSet.professionalTaxMonthly, 200))
+    : 0
 
   const lwfEnabled = compensation.lwfEnabled === true && ruleSet.lwfEnabled === true
   const lwfEmployee = lwfEnabled ? round(toNumber(ruleSet.lwfEmployeeMonthly, 20)) : 0
@@ -424,6 +436,38 @@ const deriveRunStatusFromPaymentStatuses = (
   return 'approved'
 }
 
+export const deriveRunStatusFromPayoutStatuses = (statuses: string[]): PayrollRunStatus => {
+  if (statuses.length === 0) {
+    return 'approved'
+  }
+
+  const processedCount = statuses.filter((status) => status === 'processed').length
+  const activeCount = statuses.filter(
+    (status) => status === 'created' || status === 'processing',
+  ).length
+  const failedCount = statuses.filter(
+    (status) => status === 'failed' || status === 'reversed' || status === 'cancelled',
+  ).length
+
+  if (processedCount === statuses.length) {
+    return 'completed'
+  }
+
+  if (activeCount > 0) {
+    return 'disbursing'
+  }
+
+  if (processedCount > 0 && failedCount > 0) {
+    return 'partiallyPaid'
+  }
+
+  if (failedCount > 0) {
+    return 'failed'
+  }
+
+  return 'disbursing'
+}
+
 export const syncPayrollRunManualSettlementStatus = async ({
   req,
   runID,
@@ -530,11 +574,7 @@ export const updatePayrollLineItemPaymentStatus = async ({
       paymentReference: trimmedReference || null,
       paymentStatus,
       status:
-        paymentStatus === 'paid'
-          ? 'processed'
-          : paymentStatus === 'notPaid'
-            ? 'failed'
-            : 'created',
+        paymentStatus === 'paid' ? 'processed' : paymentStatus === 'notPaid' ? 'failed' : 'created',
     },
     id: lineItemID,
     overrideAccess: true,
@@ -658,7 +698,11 @@ export const generatePayrollRun = async ({
     Math.floor((cycleEnd.getTime() - cycleStart.getTime()) / (24 * 60 * 60 * 1000)) + 1,
   )
 
-  const computedItems: Array<{ grossEarnings: number; netPayable: number; totalDeductions: number }> = []
+  const computedItems: Array<{
+    grossEarnings: number
+    netPayable: number
+    totalDeductions: number
+  }> = []
 
   for (const employee of employees.docs) {
     const employeeID = readRelationID(employee.id)
@@ -783,13 +827,7 @@ export const generatePayrollRun = async ({
   })
 }
 
-export const lockPayrollRun = async ({
-  req,
-  runID,
-}: {
-  req: PayloadRequest
-  runID: number
-}) => {
+export const lockPayrollRun = async ({ req, runID }: { req: PayloadRequest; runID: number }) => {
   const run: PayrollRun = await req.payload.findByID({
     collection: 'payroll-runs',
     depth: 0,
@@ -815,13 +853,7 @@ export const lockPayrollRun = async ({
   })
 }
 
-export const approvePayrollRun = async ({
-  req,
-  runID,
-}: {
-  req: PayloadRequest
-  runID: number
-}) => {
+export const approvePayrollRun = async ({ req, runID }: { req: PayloadRequest; runID: number }) => {
   const run: PayrollRun = await req.payload.findByID({
     collection: 'payroll-runs',
     depth: 0,
@@ -863,12 +895,11 @@ export const approvePayrollRun = async ({
 
   const enforceMakerChecker = activeAdmins.totalDocs >= 2
   const makerAndCheckerSame = makerID && String(makerID) === String(approverID)
-  const approvalAuditNote =
-    makerAndCheckerSame
-      ? enforceMakerChecker
-        ? `Maker-checker bypass enabled: same user approved run (${new Date().toISOString()}).`
-        : `Single-admin override: maker and checker are the same user (${new Date().toISOString()}).`
-      : null
+  const approvalAuditNote = makerAndCheckerSame
+    ? enforceMakerChecker
+      ? `Maker-checker bypass enabled: same user approved run (${new Date().toISOString()}).`
+      : `Single-admin override: maker and checker are the same user (${new Date().toISOString()}).`
+    : null
 
   return req.payload.update({
     collection: 'payroll-runs',
@@ -930,14 +961,14 @@ export const disbursePayrollRun = async ({
     },
   })
 
-  let failedCount = 0
+  const payoutStatuses: string[] = []
 
   for (const lineItem of lineItems.docs as PayrollLineItem[]) {
     const lineItemID = readRelationID(lineItem.id)
     const employeeID = readRelationID(lineItem.employee)
 
     if (!lineItemID || !employeeID) {
-      failedCount += 1
+      payoutStatuses.push('failed')
       continue
     }
 
@@ -1002,24 +1033,23 @@ export const disbursePayrollRun = async ({
       })
     }
 
-    const createdTxn =
-      payoutTxnID
-        ? null
-        : ((await req.payload.create({
-            collection: 'payroll-payout-transactions',
-            data: {
-              attemptCount: 1,
-              employee: employeeID,
-              idempotencyKey,
-              initiatedAt: new Date().toISOString(),
-              lineItem: lineItemID,
-              payoutStatus: 'created',
-              payrollRun: runID,
-              provider: 'razorpayx',
-            },
-            overrideAccess: true,
-            req,
-          })))
+    const createdTxn = payoutTxnID
+      ? null
+      : await req.payload.create({
+          collection: 'payroll-payout-transactions',
+          data: {
+            attemptCount: 1,
+            employee: employeeID,
+            idempotencyKey,
+            initiatedAt: new Date().toISOString(),
+            lineItem: lineItemID,
+            payoutStatus: 'created',
+            payrollRun: runID,
+            provider: 'razorpayx',
+          },
+          overrideAccess: true,
+          req,
+        })
 
     const payoutTxnTargetID = payoutTxnID || readRelationID(createdTxn?.id)
 
@@ -1041,6 +1071,7 @@ export const disbursePayrollRun = async ({
       })
 
       const mappedStatus = mapRazorpayPayoutStatus(payout.status)
+      payoutStatuses.push(mappedStatus)
 
       if (payoutTxnTargetID) {
         await req.payload.update({
@@ -1073,7 +1104,7 @@ export const disbursePayrollRun = async ({
         req,
       })
     } catch (error) {
-      failedCount += 1
+      payoutStatuses.push('failed')
 
       if (payoutTxnTargetID) {
         await req.payload.update({
@@ -1102,12 +1133,12 @@ export const disbursePayrollRun = async ({
     }
   }
 
-  const finalStatus = failedCount > 0 ? 'failed' : 'completed'
+  const finalStatus = deriveRunStatusFromPayoutStatuses(payoutStatuses)
 
   return req.payload.update({
     collection: 'payroll-runs',
     data: {
-      disbursedAt: new Date().toISOString(),
+      disbursedAt: finalStatus === 'disbursing' ? null : new Date().toISOString(),
       status: finalStatus,
     },
     id: runID,
@@ -1141,33 +1172,19 @@ export const reconcilePayrollRunFromPayouts = async ({
     return
   }
 
-  const statuses = (transactions.docs as PayrollPayoutTransaction[]).map((doc) => String(doc.payoutStatus || 'created'))
+  const statuses = (transactions.docs as PayrollPayoutTransaction[]).map((doc) =>
+    String(doc.payoutStatus || 'created'),
+  )
+  const nextStatus = deriveRunStatusFromPayoutStatuses(statuses)
 
-  const hasFailed = statuses.some((status) => status === 'failed')
-  const allProcessed = statuses.every((status) => status === 'processed')
-
-  if (allProcessed) {
-    await req.payload.update({
-      collection: 'payroll-runs',
-      data: {
-        status: 'completed',
-      },
-      id: runID,
-      overrideAccess: true,
-      req,
-    })
-    return
-  }
-
-  if (hasFailed) {
-    await req.payload.update({
-      collection: 'payroll-runs',
-      data: {
-        status: 'failed',
-      },
-      id: runID,
-      overrideAccess: true,
-      req,
-    })
-  }
+  await req.payload.update({
+    collection: 'payroll-runs',
+    data: {
+      disbursedAt: nextStatus === 'disbursing' ? null : new Date().toISOString(),
+      status: nextStatus,
+    },
+    id: runID,
+    overrideAccess: true,
+    req,
+  })
 }

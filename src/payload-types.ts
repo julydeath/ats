@@ -518,6 +518,7 @@ export interface Client {
   paymentTerms?: string | null;
   practice?: string | null;
   status: 'active' | 'inactive';
+  createdBy?: (number | null) | User;
   /**
    * Optional primary lead owner. Admin can still assign multiple leads separately.
    */
@@ -1751,6 +1752,7 @@ export interface ClientsSelect<T extends boolean = true> {
   paymentTerms?: T;
   practice?: T;
   status?: T;
+  createdBy?: T;
   owningHeadRecruiter?: T;
   primaryOwner?: T;
   ownership?: T;

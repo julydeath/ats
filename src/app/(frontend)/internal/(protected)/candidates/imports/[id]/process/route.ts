@@ -1,5 +1,5 @@
 import configPromise from '@payload-config'
-import { after, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
@@ -43,7 +43,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const batchID = parseNumericID(id)
 
   if (!batchID) {
-    return NextResponse.redirect(new URL(APP_ROUTES.internal.candidates.importsNew, request.url), 303)
+    return NextResponse.redirect(
+      new URL(APP_ROUTES.internal.candidates.importsNew, request.url),
+      303,
+    )
   }
 
   const formData = await request.formData().catch(() => null)
@@ -75,15 +78,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
   }
 
-  after(async () => {
-    try {
-      await processResumeImportBatch({ batchID })
-    } catch (error) {
-      console.error('Bulk resume import processing failed', error)
-    }
-  })
-
   const redirectURL = new URL(`${APP_ROUTES.internal.candidates.imports}/${batchID}`, request.url)
-  redirectURL.searchParams.set('success', 'processing')
+
+  try {
+    await processResumeImportBatch({ batchID })
+    redirectURL.searchParams.set('success', 'processing')
+  } catch (error) {
+    console.error('Bulk resume import processing failed', error)
+    redirectURL.searchParams.set('error', 'Resume import processing failed. Please retry.')
+  }
+
   return NextResponse.redirect(redirectURL, 303)
 }

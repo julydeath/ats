@@ -1,9 +1,6 @@
 import { APIError, type CollectionConfig, type Where } from 'payload'
 
-import {
-  hasInternalRole,
-  type InternalUserLike,
-} from '@/access/internalRoles'
+import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { clientCreateAccess, clientManageAccess, clientReadAccess } from '@/access/visibility'
 import { CLIENT_STATUS_OPTIONS } from '@/lib/constants/recruitment'
 import { buildClientDuplicateSignals } from '@/lib/jobs/dedupe'
@@ -29,7 +26,10 @@ const CLIENT_REQUIRED_DOCUMENT_OPTIONS = [
   { label: 'Compliance Certificate', value: 'complianceCertificate' },
 ] as const
 
-const getCandidateClientSignals = (data?: Record<string, unknown>, originalDoc?: Record<string, unknown>) =>
+const getCandidateClientSignals = (
+  data?: Record<string, unknown>,
+  originalDoc?: Record<string, unknown>,
+) =>
   buildClientDuplicateSignals({
     email: data?.email ?? originalDoc?.email,
     name: data?.name ?? originalDoc?.name,
@@ -39,15 +39,24 @@ const getCandidateClientSignals = (data?: Record<string, unknown>, originalDoc?:
 export const Clients: CollectionConfig = {
   slug: 'clients',
   access: {
-    admin: ({ req }) =>
-      hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter']),
+    admin: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter']),
     create: clientCreateAccess,
     read: clientReadAccess,
     update: clientManageAccess,
     delete: clientManageAccess,
   },
   admin: {
-    defaultColumns: ['clientCode', 'name', 'industry', 'location', 'contactPerson', 'email', 'status', 'updatedAt'],
+    defaultColumns: [
+      'clientCode',
+      'name',
+      'industry',
+      'location',
+      'contactPerson',
+      'email',
+      'status',
+      'createdBy',
+      'createdAt',
+    ],
     group: 'Recruitment Ops',
     useAsTitle: 'name',
   },
@@ -181,12 +190,22 @@ export const Clients: CollectionConfig = {
       index: true,
     },
     {
+      name: 'createdBy',
+      type: 'relationship',
+      relationTo: 'users',
+      index: true,
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
       name: 'owningHeadRecruiter',
       type: 'relationship',
       relationTo: 'users',
       index: true,
       admin: {
-        description: 'Optional primary lead owner. Admin can still assign multiple leads separately.',
+        description:
+          'Optional primary lead owner. Admin can still assign multiple leads separately.',
       },
       filterOptions: {
         role: {
@@ -326,6 +345,11 @@ export const Clients: CollectionConfig = {
         const typedData = data as Record<string, unknown>
         const typedOriginalDoc = originalDoc as Record<string, unknown> | undefined
         const signals = getCandidateClientSignals(typedData, typedOriginalDoc)
+        const currentUserID = (req.user as InternalUserLike | null | undefined)?.id ?? null
+        const createdByID =
+          operation === 'create'
+            ? extractRelationshipID(typedData.createdBy ?? currentUserID)
+            : extractRelationshipID(typedOriginalDoc?.createdBy ?? typedData.createdBy)
         const owningHeadRecruiterID = extractRelationshipID(
           typedData.owningHeadRecruiter ?? typedOriginalDoc?.owningHeadRecruiter,
         )
@@ -389,6 +413,7 @@ export const Clients: CollectionConfig = {
         return {
           ...typedData,
           clientCode: typedData.clientCode ?? typedOriginalDoc?.clientCode,
+          createdBy: createdByID ?? undefined,
           normalizedEmail: signals.normalizedEmail,
           normalizedName: signals.normalizedNameKey,
           normalizedPhone: signals.normalizedPhone,

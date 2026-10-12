@@ -1,9 +1,12 @@
-import { APIError, type CollectionConfig, type Endpoint, type PayloadRequest, type Where } from 'payload'
-
 import {
-  hasInternalRole,
-  type InternalUserLike,
-} from '@/access/internalRoles'
+  APIError,
+  type CollectionConfig,
+  type Endpoint,
+  type PayloadRequest,
+  type Where,
+} from 'payload'
+
+import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { jobsCreateAccess, jobsManageAccess, jobsReadAccess } from '@/access/visibility'
 import {
   ACTIVE_JOB_STATUSES,
@@ -38,7 +41,10 @@ const getNumericValue = (value: unknown): number | null => {
   return Number.isFinite(numeric) ? numeric : null
 }
 
-const validateJobRanges = (data?: Record<string, unknown>, originalDoc?: Record<string, unknown>) => {
+const validateJobRanges = (
+  data?: Record<string, unknown>,
+  originalDoc?: Record<string, unknown>,
+) => {
   const salaryMin = getNumericValue(data?.salaryMin ?? originalDoc?.salaryMin)
   const salaryMax = getNumericValue(data?.salaryMax ?? originalDoc?.salaryMax)
   const experienceMin = getNumericValue(data?.experienceMin ?? originalDoc?.experienceMin)
@@ -156,8 +162,7 @@ const reactivateJobEndpoint: Endpoint = {
     let requestBody: unknown = null
 
     try {
-      requestBody =
-        typeof req.json === 'function' ? await req.json() : null
+      requestBody = typeof req.json === 'function' ? await req.json() : null
     } catch {
       requestBody = null
     }
@@ -193,18 +198,23 @@ export const Jobs: CollectionConfig = {
   slug: 'jobs',
   access: {
     admin: ({ req }) =>
-      hasInternalRole(req.user as InternalUserLike, [
-        'admin',
-        'leadRecruiter',
-        'recruiter',
-      ]),
+      hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter']),
     create: jobsCreateAccess,
     read: jobsReadAccess,
     update: jobsManageAccess,
     delete: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin']),
   },
   admin: {
-    defaultColumns: ['jobCode', 'title', 'client', 'status', 'priority', 'openings', 'updatedAt'],
+    defaultColumns: [
+      'jobCode',
+      'title',
+      'client',
+      'status',
+      'priority',
+      'openings',
+      'createdBy',
+      'createdAt',
+    ],
     group: 'Recruitment Ops',
     useAsTitle: 'title',
   },

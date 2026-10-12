@@ -3,15 +3,11 @@ import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getPayload, type Payload } from 'payload'
 
 import { env } from '@/lib/env'
+import { getResumeImportMimeType } from './resume-import-validation'
 import { parseResumeBuffer } from './resume-parser'
 
 export const MAX_RESUME_IMPORT_FILES = 5
 export const MAX_RESUME_IMPORT_FILE_SIZE_BYTES = 10 * 1024 * 1024
-export const RESUME_IMPORT_MIME_TYPES = new Set<string>([
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-])
 
 export type ResumeImportFileBuffer = {
   buffer: Buffer
@@ -113,7 +109,9 @@ const getStoredResumeKeys = (resume: ResumeDocumentLike): string[] => {
     keys.push(keyFromURL(resume.url) || '')
 
     if (env.S3_PUBLIC_BASE_URL && resume.url.startsWith(env.S3_PUBLIC_BASE_URL)) {
-      keys.push(decodeURIComponent(resume.url.slice(env.S3_PUBLIC_BASE_URL.length).replace(/^\/+/, '')))
+      keys.push(
+        decodeURIComponent(resume.url.slice(env.S3_PUBLIC_BASE_URL.length).replace(/^\/+/, '')),
+      )
     }
   }
 
@@ -157,9 +155,14 @@ const bodyToBuffer = async (body: unknown): Promise<Buffer> => {
   throw new Error('Stored resume stream could not be read.')
 }
 
-const readStoredResumeBuffer = async (resume: ResumeDocumentLike): Promise<ResumeImportFileBuffer> => {
+const readStoredResumeBuffer = async (
+  resume: ResumeDocumentLike,
+): Promise<ResumeImportFileBuffer> => {
   const filename = resume.filename || 'resume'
-  const mimeType = resume.mimeType || 'application/octet-stream'
+  const mimeType =
+    getResumeImportMimeType({ filename, mimeType: resume.mimeType }) ||
+    resume.mimeType ||
+    'application/octet-stream'
 
   if (s3Client) {
     const keys = getStoredResumeKeys(resume)
@@ -205,7 +208,11 @@ const readStoredResumeBuffer = async (resume: ResumeDocumentLike): Promise<Resum
   return {
     buffer: Buffer.from(await response.arrayBuffer()),
     filename,
-    mimeType: response.headers.get('content-type') || mimeType,
+    mimeType:
+      getResumeImportMimeType({
+        filename,
+        mimeType: response.headers.get('content-type'),
+      }) || mimeType,
   }
 }
 

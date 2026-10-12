@@ -3,11 +3,22 @@ import Link from 'next/link'
 import { getPayload } from 'payload'
 
 import { requireInternalRole } from '@/lib/auth/internal-auth'
-import { CANDIDATE_SOURCE_OPTIONS, CANDIDATE_SOURCES, type CandidateSource } from '@/lib/constants/recruitment'
+import {
+  CANDIDATE_SOURCE_OPTIONS,
+  CANDIDATE_SOURCES,
+  type CandidateSource,
+} from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
+import {
+  formatAuditActorName,
+  formatAuditActorRole,
+  formatAuditDate,
+} from '@/lib/utils/record-audit'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 
-const SOURCE_LABELS = new Map(CANDIDATE_SOURCE_OPTIONS.map((option) => [option.value, option.label]))
+const SOURCE_LABELS = new Map(
+  CANDIDATE_SOURCE_OPTIONS.map((option) => [option.value, option.label]),
+)
 const PAGE_SIZE = 10
 
 type CandidatesListPageProps = {
@@ -135,7 +146,8 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
   const sourceFilter = (resolvedSearchParams.source || '').trim()
   const expFilter = (resolvedSearchParams.exp || '').trim()
   const requestedPage = Number.parseInt(String(resolvedSearchParams.page || '1'), 10)
-  const canCreateCandidate = user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
+  const canCreateCandidate =
+    user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
   const canCreateApplication = user.role === 'admin' || user.role === 'leadRecruiter'
   const canEditCandidate = user.role === 'admin' || user.role === 'leadRecruiter'
 
@@ -148,6 +160,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
       overrideAccess: false,
       select: {
         candidateCode: true,
+        createdAt: true,
         currentCompany: true,
         currentRole: true,
         email: true,
@@ -157,6 +170,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
         skills: true,
         source: true,
         sourceJob: true,
+        sourcedBy: true,
         totalExperienceYears: true,
         updatedAt: true,
       },
@@ -216,10 +230,20 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
     applicationClientIDsByCandidateID.set(key, current)
   })
 
-  const getCandidateClientIDs = (candidate: (typeof candidatesResult.docs)[number]): Set<string> => {
-    const clientIDs = new Set<string>(applicationClientIDsByCandidateID.get(String(candidate.id)) || [])
-    const sourceJob = candidate.sourceJob as { client?: unknown } | number | string | null | undefined
-    const sourceJobClientID = typeof sourceJob === 'object' && sourceJob ? extractRelationshipID(sourceJob.client) : null
+  const getCandidateClientIDs = (
+    candidate: (typeof candidatesResult.docs)[number],
+  ): Set<string> => {
+    const clientIDs = new Set<string>(
+      applicationClientIDsByCandidateID.get(String(candidate.id)) || [],
+    )
+    const sourceJob = candidate.sourceJob as
+      | { client?: unknown }
+      | number
+      | string
+      | null
+      | undefined
+    const sourceJobClientID =
+      typeof sourceJob === 'object' && sourceJob ? extractRelationshipID(sourceJob.client) : null
 
     if (sourceJobClientID) {
       clientIDs.add(String(sourceJobClientID))
@@ -266,7 +290,9 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
 
   const totalRows = filteredCandidates.length
   const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE))
-  const currentPage = Number.isFinite(requestedPage) ? Math.min(Math.max(requestedPage, 1), totalPages) : 1
+  const currentPage = Number.isFinite(requestedPage)
+    ? Math.min(Math.max(requestedPage, 1), totalPages)
+    : 1
   const start = (currentPage - 1) * PAGE_SIZE
   const pagedRows = filteredCandidates.slice(start, start + PAGE_SIZE)
   const showingFrom = totalRows === 0 ? 0 : start + 1
@@ -281,13 +307,17 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
         <div className="candidate-mgmt-header-copy">
           <h1>Candidates</h1>
           <p>
-            Manage your talent pool with clean sourcing data, searchable records, and quick access to profile actions.
+            Manage your talent pool with clean sourcing data, searchable records, and quick access
+            to profile actions.
           </p>
         </div>
 
         <div className="candidate-mgmt-header-actions">
           {canCreateCandidate ? (
-            <Link className="candidate-mgmt-upload-card" href={APP_ROUTES.internal.candidates.importsNew}>
+            <Link
+              className="candidate-mgmt-upload-card"
+              href={APP_ROUTES.internal.candidates.importsNew}
+            >
               <span className="candidate-mgmt-upload-icon">↑</span>
               <span>
                 <strong>Bulk Resume Upload</strong>
@@ -360,38 +390,52 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                 <th>Current Company</th>
                 <th>Contact Info</th>
                 <th>Source</th>
+                <th>Added By</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {pagedRows.length === 0 ? (
                 <tr>
-                  <td className="candidate-mgmt-empty" colSpan={6}>
+                  <td className="candidate-mgmt-empty" colSpan={7}>
                     No candidates found in this view.
                   </td>
                 </tr>
               ) : (
                 pagedRows.map((candidate) => {
                   const sourceJobID = extractRelationshipID(candidate.sourceJob)
-                  const years = typeof candidate.totalExperienceYears === 'number' ? candidate.totalExperienceYears : null
+                  const years =
+                    typeof candidate.totalExperienceYears === 'number'
+                      ? candidate.totalExperienceYears
+                      : null
                   const skills = Array.isArray(candidate.skills)
                     ? candidate.skills
                         .map((skill) => (typeof skill === 'string' ? skill.trim() : ''))
                         .filter((skill) => skill.length > 0)
                     : []
-                  const primarySkill = (skills[0] || candidate.currentRole || 'Generalist').toUpperCase()
+                  const primarySkill = (
+                    skills[0] ||
+                    candidate.currentRole ||
+                    'Generalist'
+                  ).toUpperCase()
                   const extraSkillsCount = Math.max(skills.length - 1, 0)
                   const sourceLabel = getSourceLabel(candidate.source)
+                  const addedBy = formatAuditActorName(candidate.sourcedBy)
+                  const addedByRole = formatAuditActorRole(candidate.sourcedBy)
+                  const addedOn = formatAuditDate(candidate.createdAt)
 
                   return (
                     <tr key={`candidate-row-${candidate.id}`}>
                       <td>
                         <div className="candidate-mgmt-name-cell">
-                          <span className="candidate-mgmt-avatar">{getInitials(candidate.fullName)}</span>
+                          <span className="candidate-mgmt-avatar">
+                            {getInitials(candidate.fullName)}
+                          </span>
                           <div>
                             <p className="candidate-mgmt-name">{candidate.fullName}</p>
                             <p className="candidate-mgmt-sub">
-                              {(candidate.candidateCode || `CAN-${candidate.id}`)} · {getRelativeDate(candidate.updatedAt)}
+                              {candidate.candidateCode || `CAN-${candidate.id}`} ·{' '}
+                              {getRelativeDate(candidate.updatedAt)}
                             </p>
                           </div>
                         </div>
@@ -410,7 +454,9 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                         </div>
                       </td>
 
-                      <td className="candidate-mgmt-company">{candidate.currentCompany || 'Not provided'}</td>
+                      <td className="candidate-mgmt-company">
+                        {candidate.currentCompany || 'Not provided'}
+                      </td>
 
                       <td>
                         <div className="candidate-mgmt-contact">
@@ -424,8 +470,20 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                       </td>
 
                       <td>
+                        <div className="candidate-mgmt-contact">
+                          <span>{addedBy}</span>
+                          <span>
+                            {addedByRole} · {addedOn}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td>
                         <div className="candidate-mgmt-row-actions">
-                          <Link className="candidate-mgmt-action-link" href={`${APP_ROUTES.internal.candidates.detailBase}/${candidate.id}`}>
+                          <Link
+                            className="candidate-mgmt-action-link"
+                            href={`${APP_ROUTES.internal.candidates.detailBase}/${candidate.id}`}
+                          >
                             Open
                           </Link>
                           {canEditCandidate ? (

@@ -13342,6 +13342,74 @@ ul {
   color: #b42318;
 }
 
+:is(.internal-shell, .ops-shell) .payroll-analysis-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  margin-top: 0.85rem;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-analysis-card {
+  background: #ffffff;
+  border: 1px solid #d7e2f2;
+  border-left-width: 4px;
+  border-radius: 0.8rem;
+  display: grid;
+  gap: 0.34rem;
+  padding: 0.95rem 1rem;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-analysis-card-ready {
+  border-left-color: #16a34a;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-analysis-card-warning {
+  border-left-color: #e0a500;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-analysis-value {
+  color: #0f2544;
+  font-size: 1.18rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-pending-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-pending-item {
+  align-items: center;
+  background: #f8fbff;
+  border: 1px solid #dbe6f5;
+  border-radius: 0.75rem;
+  display: flex;
+  gap: 0.9rem;
+  justify-content: space-between;
+  padding: 0.85rem 0.95rem;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-pending-title {
+  color: #112f56;
+  font-size: 0.9rem;
+  font-weight: 800;
+  margin: 0 0 0.15rem;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-pending-item strong {
+  color: #10284a;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+:is(.internal-shell, .ops-shell) .payroll-queue-table td:nth-child(4) {
+  color: #10284a;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
 @keyframes ops-spin {
   from {
     transform: rotate(0deg);

@@ -7,10 +7,10 @@ import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
 import {
   MAX_RESUME_IMPORT_FILES,
   MAX_RESUME_IMPORT_FILE_SIZE_BYTES,
-  RESUME_IMPORT_MIME_TYPES,
   processResumeImportBatch,
   type ResumeImportFileBuffer,
 } from '@/lib/candidates/resume-imports'
+import { getResumeImportMimeType } from '@/lib/candidates/resume-import-validation'
 import { APP_ROUTES } from '@/lib/constants/routes'
 
 export const runtime = 'nodejs'
@@ -73,13 +73,23 @@ export async function POST(request: Request) {
 
   if (resumeFiles.length > MAX_RESUME_IMPORT_FILES) {
     return NextResponse.redirect(
-      buildFailureURL(request, `Upload a maximum of ${MAX_RESUME_IMPORT_FILES} resumes per bundle.`),
+      buildFailureURL(
+        request,
+        `Upload a maximum of ${MAX_RESUME_IMPORT_FILES} resumes per bundle.`,
+      ),
       303,
     )
   }
 
+  const validatedResumeFiles: Array<{ file: File; mimeType: string }> = []
+
   for (const resumeFile of resumeFiles) {
-    if (!RESUME_IMPORT_MIME_TYPES.has(resumeFile.type)) {
+    const mimeType = getResumeImportMimeType({
+      filename: resumeFile.name,
+      mimeType: resumeFile.type,
+    })
+
+    if (!mimeType) {
       return NextResponse.redirect(
         buildFailureURL(request, `${resumeFile.name} must be a PDF, DOC, or DOCX file.`),
         303,
@@ -92,6 +102,8 @@ export async function POST(request: Request) {
         303,
       )
     }
+
+    validatedResumeFiles.push({ file: resumeFile, mimeType })
   }
 
   const currentUserID = toNumericID(internalUser?.id)
@@ -103,10 +115,10 @@ export async function POST(request: Request) {
     const batch = await payload.create({
       collection: 'candidate-resume-import-batches',
       data: {
-        queuedCount: resumeFiles.length,
+        queuedCount: validatedResumeFiles.length,
         sourceJob: sourceJobID ?? undefined,
         status: 'queued',
-        totalCount: resumeFiles.length,
+        totalCount: validatedResumeFiles.length,
         uploadedBy: currentUserID ?? undefined,
       },
       overrideAccess: false,
@@ -117,7 +129,7 @@ export async function POST(request: Request) {
 
     const itemBuffers: Record<string, ResumeImportFileBuffer> = {}
 
-    for (const resumeFile of resumeFiles) {
+    for (const { file: resumeFile, mimeType } of validatedResumeFiles) {
       const buffer = Buffer.from(await resumeFile.arrayBuffer())
       const resume = await payload.create({
         collection: 'candidate-resumes',
@@ -128,7 +140,7 @@ export async function POST(request: Request) {
         },
         file: {
           data: buffer,
-          mimetype: resumeFile.type,
+          mimetype: mimeType,
           name: resumeFile.name,
           size: resumeFile.size,
         },
@@ -155,7 +167,7 @@ export async function POST(request: Request) {
       itemBuffers[String(item.id)] = {
         buffer,
         filename: resume.filename || resumeFile.name,
-        mimeType: resume.mimeType || resumeFile.type,
+        mimeType: resume.mimeType || mimeType,
       }
     }
 
