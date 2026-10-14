@@ -8,6 +8,7 @@ import { requireInternalRole } from '@/lib/auth/internal-auth'
 import {
   APPLICATION_STAGE_LABELS,
   isApplicationRejectedStage,
+  normalizeApplicationStage,
   type ApplicationStage,
 } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
@@ -95,9 +96,19 @@ const formatDateTime = (value: string | Date | null | undefined): string => {
   })
 }
 
-const getSkillTags = (input: Array<string | null | undefined>): string[] => {
+const getSkillTags = (input: unknown[]): string[] => {
   const parts = input
-    .flatMap((item) => (item || '').split(/[,\n/|]/g))
+    .flatMap((item) => {
+      if (typeof item === 'string') {
+        return item.split(/[,\n/|]/g)
+      }
+
+      if (typeof item === 'number') {
+        return String(item).split(/[,\n/|]/g)
+      }
+
+      return []
+    })
     .map((item) => item.trim())
     .filter((item) => item.length > 0)
     .slice(0, 12)
@@ -131,6 +142,19 @@ const stageToneClass = (stage: ApplicationStage | null): string => {
   }
 
   return 'candidate-profile-status-neutral'
+}
+
+const readStageLabel = (value: unknown, fallback: string = 'Stage not set'): string => {
+  const stage = normalizeApplicationStage(value)
+  if (stage) {
+    return APPLICATION_STAGE_LABELS[stage]
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value
+  }
+
+  return fallback
 }
 
 type CandidateDetailPageProps = {
@@ -277,8 +301,8 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
     const canEditCandidate = user.role === 'admin' || user.role === 'leadRecruiter'
     const sourceJobID = extractRelationshipID(candidate.sourceJob)
     const latestApplication = applicationsForCandidate.docs[0] || null
-    const latestStage = (latestApplication?.stage as ApplicationStage | undefined) || null
-    const latestStageLabel = latestStage ? APPLICATION_STAGE_LABELS[latestStage] : 'Profile Created'
+    const latestStage = normalizeApplicationStage(latestApplication?.stage)
+    const latestStageLabel = latestApplication ? readStageLabel(latestApplication.stage) : 'Profile Created'
     const stageHistoryByApplication = new Map<
       string,
       Array<{
@@ -341,7 +365,7 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
         title: 'Candidate Profile Updated',
       },
       ...applicationsForCandidate.docs.slice(0, 4).map((application) => ({
-        body: `${APPLICATION_STAGE_LABELS[application.stage as ApplicationStage]} · Recruiter ${readLabel(application.recruiter)}`,
+        body: `${readStageLabel(application.stage)} · Recruiter ${readLabel(application.recruiter)}`,
         date: formatDateTime(application.updatedAt),
         title: readLabel(application.job),
       })),
@@ -493,7 +517,7 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
                         <p>{readLabel(application.job)}</p>
                         <small>{formatDateTime(application.updatedAt)}</small>
                       </div>
-                      <span>{APPLICATION_STAGE_LABELS[application.stage as ApplicationStage]}</span>
+                      <span>{readStageLabel(application.stage)}</span>
                     </article>
                   ))}
                 </div>
@@ -574,20 +598,6 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
           </aside>
 
           <div className="candidate-profile-main-col">
-            {latestApplication ? (
-              <ApplicationFlowProgress
-                applicationCode={latestApplication.applicationCode || `APP-${latestApplication.id}`}
-                currentStage={latestApplication.stage as ApplicationStage}
-                detailHref={`${APP_ROUTES.internal.applications.detailBase}/${latestApplication.id}`}
-                entries={latestApplicationFlowHistory}
-                fallbackOwnerName={readLabel(latestApplication.recruiter, 'Unassigned')}
-                fallbackOwnerRole="recruiter"
-                fallbackTimestamp={latestApplication.updatedAt}
-                subtitle={`${readLabel(latestApplication.job)} · Latest mapped application`}
-                title="Latest Application Flow"
-              />
-            ) : null}
-
             <article className="candidate-profile-resume-card">
               <div className="candidate-profile-resume-head">
                 <p>{resumeMeta.filename}</p>
@@ -616,6 +626,20 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
                 )}
               </div>
             </article>
+
+            {latestApplication && latestStage ? (
+              <ApplicationFlowProgress
+                applicationCode={latestApplication.applicationCode || `APP-${latestApplication.id}`}
+                currentStage={latestStage}
+                detailHref={`${APP_ROUTES.internal.applications.detailBase}/${latestApplication.id}`}
+                entries={latestApplicationFlowHistory}
+                fallbackOwnerName={readLabel(latestApplication.recruiter, 'Unassigned')}
+                fallbackOwnerRole="recruiter"
+                fallbackTimestamp={latestApplication.updatedAt}
+                subtitle={`${readLabel(latestApplication.job)} · Latest mapped application`}
+                title="Latest Application Flow"
+              />
+            ) : null}
 
             <article className="candidate-profile-card candidate-profile-timeline-card">
               <p className="candidate-profile-card-title">Professional Journey</p>

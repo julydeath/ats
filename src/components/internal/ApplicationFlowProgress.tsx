@@ -1,6 +1,11 @@
 import Link from 'next/link'
 
-import { APPLICATION_STAGES, APPLICATION_STAGE_LABELS, type ApplicationStage } from '@/lib/constants/recruitment'
+import {
+  APPLICATION_STAGES,
+  APPLICATION_STAGE_LABELS,
+  normalizeApplicationStage,
+  type ApplicationStage,
+} from '@/lib/constants/recruitment'
 import { INTERNAL_ROLE_LABELS, type InternalRole } from '@/lib/constants/roles'
 
 type FlowEntry = {
@@ -109,15 +114,11 @@ export const ApplicationFlowProgress = ({
   const latestByStage = new Map<ApplicationStage, FlowEvent>()
 
   entries.forEach((entry) => {
-    if (!entry.toStage || typeof entry.toStage !== 'string') {
+    const stage = normalizeApplicationStage(entry.toStage)
+    if (!stage) {
       return
     }
 
-    if (!APPLICATION_STAGES.includes(entry.toStage as ApplicationStage)) {
-      return
-    }
-
-    const stage = entry.toStage as ApplicationStage
     const previous = latestByStage.get(stage)
     const currentTime = entry.changedAt ? new Date(entry.changedAt).getTime() : 0
     const previousTime = previous?.changedAt ? new Date(previous.changedAt).getTime() : -1
