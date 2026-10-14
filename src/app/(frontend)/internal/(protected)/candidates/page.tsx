@@ -31,13 +31,32 @@ type CandidatesListPageProps = {
   }>
 }
 
-const getInitials = (value: string): string =>
-  value
+const toDisplayText = (value: unknown, fallback: string = ''): string => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : fallback
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value)
+  }
+
+  return fallback
+}
+
+const getInitials = (value: unknown, fallback: string = 'NA'): string => {
+  const text = toDisplayText(value)
+  if (!text) {
+    return fallback
+  }
+
+  return text
     .split(' ')
     .map((item) => item[0] || '')
     .join('')
     .slice(0, 2)
     .toUpperCase()
+}
 
 const getRelativeDate = (value: string): string => {
   const date = new Date(value)
@@ -254,12 +273,12 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
 
   const filteredCandidates = candidatesResult.docs.filter((candidate) => {
     const searchable = [
-      candidate.fullName,
-      candidate.currentRole || '',
+      toDisplayText(candidate.fullName),
+      toDisplayText(candidate.currentRole),
       Array.isArray(candidate.skills) ? candidate.skills.join(' ') : '',
-      candidate.currentCompany || '',
-      candidate.email || '',
-      candidate.phone || '',
+      toDisplayText(candidate.currentCompany),
+      toDisplayText(candidate.email),
+      toDisplayText(candidate.phone),
     ]
       .join(' ')
       .toLowerCase()
@@ -403,6 +422,11 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                 </tr>
               ) : (
                 pagedRows.map((candidate) => {
+                  const candidateName = toDisplayText(candidate.fullName, `Candidate ${candidate.id}`)
+                  const currentRole = toDisplayText(candidate.currentRole)
+                  const currentCompany = toDisplayText(candidate.currentCompany, 'Not provided')
+                  const email = toDisplayText(candidate.email, 'No email')
+                  const phone = toDisplayText(candidate.phone, 'No phone')
                   const sourceJobID = extractRelationshipID(candidate.sourceJob)
                   const years =
                     typeof candidate.totalExperienceYears === 'number'
@@ -415,7 +439,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                     : []
                   const primarySkill = (
                     skills[0] ||
-                    candidate.currentRole ||
+                    currentRole ||
                     'Generalist'
                   ).toUpperCase()
                   const extraSkillsCount = Math.max(skills.length - 1, 0)
@@ -429,10 +453,10 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                       <td>
                         <div className="candidate-mgmt-name-cell">
                           <span className="candidate-mgmt-avatar">
-                            {getInitials(candidate.fullName)}
+                            {getInitials(candidateName)}
                           </span>
                           <div>
-                            <p className="candidate-mgmt-name">{candidate.fullName}</p>
+                            <p className="candidate-mgmt-name">{candidateName}</p>
                             <p className="candidate-mgmt-sub">
                               {candidate.candidateCode || `CAN-${candidate.id}`} ·{' '}
                               {getRelativeDate(candidate.updatedAt)}
@@ -455,13 +479,13 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                       </td>
 
                       <td className="candidate-mgmt-company">
-                        {candidate.currentCompany || 'Not provided'}
+                        {currentCompany}
                       </td>
 
                       <td>
                         <div className="candidate-mgmt-contact">
-                          <span>{candidate.email || 'No email'}</span>
-                          <span>{candidate.phone || 'No phone'}</span>
+                          <span>{email}</span>
+                          <span>{phone}</span>
                         </div>
                       </td>
 
