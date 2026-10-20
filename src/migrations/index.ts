@@ -2,6 +2,7 @@ import * as migration_20260720_154211_init_schema from './20260720_154211_init_s
 import * as migration_20260724_000001_optional_candidate_source_job from './20260724_000001_optional_candidate_source_job';
 import * as migration_20260810_000001_update_application_pipeline_stages from './20260810_000001_update_application_pipeline_stages';
 import * as migration_20260810_000002_candidate_resume_imports from './20260810_000002_candidate_resume_imports';
+import * as migration_20261020_000001_clients_created_by from './20261020_000001_clients_created_by';
 
 export const migrations = [
   {
@@ -23,5 +24,10 @@ export const migrations = [
     up: migration_20260810_000002_candidate_resume_imports.up,
     down: migration_20260810_000002_candidate_resume_imports.down,
     name: '20260810_000002_candidate_resume_imports'
+  },
+  {
+    up: migration_20261020_000001_clients_created_by.up,
+    down: migration_20261020_000001_clients_created_by.down,
+    name: '20261020_000001_clients_created_by'
   },
 ];
