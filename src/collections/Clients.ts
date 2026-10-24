@@ -1,7 +1,12 @@
 import { APIError, type CollectionConfig, type Where } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
-import { clientCreateAccess, clientManageAccess, clientReadAccess } from '@/access/visibility'
+import {
+  clientConfidentialFieldReadAccess,
+  clientCreateAccess,
+  clientManageAccess,
+  clientReadAccess,
+} from '@/access/visibility'
 import { CLIENT_STATUS_OPTIONS } from '@/lib/constants/recruitment'
 import { buildClientDuplicateSignals } from '@/lib/jobs/dedupe'
 import { resolveBusinessCode } from '@/lib/utils/business-codes'
@@ -86,18 +91,27 @@ export const Clients: CollectionConfig = {
       type: 'text',
       required: true,
       index: true,
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
     },
     {
       name: 'email',
       type: 'email',
       required: true,
       index: true,
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
     },
     {
       name: 'phone',
       type: 'text',
       required: true,
       index: true,
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
     },
     {
       name: 'industry',
@@ -129,6 +143,9 @@ export const Clients: CollectionConfig = {
     {
       name: 'federalID',
       type: 'text',
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
     },
     {
       name: 'location',
@@ -147,6 +164,9 @@ export const Clients: CollectionConfig = {
     {
       name: 'address',
       type: 'textarea',
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
     },
     {
       name: 'city',
@@ -164,18 +184,30 @@ export const Clients: CollectionConfig = {
     {
       name: 'postalCode',
       type: 'text',
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
     },
     {
       name: 'fax',
       type: 'text',
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
     },
     {
       name: 'billingTerms',
       type: 'textarea',
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
     },
     {
       name: 'paymentTerms',
       type: 'text',
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
     },
     {
       name: 'practice',
@@ -283,6 +315,9 @@ export const Clients: CollectionConfig = {
     {
       name: 'notes',
       type: 'textarea',
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
     },
     {
       name: 'normalizedName',
@@ -299,6 +334,9 @@ export const Clients: CollectionConfig = {
       type: 'text',
       index: true,
       unique: true,
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
       admin: {
         hidden: true,
         readOnly: true,
@@ -309,6 +347,9 @@ export const Clients: CollectionConfig = {
       type: 'text',
       index: true,
       unique: true,
+      access: {
+        read: clientConfidentialFieldReadAccess,
+      },
       admin: {
         hidden: true,
         readOnly: true,

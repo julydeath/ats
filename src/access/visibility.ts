@@ -1,4 +1,4 @@
-import type { Access, Where } from 'payload'
+import type { Access, FieldAccess, Where } from 'payload'
 
 import {
   getCandidateProfileID,
@@ -67,6 +67,16 @@ const buildCandidateApplicationWhere = (user: CandidateVisibilityUser): Where | 
 
 export const clientReadAccess: Access = ({ req }) =>
   Boolean(toVisibilityUser(req.user as InternalUserLike))
+
+/**
+ * Field-level read access for client contact and commercial details
+ * (contact person, email, phone, fax, address, federal ID, billing/payment
+ * terms, notes). Recruiters can see the company itself and its jobs but not
+ * who to call or what the commercial terms are; only admins and lead
+ * recruiters can read these fields.
+ */
+export const clientConfidentialFieldReadAccess: FieldAccess = ({ req }) =>
+  hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])
 
 export const clientManageAccess: Access = ({ req }) =>
   hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter'])

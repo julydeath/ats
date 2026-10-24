@@ -169,6 +169,9 @@ export default async function ClientDetailPage({ params, searchParams }: ClientD
 
     const logo = readLogo(client.logo)
     const canEditClient = user.role === 'admin' || user.role === 'leadRecruiter'
+    // Recruiters see the company profile and its jobs only; contact and
+    // commercial details are also stripped at field level by the collection.
+    const canViewClientContacts = canEditClient
 
     return (
       <section className="client-detail-page">
@@ -216,9 +219,13 @@ export default async function ClientDetailPage({ params, searchParams }: ClientD
           <article className="client-detail-card">
             <h2>Primary Information</h2>
             <div className="client-detail-info-grid">
-              <p><span>Contact Person</span>{client.contactPerson}</p>
-              <p><span>Email</span>{client.email}</p>
-              <p><span>Phone</span>{client.phone}</p>
+              {canViewClientContacts ? (
+                <>
+                  <p><span>Contact Person</span>{client.contactPerson}</p>
+                  <p><span>Email</span>{client.email}</p>
+                  <p><span>Phone</span>{client.phone}</p>
+                </>
+              ) : null}
               <p><span>Lead Recruiter</span>{readLabel(client.owningHeadRecruiter, 'Unassigned')}</p>
               <p><span>Client Lead</span>{readLabel(client.clientLead, 'Unassigned')}</p>
               <p><span>Primary Owner</span>{readLabel(client.primaryOwner, 'Unassigned')}</p>
@@ -235,16 +242,26 @@ export default async function ClientDetailPage({ params, searchParams }: ClientD
             <div className="client-detail-text-block">
               <p><span>Client Short Name</span>{client.clientShortName || 'Not set'}</p>
               <p><span>VMS Client Name</span>{client.vmsClientName || 'Not set'}</p>
-              <p><span>Federal ID</span>{client.federalID || 'Not set'}</p>
-              <p><span>Fax</span>{client.fax || 'Not set'}</p>
+              {canViewClientContacts ? (
+                <>
+                  <p><span>Federal ID</span>{client.federalID || 'Not set'}</p>
+                  <p><span>Fax</span>{client.fax || 'Not set'}</p>
+                </>
+              ) : null}
               <p><span>Website</span>{client.website || 'Not set'}</p>
-              <p><span>Address</span>{client.address || 'Not set'}</p>
+              {canViewClientContacts ? (
+                <p><span>Address</span>{client.address || 'Not set'}</p>
+              ) : null}
               <p><span>City / State / Country</span>{[client.city, client.state, client.country].filter(Boolean).join(', ') || 'Not set'}</p>
               <p><span>Primary Business Unit</span>{client.primaryBusinessUnit || 'Not set'}</p>
               <p><span>Business Units</span>{Array.isArray(client.businessUnits) && client.businessUnits.length > 0 ? client.businessUnits.join(', ') : 'Not set'}</p>
               <p><span>Practice</span>{client.practice || 'Not set'}</p>
-              <p><span>Billing Terms</span>{client.billingTerms || 'Not set'}</p>
-              <p><span>Payment Terms</span>{client.paymentTerms || 'Not set'}</p>
+              {canViewClientContacts ? (
+                <>
+                  <p><span>Billing Terms</span>{client.billingTerms || 'Not set'}</p>
+                  <p><span>Payment Terms</span>{client.paymentTerms || 'Not set'}</p>
+                </>
+              ) : null}
               <p><span>Required Documents</span>{Array.isArray(client.requiredDocuments) && client.requiredDocuments.length > 0 ? client.requiredDocuments.join(', ') : 'Not set'}</p>
               <p><span>About Company</span>{client.aboutCompany || 'Not set'}</p>
               <p><span>Send Requirement</span>{client.sendRequirement ? 'Yes' : 'No'}</p>
@@ -253,7 +270,9 @@ export default async function ClientDetailPage({ params, searchParams }: ClientD
               <p><span>Display On Job</span>{client.displayOnJob ? 'Yes' : 'No'}</p>
               <p><span>Stop Contact Notification</span>{client.stopContactNotification ? 'Yes' : 'No'}</p>
               <p><span>Default Job Address</span>{client.defaultJobAddress ? 'Yes' : 'No'}</p>
-              <p><span>Notes</span>{client.notes || 'Not set'}</p>
+              {canViewClientContacts ? (
+                <p><span>Notes</span>{client.notes || 'Not set'}</p>
+              ) : null}
             </div>
           </article>
         </div>

@@ -141,6 +141,10 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const requestedPage = parsePage(resolvedSearchParams.page)
   const isCreateModalOpen = resolvedSearchParams.create === '1'
   const canManageClients = user.role === 'admin' || user.role === 'leadRecruiter'
+  // Recruiters see the company, its logo and its jobs, but not who to contact.
+  // The Clients collection also enforces this at field level, so recruiters
+  // cannot read or query these fields through the API either.
+  const canViewClientContacts = canManageClients
   const shouldLoadCreateOptions = isCreateModalOpen && canManageClients
 
   const whereConditions: Where[] = []
@@ -150,7 +154,9 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       or: [
         { name: { contains: searchTerm } },
         { location: { contains: searchTerm } },
-        { contactPerson: { contains: searchTerm } },
+        // Querying a field the user cannot read is rejected by Payload, so
+        // only include the contact person for roles allowed to see it.
+        ...(canViewClientContacts ? [{ contactPerson: { contains: searchTerm } }] : []),
       ],
     })
   }
@@ -492,18 +498,22 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                       client.address ||
                       'Not provided'}
                   </p>
-                  <p>
-                    <span>Contact</span>
-                    {client.contactPerson}
-                  </p>
-                  <p>
-                    <span>Email</span>
-                    {client.email}
-                  </p>
-                  <p>
-                    <span>Phone</span>
-                    {client.phone}
-                  </p>
+                  {canViewClientContacts ? (
+                    <>
+                      <p>
+                        <span>Contact</span>
+                        {client.contactPerson}
+                      </p>
+                      <p>
+                        <span>Email</span>
+                        {client.email}
+                      </p>
+                      <p>
+                        <span>Phone</span>
+                        {client.phone}
+                      </p>
+                    </>
+                  ) : null}
                   <p>
                     <span>Lead</span>
                     {leadLabel}
