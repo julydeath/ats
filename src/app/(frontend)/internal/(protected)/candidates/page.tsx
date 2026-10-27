@@ -1,8 +1,9 @@
 import configPromise from '@payload-config'
 import Link from 'next/link'
-import { getPayload } from 'payload'
+import { getPayload, type Where } from 'payload'
 
 import { requireInternalRole } from '@/lib/auth/internal-auth'
+import { parseSkillQuery } from '@/lib/candidates/skills'
 import {
   CANDIDATE_SOURCE_OPTIONS,
   CANDIDATE_SOURCES,
@@ -24,11 +25,22 @@ const PAGE_SIZE = 10
 type CandidatesListPageProps = {
   searchParams?: Promise<{
     client?: string
-    exp?: string
+    expMax?: string
+    expMin?: string
     page?: string
     q?: string
+    skills?: string
     source?: string
   }>
+}
+
+type ListFilters = {
+  client: string
+  expMax: string
+  expMin: string
+  q: string
+  skills: string
+  source: string
 }
 
 const toDisplayText = (value: unknown, fallback: string = ''): string => {
@@ -84,8 +96,6 @@ const getRelativeDate = (value: string): string => {
   return `Updated ${months}mo ago`
 }
 
-const normalize = (value: string) => value.trim().toLowerCase()
-
 const isCandidateSource = (value: string): value is CandidateSource =>
   CANDIDATE_SOURCES.includes(value as CandidateSource)
 
@@ -101,52 +111,17 @@ const getSourceLabel = (value: unknown): string => {
   return value
 }
 
-const getExperienceBucket = (years: number | null): 'junior' | 'mid' | 'senior' | 'unspecified' => {
-  if (years === null) {
-    return 'unspecified'
-  }
-
-  if (years >= 8) {
-    return 'senior'
-  }
-
-  if (years >= 4) {
-    return 'mid'
-  }
-
-  return 'junior'
+const readYears = (value: string | undefined): string => {
+  const years = Number.parseFloat(String(value || '').trim())
+  return Number.isFinite(years) && years >= 0 && years <= 50 ? String(years) : ''
 }
 
-const buildQuery = ({
-  client,
-  exp,
-  page,
-  q,
-  source,
-}: {
-  client: string
-  exp: string
-  page: number
-  q: string
-  source: string
-}): string => {
+const buildQuery = (filters: ListFilters, page: number): string => {
   const params = new URLSearchParams()
 
-  if (q) {
-    params.set('q', q)
-  }
-
-  if (client) {
-    params.set('client', client)
-  }
-
-  if (exp) {
-    params.set('exp', exp)
-  }
-
-  if (source) {
-    params.set('source', source)
-  }
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) params.set(key, value)
+  })
 
   if (page > 1) {
     params.set('page', String(page))
@@ -160,23 +135,88 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
   const resolvedSearchParams = (await searchParams) ?? {}
-  const searchTerm = (resolvedSearchParams.q || '').trim()
-  const clientFilter = (resolvedSearchParams.client || '').trim()
-  const sourceFilter = (resolvedSearchParams.source || '').trim()
-  const expFilter = (resolvedSearchParams.exp || '').trim()
+  const filters: ListFilters = {
+    client: (resolvedSearchParams.client || '').trim(),
+    expMax: readYears(resolvedSearchParams.expMax),
+    expMin: readYears(resolvedSearchParams.expMin),
+    q: (resolvedSearchParams.q || '').trim(),
+    skills: (resolvedSearchParams.skills || '').trim(),
+    source: (resolvedSearchParams.source || '').trim(),
+  }
   const requestedPage = Number.parseInt(String(resolvedSearchParams.page || '1'), 10)
   const canCreateCandidate =
     user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
   const canCreateApplication = user.role === 'admin' || user.role === 'leadRecruiter'
   const canEditCandidate = user.role === 'admin' || user.role === 'leadRecruiter'
+  const skillKeys = parseSkillQuery(filters.skills)
+  const conditions: Where[] = []
 
-  const [candidatesResult, clientsResult] = await Promise.all([
+  if (filters.q) {
+    conditions.push({
+      or: [
+        { fullName: { like: filters.q } },
+        { email: { like: filters.q } },
+        { phone: { like: filters.q } },
+        { currentCompany: { like: filters.q } },
+        { currentRole: { like: filters.q } },
+        { skillsSearch: { like: filters.q } },
+      ],
+    })
+  }
+
+  // Candidate must have every requested skill (exact tag match, aliases normalized).
+  skillKeys.forEach((skill) => {
+    conditions.push({ skillsSearch: { contains: `|${skill}|` } })
+  })
+
+  if (filters.expMin) {
+    conditions.push({ totalExperienceYears: { greater_than_equal: Number(filters.expMin) } })
+  }
+
+  if (filters.expMax) {
+    conditions.push({ totalExperienceYears: { less_than_equal: Number(filters.expMax) } })
+  }
+
+  if (isCandidateSource(filters.source)) {
+    conditions.push({ source: { equals: filters.source } })
+  }
+
+  if (/^\d+$/.test(filters.client)) {
+    const clientApplications = await payload.find({
+      collection: 'applications',
+      depth: 0,
+      limit: 2000,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        candidate: true,
+      },
+      user,
+      where: {
+        'job.client': {
+          equals: Number(filters.client),
+        },
+      },
+    })
+    const clientCandidateIDs = clientApplications.docs
+      .map((application) => extractRelationshipID(application.candidate))
+      .filter((id): id is number | string => id !== null && id !== undefined)
+
+    conditions.push({
+      or: [
+        { 'sourceJob.client': { equals: Number(filters.client) } },
+        ...(clientCandidateIDs.length > 0 ? [{ id: { in: clientCandidateIDs } }] : []),
+      ],
+    })
+  }
+
+  const [candidatesResult, clientsResult, attentionResult] = await Promise.all([
     payload.find({
       collection: 'candidates',
-      depth: 2,
-      limit: 240,
-      pagination: false,
+      depth: 1,
+      limit: PAGE_SIZE,
       overrideAccess: false,
+      page: Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1,
       select: {
         candidateCode: true,
         createdAt: true,
@@ -190,11 +230,13 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
         source: true,
         sourceJob: true,
         sourcedBy: true,
+        totalExperienceMonths: true,
         totalExperienceYears: true,
         updatedAt: true,
       },
       sort: '-updatedAt',
       user,
+      where: conditions.length > 0 ? { and: conditions } : undefined,
     }),
     payload.find({
       collection: 'clients',
@@ -210,112 +252,35 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
       sort: 'name',
       user,
     }),
-  ])
-  const visibleCandidateIDs = candidatesResult.docs.map((candidate) => candidate.id)
-  const applicationsForCandidates =
-    visibleCandidateIDs.length === 0
-      ? { docs: [] as Array<{ candidate?: unknown; job?: unknown }> }
-      : await payload.find({
-          collection: 'applications',
-          depth: 2,
-          limit: 600,
+    canCreateCandidate
+      ? payload.count({
+          collection: 'candidate-resume-import-items',
           overrideAccess: false,
-          pagination: false,
-          select: {
-            candidate: true,
-            job: true,
-          },
           user,
           where: {
-            candidate: {
-              in: visibleCandidateIDs,
-            },
+            and: [
+              { uploadedBy: { equals: user.id } },
+              { status: { equals: 'failed' } },
+              { dismissedAt: { exists: false } },
+              {
+                createdAt: {
+                  greater_than_equal: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+                },
+              },
+            ],
           },
         })
-  const applicationClientIDsByCandidateID = new Map<string, Set<string>>()
+      : Promise.resolve({ totalDocs: 0 }),
+  ])
 
-  applicationsForCandidates.docs.forEach((application) => {
-    const candidateID = extractRelationshipID(application.candidate)
-    const job = application.job as { client?: unknown } | number | string | null | undefined
-    const clientID = typeof job === 'object' && job ? extractRelationshipID(job.client) : null
-
-    if (!candidateID || !clientID) {
-      return
-    }
-
-    const key = String(candidateID)
-    const current = applicationClientIDsByCandidateID.get(key) || new Set<string>()
-    current.add(String(clientID))
-    applicationClientIDsByCandidateID.set(key, current)
-  })
-
-  const getCandidateClientIDs = (
-    candidate: (typeof candidatesResult.docs)[number],
-  ): Set<string> => {
-    const clientIDs = new Set<string>(
-      applicationClientIDsByCandidateID.get(String(candidate.id)) || [],
-    )
-    const sourceJob = candidate.sourceJob as
-      | { client?: unknown }
-      | number
-      | string
-      | null
-      | undefined
-    const sourceJobClientID =
-      typeof sourceJob === 'object' && sourceJob ? extractRelationshipID(sourceJob.client) : null
-
-    if (sourceJobClientID) {
-      clientIDs.add(String(sourceJobClientID))
-    }
-
-    return clientIDs
-  }
-
-  const filteredCandidates = candidatesResult.docs.filter((candidate) => {
-    const searchable = [
-      toDisplayText(candidate.fullName),
-      toDisplayText(candidate.currentRole),
-      Array.isArray(candidate.skills) ? candidate.skills.join(' ') : '',
-      toDisplayText(candidate.currentCompany),
-      toDisplayText(candidate.email),
-      toDisplayText(candidate.phone),
-    ]
-      .join(' ')
-      .toLowerCase()
-
-    const source = String(candidate.source || '')
-    const bucket = getExperienceBucket(
-      typeof candidate.totalExperienceYears === 'number' ? candidate.totalExperienceYears : null,
-    )
-
-    if (searchTerm && !searchable.includes(normalize(searchTerm))) {
-      return false
-    }
-
-    if (sourceFilter && source !== sourceFilter) {
-      return false
-    }
-
-    if (clientFilter && !getCandidateClientIDs(candidate).has(clientFilter)) {
-      return false
-    }
-
-    if (expFilter && bucket !== expFilter) {
-      return false
-    }
-
-    return true
-  })
-
-  const totalRows = filteredCandidates.length
-  const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE))
-  const currentPage = Number.isFinite(requestedPage)
-    ? Math.min(Math.max(requestedPage, 1), totalPages)
-    : 1
+  const totalRows = candidatesResult.totalDocs
+  const totalPages = Math.max(1, candidatesResult.totalPages)
+  const currentPage = candidatesResult.page || 1
+  const pagedRows = candidatesResult.docs
   const start = (currentPage - 1) * PAGE_SIZE
-  const pagedRows = filteredCandidates.slice(start, start + PAGE_SIZE)
   const showingFrom = totalRows === 0 ? 0 : start + 1
   const showingTo = Math.min(start + PAGE_SIZE, totalRows)
+  const failedUploads = attentionResult.totalDocs
 
   const leftPage = Math.max(1, currentPage - 1)
   const rightPage = Math.min(totalPages, currentPage + 1)
@@ -340,8 +305,17 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
               <span className="candidate-mgmt-upload-icon">↑</span>
               <span>
                 <strong>Bulk Resume Upload</strong>
-                <small>Upload up to 5 resumes</small>
+                <small>Upload up to 10 resumes</small>
               </span>
+            </Link>
+          ) : null}
+
+          {failedUploads > 0 ? (
+            <Link
+              className="candidate-mgmt-attention-link"
+              href={`${APP_ROUTES.internal.candidates.importsNew}#needs-attention`}
+            >
+              {failedUploads} resume{failedUploads === 1 ? '' : 's'} failed to upload
             </Link>
           ) : null}
 
@@ -356,14 +330,50 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
       <section className="candidate-mgmt-filter-card">
         <form className="candidate-mgmt-filters" method="get">
           <input
+            aria-label="Skills"
             className="candidate-mgmt-search"
-            defaultValue={searchTerm}
-            name="q"
-            placeholder="Search by name, skill, client, company, phone..."
+            defaultValue={filters.skills}
+            name="skills"
+            placeholder="Skills, comma separated (e.g. Java, Spring Boot)"
             type="search"
           />
 
-          <select className="candidate-mgmt-select" defaultValue={clientFilter} name="client">
+          <input
+            aria-label="Minimum years of experience"
+            className="candidate-mgmt-select candidate-mgmt-exp-input"
+            defaultValue={filters.expMin}
+            inputMode="decimal"
+            max={50}
+            min={0}
+            name="expMin"
+            placeholder="Min yrs"
+            step="0.5"
+            type="number"
+          />
+
+          <input
+            aria-label="Maximum years of experience"
+            className="candidate-mgmt-select candidate-mgmt-exp-input"
+            defaultValue={filters.expMax}
+            inputMode="decimal"
+            max={50}
+            min={0}
+            name="expMax"
+            placeholder="Max yrs"
+            step="0.5"
+            type="number"
+          />
+
+          <input
+            aria-label="Name, email, phone or company"
+            className="candidate-mgmt-search"
+            defaultValue={filters.q}
+            name="q"
+            placeholder="Name, email, phone, company..."
+            type="search"
+          />
+
+          <select className="candidate-mgmt-select" defaultValue={filters.client} name="client">
             <option value="">Client</option>
             {clientsResult.docs.map((client) => (
               <option key={`candidate-client-${client.id}`} value={String(client.id)}>
@@ -372,15 +382,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
             ))}
           </select>
 
-          <select className="candidate-mgmt-select" defaultValue={expFilter} name="exp">
-            <option value="">Experience Level</option>
-            <option value="senior">Senior (8+ years)</option>
-            <option value="mid">Mid (4-7 years)</option>
-            <option value="junior">Junior (0-3 years)</option>
-            <option value="unspecified">Unspecified</option>
-          </select>
-
-          <select className="candidate-mgmt-select" defaultValue={sourceFilter} name="source">
+          <select className="candidate-mgmt-select" defaultValue={filters.source} name="source">
             <option value="">Source</option>
             {CANDIDATE_SOURCE_OPTIONS.map((sourceOption) => (
               <option key={`source-${sourceOption.value}`} value={sourceOption.value}>
@@ -437,12 +439,16 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                         .map((skill) => (typeof skill === 'string' ? skill.trim() : ''))
                         .filter((skill) => skill.length > 0)
                     : []
-                  const primarySkill = (
-                    skills[0] ||
-                    currentRole ||
-                    'Generalist'
-                  ).toUpperCase()
-                  const extraSkillsCount = Math.max(skills.length - 1, 0)
+                  const months =
+                    typeof candidate.totalExperienceMonths === 'number'
+                      ? candidate.totalExperienceMonths
+                      : 0
+                  const experienceLabel =
+                    years === null
+                      ? 'Experience not added'
+                      : `${years} yr${years === 1 ? '' : 's'}${months > 0 ? ` ${months} mo` : ''} experience`
+                  const shownSkills = skills.slice(0, 3)
+                  const extraSkillsCount = Math.max(skills.length - shownSkills.length, 0)
                   const sourceLabel = getSourceLabel(candidate.source)
                   const addedBy = formatAuditActorName(candidate.sourcedBy)
                   const addedByRole = formatAuditActorRole(candidate.sourcedBy)
@@ -467,14 +473,23 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
 
                       <td>
                         <div className="candidate-mgmt-skill-cell">
-                          <span className="candidate-mgmt-skill-pill">{primarySkill}</span>
-                          <p>
-                            {extraSkillsCount > 0
-                              ? `+${extraSkillsCount} additional skill${extraSkillsCount > 1 ? 's' : ''}`
-                              : years === null
-                                ? 'Experience not specified'
-                                : `${years} Years Experience`}
-                          </p>
+                          <div className="candidate-mgmt-skill-pills">
+                            {shownSkills.length > 0 ? (
+                              shownSkills.map((skill) => (
+                                <span className="candidate-mgmt-skill-pill" key={`${candidate.id}-${skill}`}>
+                                  {skill}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="candidate-mgmt-skill-pill">
+                                {currentRole || 'Skills not added'}
+                              </span>
+                            )}
+                            {extraSkillsCount > 0 ? (
+                              <span className="candidate-mgmt-skill-more">+{extraSkillsCount}</span>
+                            ) : null}
+                          </div>
+                          <p>{experienceLabel}</p>
                         </div>
                       </td>
 
@@ -544,26 +559,14 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
             <Link
               aria-disabled={currentPage <= 1}
               className={`candidate-mgmt-page-btn ${currentPage <= 1 ? 'candidate-mgmt-page-btn-disabled' : ''}`}
-              href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
-                client: clientFilter,
-                exp: expFilter,
-                page: Math.max(currentPage - 1, 1),
-                q: searchTerm,
-                source: sourceFilter,
-              })}`}
+              href={`${APP_ROUTES.internal.candidates.list}${buildQuery(filters, Math.max(currentPage - 1, 1))}`}
             >
               ‹
             </Link>
 
             <Link
               className={`candidate-mgmt-page-btn ${leftPage === currentPage ? 'candidate-mgmt-page-btn-active' : ''}`}
-              href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
-                client: clientFilter,
-                exp: expFilter,
-                page: leftPage,
-                q: searchTerm,
-                source: sourceFilter,
-              })}`}
+              href={`${APP_ROUTES.internal.candidates.list}${buildQuery(filters, leftPage)}`}
             >
               {leftPage}
             </Link>
@@ -571,13 +574,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
             {rightPage !== leftPage ? (
               <Link
                 className={`candidate-mgmt-page-btn ${rightPage === currentPage ? 'candidate-mgmt-page-btn-active' : ''}`}
-                href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
-                  client: clientFilter,
-                  exp: expFilter,
-                  page: rightPage,
-                  q: searchTerm,
-                  source: sourceFilter,
-                })}`}
+                href={`${APP_ROUTES.internal.candidates.list}${buildQuery(filters, rightPage)}`}
               >
                 {rightPage}
               </Link>
@@ -586,13 +583,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
             <Link
               aria-disabled={currentPage >= totalPages}
               className={`candidate-mgmt-page-btn ${currentPage >= totalPages ? 'candidate-mgmt-page-btn-disabled' : ''}`}
-              href={`${APP_ROUTES.internal.candidates.list}${buildQuery({
-                client: clientFilter,
-                exp: expFilter,
-                page: Math.min(currentPage + 1, totalPages),
-                q: searchTerm,
-                source: sourceFilter,
-              })}`}
+              href={`${APP_ROUTES.internal.candidates.list}${buildQuery(filters, Math.min(currentPage + 1, totalPages))}`}
             >
               ›
             </Link>

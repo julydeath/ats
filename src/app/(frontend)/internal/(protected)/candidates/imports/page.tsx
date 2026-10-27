@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import {
   CANDIDATE_RESUME_IMPORT_BATCH_STATUS_LABELS,
+  CANDIDATE_SOURCE_LABELS,
   type CandidateResumeImportBatchStatus,
 } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
@@ -71,7 +72,7 @@ export default async function CandidateImportsPage() {
         <div>
           <p className="candidate-import-kicker">Candidates</p>
           <h1>Resume Imports</h1>
-          <p>Track bulk resume parsing batches and continue candidate review from one place.</p>
+          <p>History of bulk resume uploads. Failed resumes are listed under My Uploads on the upload page.</p>
         </div>
 
         <div className="candidate-import-header-actions">
@@ -79,7 +80,7 @@ export default async function CandidateImportsPage() {
             Candidate Bank
           </Link>
           <Link className="candidate-intake-submit" href={APP_ROUTES.internal.candidates.importsNew}>
-            New Import
+            Upload Resumes
           </Link>
         </div>
       </header>
@@ -112,11 +113,11 @@ export default async function CandidateImportsPage() {
                       {getStatusLabel(status)}
                     </span>
                     <h3>{batch.batchCode || `Batch ${batch.id}`}</h3>
-                    <p>{toLabel(batch.sourceJob)} · {formatDate(batch.createdAt)}</p>
+                    <p>{batch.source ? CANDIDATE_SOURCE_LABELS[batch.source] : toLabel(batch.sourceJob)}{batch.sourceDetails ? ` (${batch.sourceDetails})` : ''} · {formatDate(batch.createdAt)}</p>
                   </div>
                   <div className="candidate-import-batch-metrics">
                     <span>{totalCount} total</span>
-                    <span>{reviewCount} review</span>
+                    {reviewCount > 0 ? <span>{reviewCount} review</span> : null}
                     <span>{createdCount} created</span>
                     <span>{failedCount} failed</span>
                   </div>

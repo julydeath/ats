@@ -242,12 +242,14 @@ export const getHRAnalyticsWorkbookFilename = (summary: HRAnalyticsSummary): str
 export const buildHRAnalyticsWorkbook = (summary: HRAnalyticsSummary): Buffer => {
   const sheets: WorkbookSheet[] = [
     {
-      columns: [18, 28, 22, 18, 12, 16, 16, 20, 16, 22, 20, 18, 14, 12],
+      columns: [18, 28, 22, 18, 18, 18, 12, 16, 16, 20, 16, 22, 20, 18, 14, 12],
       headers: [
         'Employee Code',
         'Employee Name',
         'Role',
-        'State',
+        'Candidates Added',
+        'Resumes Uploaded',
+        'Resume Upload Failures',
         'Score',
         'Attendance %',
         'Jobs Created',
@@ -264,7 +266,9 @@ export const buildHRAnalyticsWorkbook = (summary: HRAnalyticsSummary): Buffer =>
         row.employeeCode,
         row.name,
         INTERNAL_ROLE_LABELS[row.role],
-        row.state,
+        row.candidatesAdded,
+        row.resumesUploaded,
+        row.resumeUploadFailures,
         row.score,
         row.attendancePct,
         row.jobsCreated,
@@ -296,6 +300,7 @@ export const buildHRAnalyticsWorkbook = (summary: HRAnalyticsSummary): Buffer =>
         ['Approved Leave Days', summary.kpis.approvedLeaveDays],
         ['LOP Days', summary.kpis.lopDays],
         ['Jobs Created', summary.kpis.jobsCreated],
+        ['Candidates Added', summary.kpis.candidatesAdded],
         ['Sourced Applications', summary.kpis.sourcedApplications],
         ['Stage Moves', summary.kpis.stageMoves],
         ['Interviews Scheduled', summary.kpis.interviewsScheduled],

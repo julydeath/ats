@@ -6,6 +6,7 @@ import { getPayload } from 'payload'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import {
   CANDIDATE_RESUME_IMPORT_BATCH_STATUS_LABELS,
+  CANDIDATE_SOURCE_LABELS,
   CANDIDATE_RESUME_IMPORT_ITEM_STATUS_LABELS,
   type CandidateResumeImportBatchStatus,
   type CandidateResumeImportItemStatus,
@@ -176,7 +177,7 @@ export default async function ResumeImportBatchPage({
             <h1>{batch.batchCode || `Batch ${batch.id}`}</h1>
             <p>
               {getStatusLabel(batchStatus, CANDIDATE_RESUME_IMPORT_BATCH_STATUS_LABELS)} ·{' '}
-              {toLabel(batch.sourceJob)}
+              {batch.source ? CANDIDATE_SOURCE_LABELS[batch.source] : toLabel(batch.sourceJob)}
             </p>
           </div>
 

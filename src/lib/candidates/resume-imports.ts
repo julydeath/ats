@@ -1,13 +1,20 @@
 import configPromise from '@payload-config'
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
-import { getPayload, type Payload } from 'payload'
+import { APIError, getPayload, type Payload, type Where } from 'payload'
+
+import type { Candidate } from '@/payload-types'
 
 import { env } from '@/lib/env'
+import { buildCandidateDuplicateSignals } from './dedupe'
 import { getResumeImportMimeType } from './resume-import-validation'
-import { parseResumeBuffer } from './resume-parser'
+import { parseResumeEssentials, ResumeUnreadableError } from './resume-parser'
 
-export const MAX_RESUME_IMPORT_FILES = 5
-export const MAX_RESUME_IMPORT_FILE_SIZE_BYTES = 10 * 1024 * 1024
+export const MAX_RESUME_IMPORT_FILES = 10
+// Each file is sent in its own request, which keeps every upload under the
+// Vercel serverless request body limit (~4.5 MB).
+export const MAX_RESUME_IMPORT_FILE_SIZE_BYTES = 4 * 1024 * 1024
+// Items stuck in "processing" longer than this are treated as timed out.
+export const RESUME_IMPORT_STALE_MS = 10 * 60 * 1000
 
 export type ResumeImportFileBuffer = {
   buffer: Buffer
@@ -23,8 +30,10 @@ type ResumeDocumentLike = {
 
 type ImportItemLike = {
   attemptCount?: number | null
+  batch?: number | string | { id: number | string } | null
   id: number | string
   resume?: number | string | ResumeDocumentLike | null
+  uploadedBy?: number | string | { id: number | string } | null
 }
 
 const s3Client = env.S3_UPLOADS_ENABLED
@@ -216,6 +225,9 @@ const readStoredResumeBuffer = async (
   }
 }
 
+const readRelationNumericID = (value: unknown): number | null =>
+  toNumericID(value && typeof value === 'object' && 'id' in value ? value.id : value)
+
 export const updateResumeImportBatchStats = async ({
   batchID,
   payload,
@@ -248,11 +260,13 @@ export const updateResumeImportBatchStats = async ({
       if (status === 'needsReview') acc.parsedCount += 1
       if (status === 'failed') acc.failedCount += 1
       if (status === 'candidateCreated') acc.createdCount += 1
+      if (status === 'duplicate') acc.duplicateCount += 1
 
       return acc
     },
     {
       createdCount: 0,
+      duplicateCount: 0,
       failedCount: 0,
       parsedCount: 0,
       processingCount: 0,
@@ -269,11 +283,11 @@ export const updateResumeImportBatchStats = async ({
         ? 'processing'
         : counts.failedCount === totalCount
           ? 'failed'
-          : counts.createdCount === totalCount
-            ? 'completed'
+          : counts.parsedCount > 0
+            ? 'readyForReview'
             : counts.failedCount > 0
               ? 'completedWithErrors'
-              : 'readyForReview'
+              : 'completed'
 
   await payload.update({
     collection: 'candidate-resume-import-batches',
@@ -288,139 +302,290 @@ export const updateResumeImportBatchStats = async ({
   })
 }
 
-export const processResumeImportBatch = async ({
-  batchID,
-  itemBuffers = {},
-  maxItems = MAX_RESUME_IMPORT_FILES,
+const findExistingCandidateID = async ({
+  email,
+  payload,
+  phone,
 }: {
-  batchID: number
-  itemBuffers?: Record<string, ResumeImportFileBuffer>
-  maxItems?: number
-}) => {
-  const payload = await getPayload({ config: configPromise })
-  const staleProcessingCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+  email?: string
+  payload: Payload
+  phone?: string
+}): Promise<number | null> => {
+  const signals = buildCandidateDuplicateSignals({ email, phone })
+  const or: Where[] = [
+    ...(signals.normalizedEmail ? [{ normalizedEmail: { equals: signals.normalizedEmail } }] : []),
+    ...(signals.normalizedPhone ? [{ normalizedPhone: { equals: signals.normalizedPhone } }] : []),
+  ]
 
-  await payload.update({
-    collection: 'candidate-resume-import-items',
-    data: {
-      error: 'Previous parsing attempt timed out. Queued for retry.',
-      status: 'queued',
-    },
-    overrideAccess: true,
-    where: {
-      and: [
-        {
-          batch: {
-            equals: batchID,
-          },
-        },
-        {
-          status: {
-            equals: 'processing',
-          },
-        },
-        {
-          startedAt: {
-            less_than: staleProcessingCutoff,
-          },
-        },
-      ],
-    },
-  })
+  if (or.length === 0) {
+    return null
+  }
 
-  await payload.update({
-    collection: 'candidate-resume-import-batches',
-    data: {
-      startedAt: new Date().toISOString(),
-      status: 'processing',
-    },
-    id: batchID,
-    overrideAccess: true,
-  })
-
-  const items = await payload.find({
-    collection: 'candidate-resume-import-items',
-    depth: 1,
-    limit: maxItems,
+  const existing = await payload.find({
+    collection: 'candidates',
+    depth: 0,
+    limit: 1,
     overrideAccess: true,
     pagination: false,
-    sort: 'createdAt',
+    select: {},
     where: {
-      and: [
-        {
-          batch: {
-            equals: batchID,
-          },
-        },
-        {
-          status: {
-            in: ['queued'],
-          },
-        },
-      ],
+      or,
     },
   })
 
-  await updateResumeImportBatchStats({ batchID, payload })
+  return existing.docs[0]?.id ?? null
+}
 
-  for (const item of items.docs as ImportItemLike[]) {
-    const itemID = toNumericID(item.id)
+type ItemOutcome =
+  | { candidateID: number; status: 'candidateCreated' | 'duplicate'; warnings: string[] }
+  | { error: string; status: 'failed'; warnings: string[] }
 
-    if (!itemID) {
-      continue
+const resolveItemOutcome = async ({
+  batch,
+  file,
+  payload,
+  resumeID,
+  uploadedByID,
+}: {
+  batch: { source?: string | null; sourceDetails?: string | null }
+  file: ResumeImportFileBuffer
+  payload: Payload
+  resumeID: number | null
+  uploadedByID: number | null
+}): Promise<ItemOutcome & { extractedTextPreview?: string; parsedData?: unknown }> => {
+  let parsed: Awaited<ReturnType<typeof parseResumeEssentials>>
+
+  try {
+    parsed = await parseResumeEssentials(file)
+  } catch (error) {
+    return {
+      error:
+        error instanceof ResumeUnreadableError
+          ? error.message
+          : 'This file could not be opened. It may be corrupted or password protected.',
+      status: 'failed',
+      warnings: [],
+    }
+  }
+
+  const { essentials } = parsed
+  const base = {
+    extractedTextPreview: parsed.extractedTextPreview,
+    parsedData: essentials,
+  }
+
+  if (!essentials.fullName) {
+    return {
+      ...base,
+      error: "Couldn't find the candidate's name in this resume. Add them manually.",
+      status: 'failed',
+      warnings: parsed.warnings,
+    }
+  }
+
+  if (!essentials.email && !essentials.phone) {
+    return {
+      ...base,
+      error: `No email or phone number found for ${essentials.fullName}. Add them manually.`,
+      status: 'failed',
+      warnings: parsed.warnings,
+    }
+  }
+
+  const existingID = await findExistingCandidateID({ ...essentials, payload })
+  if (existingID) {
+    return {
+      ...base,
+      candidateID: existingID,
+      status: 'duplicate',
+      warnings: parsed.warnings,
+    }
+  }
+
+  const warnings = [...parsed.warnings]
+  if (essentials.skills.length === 0) warnings.push('Skills not found; add them later.')
+  if (essentials.totalExperienceYears === undefined) {
+    warnings.push('Experience not found; add it later.')
+  }
+
+  try {
+    const candidate = await payload.create({
+      collection: 'candidates',
+      data: {
+        email: essentials.email,
+        firstName: essentials.firstName,
+        fullName: essentials.fullName,
+        lastName: essentials.lastName,
+        phone: essentials.phone,
+        resume: resumeID ?? undefined,
+        skills: essentials.skills,
+        source: (batch.source || 'other') as Candidate['source'],
+        sourceDetails: batch.sourceDetails || undefined,
+        sourcedBy: uploadedByID ?? undefined,
+        totalExperienceMonths: essentials.totalExperienceMonths,
+        totalExperienceYears: essentials.totalExperienceYears,
+      },
+      overrideAccess: true,
+    })
+
+    return { ...base, candidateID: candidate.id, status: 'candidateCreated', warnings }
+  } catch (error) {
+    // Another upload may have created the same person moments ago.
+    if (error instanceof APIError && error.status === 409) {
+      const raceID = await findExistingCandidateID({ ...essentials, payload })
+      if (raceID) {
+        return { ...base, candidateID: raceID, status: 'duplicate', warnings }
+      }
     }
 
-    try {
-      await payload.update({
+    return {
+      ...base,
+      error: error instanceof Error ? error.message : 'Candidate could not be saved.',
+      status: 'failed',
+      warnings,
+    }
+  }
+}
+
+// Parses one uploaded resume and turns it straight into a candidate (or links
+// it to an existing candidate with the same email/phone). Never throws.
+export const processResumeImportItem = async ({
+  file,
+  itemID,
+  payload: providedPayload,
+}: {
+  file?: ResumeImportFileBuffer
+  itemID: number
+  payload?: Payload
+}) => {
+  const payload = providedPayload || (await getPayload({ config: configPromise }))
+  let batchID: number | null = null
+
+  try {
+    const item = (await payload.findByID({
+      collection: 'candidate-resume-import-items',
+      depth: 0,
+      id: itemID,
+      overrideAccess: true,
+    })) as ImportItemLike
+
+    batchID = readRelationNumericID(item.batch)
+
+    const batch = batchID
+      ? await payload.findByID({
+          collection: 'candidate-resume-import-batches',
+          depth: 0,
+          id: batchID,
+          overrideAccess: true,
+          select: {
+            source: true,
+            sourceDetails: true,
+          },
+        })
+      : {}
+
+    await payload.update({
+      collection: 'candidate-resume-import-items',
+      data: {
+        attemptCount: (item.attemptCount || 0) + 1,
+        error: null,
+        startedAt: new Date().toISOString(),
+        status: 'processing',
+      },
+      id: itemID,
+      overrideAccess: true,
+    })
+
+    const resumeID = readRelationNumericID(item.resume)
+    const resumeFile =
+      file || (await readStoredResumeBuffer(await getResumeDocument({ payload, resume: item.resume })))
+    const outcome = await resolveItemOutcome({
+      batch,
+      file: resumeFile,
+      payload,
+      resumeID,
+      uploadedByID: readRelationNumericID(item.uploadedBy),
+    })
+    const now = new Date().toISOString()
+
+    await payload.update({
+      collection: 'candidate-resume-import-items',
+      data: {
+        candidate: 'candidateID' in outcome ? outcome.candidateID : null,
+        candidateCreatedAt: outcome.status === 'candidateCreated' ? now : null,
+        error: 'error' in outcome ? outcome.error : null,
+        extractedTextPreview: outcome.extractedTextPreview,
+        parsedData: outcome.parsedData as Record<string, unknown> | undefined,
+        processedAt: now,
+        status: outcome.status,
+        warnings: outcome.warnings.map((message) => ({ message })),
+      },
+      id: itemID,
+      overrideAccess: true,
+    })
+  } catch (error) {
+    console.error('Resume import item processing failed', error)
+
+    await payload
+      .update({
         collection: 'candidate-resume-import-items',
         data: {
-          attemptCount: (item.attemptCount || 0) + 1,
-          error: null,
-          startedAt: new Date().toISOString(),
-          status: 'processing',
-        },
-        id: itemID,
-        overrideAccess: true,
-      })
-
-      await updateResumeImportBatchStats({ batchID, payload })
-
-      const resumeFile =
-        itemBuffers[String(itemID)] ||
-        (await readStoredResumeBuffer(await getResumeDocument({ payload, resume: item.resume })))
-
-      const parsedResume = await parseResumeBuffer({
-        buffer: resumeFile.buffer,
-        filename: resumeFile.filename,
-        mimeType: resumeFile.mimeType,
-      })
-
-      await payload.update({
-        collection: 'candidate-resume-import-items',
-        data: {
-          error: null,
-          extractedTextPreview: parsedResume.extractedTextPreview,
-          parsedData: parsedResume.parsed,
-          processedAt: new Date().toISOString(),
-          status: 'needsReview',
-          warnings: parsedResume.warnings.map((message) => ({ message })),
-        },
-        id: itemID,
-        overrideAccess: true,
-      })
-    } catch (error) {
-      await payload.update({
-        collection: 'candidate-resume-import-items',
-        data: {
-          error: error instanceof Error ? error.message : 'Resume parsing failed.',
+          error: 'Something went wrong while reading this resume. Retry or add manually.',
           processedAt: new Date().toISOString(),
           status: 'failed',
         },
         id: itemID,
         overrideAccess: true,
       })
-    }
-
-    await updateResumeImportBatchStats({ batchID, payload })
+      .catch(() => undefined)
   }
+
+  if (batchID) {
+    await updateResumeImportBatchStats({ batchID, payload }).catch(() => undefined)
+  }
+}
+
+// Re-runs queued (and timed-out) items in a batch, e.g. after "Retry".
+export const processResumeImportBatch = async ({
+  batchID,
+  maxItems = MAX_RESUME_IMPORT_FILES,
+}: {
+  batchID: number
+  maxItems?: number
+}) => {
+  const payload = await getPayload({ config: configPromise })
+
+  await payload.update({
+    collection: 'candidate-resume-import-items',
+    data: {
+      status: 'queued',
+    },
+    overrideAccess: true,
+    where: {
+      and: [
+        { batch: { equals: batchID } },
+        { status: { equals: 'processing' } },
+        { startedAt: { less_than: new Date(Date.now() - RESUME_IMPORT_STALE_MS).toISOString() } },
+      ],
+    },
+  })
+
+  const items = await payload.find({
+    collection: 'candidate-resume-import-items',
+    depth: 0,
+    limit: maxItems,
+    overrideAccess: true,
+    pagination: false,
+    select: {},
+    sort: 'createdAt',
+    where: {
+      and: [{ batch: { equals: batchID } }, { status: { equals: 'queued' } }],
+    },
+  })
+
+  for (const item of items.docs) {
+    await processResumeImportItem({ itemID: item.id, payload })
+  }
+
+  await updateResumeImportBatchStats({ batchID, payload })
 }

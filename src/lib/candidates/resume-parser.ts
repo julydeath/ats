@@ -4,6 +4,8 @@ import { pathToFileURL } from 'node:url'
 import { Ollama } from 'ollama'
 import { z } from 'zod'
 
+import { normalizeSkillList } from './skills'
+
 export type ParsedResumeData = {
   additionalComments?: string
   address?: string
@@ -1741,5 +1743,246 @@ export const parseResumeBuffer = async ({
     extractedTextPreview: extractedText.slice(0, 1200),
     parsed,
     warnings: Array.from(new Set(warnings)),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Quick intake: bulk upload only needs enough to create a searchable
+// candidate (name, contact for dedupe, skills, experience). A small strict
+// schema is faster and more accurate than the full intake extraction above.
+// ---------------------------------------------------------------------------
+
+export type ResumeEssentials = {
+  email?: string
+  firstName?: string
+  fullName?: string
+  lastName?: string
+  phone?: string
+  skills: string[]
+  totalExperienceMonths?: number
+  totalExperienceYears?: number
+}
+
+export type ResumeEssentialsResult = {
+  essentials: ResumeEssentials
+  extractedTextPreview: string
+  usedLLM: boolean
+  warnings: string[]
+}
+
+export class ResumeUnreadableError extends Error {}
+
+const ESSENTIALS_LLM_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    email: nullableStringJSONSchema,
+    firstName: nullableStringJSONSchema,
+    fullName: nullableStringJSONSchema,
+    lastName: nullableStringJSONSchema,
+    phone: nullableStringJSONSchema,
+    skills: { type: 'array', items: { type: 'string' } },
+    totalExperienceMonths: nullableNumberJSONSchema,
+    totalExperienceYears: nullableNumberJSONSchema,
+  },
+  required: [
+    'email',
+    'firstName',
+    'fullName',
+    'lastName',
+    'phone',
+    'skills',
+    'totalExperienceMonths',
+    'totalExperienceYears',
+  ],
+} as const
+
+const EssentialsLLMResponseSchema = z.object({
+  email: nullableStringSchema,
+  firstName: nullableStringSchema,
+  fullName: nullableStringSchema,
+  lastName: nullableStringSchema,
+  phone: nullableStringSchema,
+  skills: nullableStringListSchema,
+  totalExperienceMonths: nullableNumberSchema,
+  totalExperienceYears: nullableNumberSchema,
+})
+
+const NOT_A_NAME_PATTERN =
+  /\b(resume|curriculum|vitae|cv|profile|summary|objective|developer|engineer|manager|analyst|consultant|contact|email|phone|address)\b/i
+
+const normalizeCandidateName = (value: unknown): string | undefined => {
+  const name = normalizeOptionalString(value)?.replace(/\s+/g, ' ')
+
+  if (!name || name.length < 2 || name.length > 80 || /[\d@]/.test(name)) {
+    return undefined
+  }
+
+  if (NOT_A_NAME_PATTERN.test(name) || name.split(' ').length > 5) {
+    return undefined
+  }
+
+  // "JOHN DOE" -> "John Doe"; leave mixed-case names alone.
+  return name === name.toUpperCase()
+    ? name.toLowerCase().replace(/(^|[\s.'-])\p{L}/gu, (match) => match.toUpperCase())
+    : name
+}
+
+const digitsOnly = (value: string): string => value.replace(/\D/g, '')
+
+// Only accept contact details that literally appear in the resume text, so a
+// model hallucination can never create (or block) a candidate via dedupe.
+const isEmailInText = (email: string, text: string): boolean =>
+  text.toLowerCase().includes(email.toLowerCase())
+
+const isPhoneInText = (phone: string, text: string): boolean => {
+  const phoneDigits = digitsOnly(phone).slice(-10)
+  return phoneDigits.length === 10 && digitsOnly(text).includes(phoneDigits)
+}
+
+const splitExperience = (
+  years: number | undefined,
+  months: number | undefined,
+): Pick<ResumeEssentials, 'totalExperienceMonths' | 'totalExperienceYears'> => {
+  if (years === undefined && months === undefined) {
+    return {}
+  }
+
+  const totalMonths = Math.round((years || 0) * 12) + Math.round(months || 0)
+
+  if (totalMonths < 0 || totalMonths > 50 * 12) {
+    return {}
+  }
+
+  return {
+    totalExperienceMonths: totalMonths % 12,
+    totalExperienceYears: Math.floor(totalMonths / 12),
+  }
+}
+
+const extractEssentialsWithLLM = async (extractedText: string): Promise<ResumeEssentials> => {
+  const isOllamaCloudHost = /^https:\/\/(?:www\.)?ollama\.com/i.test(OLLAMA_HOST)
+  if (isOllamaCloudHost && !process.env.OLLAMA_API_KEY) {
+    throw new Error('OLLAMA_API_KEY is not configured.')
+  }
+
+  const ollama = new Ollama({ host: OLLAMA_HOST })
+  const today = new Date().toISOString().slice(0, 10)
+  const prompt = [
+    'Extract candidate essentials from the resume text below for an ATS.',
+    'Return exactly one JSON object matching the schema. Use null when a value is not clearly present. Never guess.',
+    'Rules:',
+    '- fullName: the candidate\'s own name, usually at the top. Never a company, job title, or section heading. Split into firstName and lastName (lastName is the final word; null if only one word).',
+    '- email and phone: copy exactly as written in the resume. Prefer the candidate\'s personal mobile.',
+    '- skills: up to 25 concrete technical or professional skills (languages, frameworks, tools, platforms, domains). Use the common canonical name, e.g. "React" not "ReactJS", "Node.js" not "NodeJS". No soft skills, no sentences.',
+    `- totalExperienceYears and totalExperienceMonths: total professional work experience. If the resume states it ("5+ years", "4.5 yrs"), use that. Otherwise add up employment date ranges, treating "Present"/"Till date" as ${today}, merging overlapping periods, and excluding education. Express as whole years plus 0-11 months.`,
+    '',
+    '<resume_text>',
+    extractedText.slice(0, RESUME_TEXT_PROMPT_LIMIT),
+    '</resume_text>',
+  ].join('\n')
+
+  const response = await ollama.chat({
+    model: OLLAMA_RESUME_MODEL,
+    stream: false,
+    format: ESSENTIALS_LLM_JSON_SCHEMA,
+    think: false,
+    messages: [
+      {
+        role: 'system',
+        content: 'You extract resume facts for an ATS. Respond only with JSON matching the schema.',
+      },
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+    options: {
+      num_ctx: 16384,
+      temperature: 0,
+    },
+  })
+
+  const parsed = EssentialsLLMResponseSchema.parse(
+    JSON.parse(extractJSONObject(response.message?.content || '')),
+  )
+  const fullName = normalizeCandidateName(parsed.fullName)
+  const nameParts = splitNameParts(fullName)
+
+  return {
+    email: normalizeEmail(parsed.email),
+    firstName: normalizeCandidateName(parsed.firstName) || nameParts.firstName,
+    fullName,
+    lastName: normalizeCandidateName(parsed.lastName) || nameParts.lastName,
+    phone: normalizePhone(parsed.phone),
+    skills: normalizeSkillList(parsed.skills),
+    ...splitExperience(
+      normalizeNumberValue(parsed.totalExperienceYears, { max: 50, min: 0, precision: 1 }),
+      normalizeNumberValue(parsed.totalExperienceMonths, { max: 11, min: 0 }),
+    ),
+  }
+}
+
+export const parseResumeEssentials = async ({
+  buffer,
+  filename,
+  mimeType,
+}: {
+  buffer: Buffer
+  filename: string
+  mimeType: string
+}): Promise<ResumeEssentialsResult> => {
+  const extractedText = await extractResumeText({ buffer, filename, mimeType })
+
+  if (extractedText.replace(/\s/g, '').length < 80) {
+    throw new ResumeUnreadableError(
+      getFileExtension(filename) === 'doc'
+        ? 'Old .doc files cannot be read. Save it as PDF or DOCX and upload again.'
+        : 'No readable text found. It is probably a scanned or image-only PDF. Add this candidate manually or upload a text-based PDF/DOCX.',
+    )
+  }
+
+  const heuristic = parseTextHeuristically(extractedText).parsed
+  const warnings: string[] = []
+  let llm: ResumeEssentials | null = null
+
+  try {
+    llm = await extractEssentialsWithLLM(extractedText)
+  } catch (error) {
+    console.warn(
+      'Resume essentials AI extraction unavailable:',
+      error instanceof Error ? error.message : error,
+    )
+    warnings.push('AI parsing was unavailable; used the basic parser.')
+  }
+
+  const heuristicName = normalizeCandidateName(heuristic.fullName)
+  const fullName = llm?.fullName || heuristicName
+  const nameParts = splitNameParts(fullName)
+  const email = [llm?.email, heuristic.email].find(
+    (value): value is string => Boolean(value) && isEmailInText(value as string, extractedText),
+  )
+  const phone = [llm?.phone, heuristic.phone].find(
+    (value): value is string => Boolean(value) && isPhoneInText(value as string, extractedText),
+  )
+  const skills = llm?.skills.length ? llm.skills : normalizeSkillList(heuristic.skills)
+  const experience =
+    llm?.totalExperienceYears !== undefined
+      ? splitExperience(llm.totalExperienceYears, llm.totalExperienceMonths)
+      : splitExperience(heuristic.totalExperienceYears, heuristic.totalExperienceMonths)
+
+  return {
+    essentials: {
+      email: email ? email.toLowerCase() : undefined,
+      firstName: (fullName === llm?.fullName ? llm?.firstName : undefined) || nameParts.firstName,
+      fullName,
+      lastName: (fullName === llm?.fullName ? llm?.lastName : undefined) || nameParts.lastName,
+      phone,
+      skills,
+      ...experience,
+    },
+    extractedTextPreview: extractedText.slice(0, 1200),
+    usedLLM: Boolean(llm),
+    warnings,
   }
 }

@@ -8,6 +8,7 @@ import {
   candidatesReadAccess,
 } from '@/access/visibility'
 import { buildCandidateDuplicateSignals } from '@/lib/candidates/dedupe'
+import { buildSkillsSearch } from '@/lib/candidates/skills'
 import { CANDIDATE_SOURCE_OPTIONS } from '@/lib/constants/recruitment'
 import { resolveBusinessCode } from '@/lib/utils/business-codes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
@@ -560,6 +561,15 @@ export const Candidates: CollectionConfig = {
       ],
     },
     {
+      name: 'skillsSearch',
+      type: 'text',
+      index: true,
+      admin: {
+        hidden: true,
+        readOnly: true,
+      },
+    },
+    {
       name: 'normalizedEmail',
       type: 'text',
       index: true,
@@ -600,11 +610,16 @@ export const Candidates: CollectionConfig = {
           typedData.sourcedBy = currentUserID
         }
 
+        const skills = 'skills' in typedData ? typedData.skills : typedOriginalDoc?.skills
+        const primarySkills =
+          'primarySkills' in typedData ? typedData.primarySkills : typedOriginalDoc?.primarySkills
+
         return {
           ...typedData,
           candidateCode,
           normalizedEmail: signals.normalizedEmail,
           normalizedPhone: signals.normalizedPhone,
+          skillsSearch: buildSkillsSearch(skills, primarySkills),
         }
       },
     ],

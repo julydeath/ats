@@ -100,13 +100,28 @@ export const enum_candidate_resume_import_batches_status = pgEnum(
   'enum_candidate_resume_import_batches_status',
   ['queued', 'processing', 'readyForReview', 'completed', 'completedWithErrors', 'failed'],
 )
+export const enum_candidate_resume_import_batches_source = pgEnum(
+  'enum_candidate_resume_import_batches_source',
+  [
+    'naukri',
+    'linkedin',
+    'indeed',
+    'reference',
+    'careerPortal',
+    'walkIn',
+    'consultancy',
+    'database',
+    'other',
+  ],
+)
 export const enum_candidate_resume_import_items_status = pgEnum(
   'enum_candidate_resume_import_items_status',
-  ['queued', 'processing', 'needsReview', 'candidateCreated', 'failed'],
+  ['queued', 'processing', 'needsReview', 'candidateCreated', 'duplicate', 'failed'],
 )
 export const enum_candidates_source = pgEnum('enum_candidates_source', [
   'naukri',
   'linkedin',
+  'indeed',
   'reference',
   'careerPortal',
   'walkIn',
@@ -1031,6 +1046,8 @@ export const candidate_resume_import_batches = pgTable(
     id: serial('id').primaryKey(),
     batchCode: varchar('batch_code'),
     status: enum_candidate_resume_import_batches_status('status').notNull().default('queued'),
+    source: enum_candidate_resume_import_batches_source('source'),
+    sourceDetails: varchar('source_details'),
     sourceJob: integer('source_job_id').references(() => jobs.id, {
       onDelete: 'set null',
     }),
@@ -1043,6 +1060,7 @@ export const candidate_resume_import_batches = pgTable(
     parsedCount: numeric('parsed_count', { mode: 'number' }).default(0),
     failedCount: numeric('failed_count', { mode: 'number' }).default(0),
     createdCount: numeric('created_count', { mode: 'number' }).default(0),
+    duplicateCount: numeric('duplicate_count', { mode: 'number' }).default(0),
     startedAt: timestamp('started_at', { mode: 'string', withTimezone: true, precision: 3 }),
     completedAt: timestamp('completed_at', { mode: 'string', withTimezone: true, precision: 3 }),
     notes: varchar('notes'),
@@ -1056,6 +1074,7 @@ export const candidate_resume_import_batches = pgTable(
   (columns) => [
     uniqueIndex('candidate_resume_import_batches_batch_code_idx').on(columns.batchCode),
     index('candidate_resume_import_batches_status_idx').on(columns.status),
+    index('candidate_resume_import_batches_source_idx').on(columns.source),
     index('candidate_resume_import_batches_source_job_idx').on(columns.sourceJob),
     index('candidate_resume_import_batches_uploaded_by_idx').on(columns.uploadedBy),
     index('candidate_resume_import_batches_started_at_idx').on(columns.startedAt),
@@ -1120,6 +1139,7 @@ export const candidate_resume_import_items = pgTable(
     candidate: integer('candidate_id').references(() => candidates.id, {
       onDelete: 'set null',
     }),
+    dismissedAt: timestamp('dismissed_at', { mode: 'string', withTimezone: true, precision: 3 }),
     updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
       .defaultNow()
       .notNull(),
@@ -1138,6 +1158,7 @@ export const candidate_resume_import_items = pgTable(
     index('candidate_resume_import_items_processed_at_idx').on(columns.processedAt),
     index('candidate_resume_import_items_candidate_created_at_idx').on(columns.candidateCreatedAt),
     index('candidate_resume_import_items_candidate_idx').on(columns.candidate),
+    index('candidate_resume_import_items_dismissed_at_idx').on(columns.dismissedAt),
     index('candidate_resume_import_items_updated_at_idx').on(columns.updatedAt),
     index('candidate_resume_import_items_created_at_idx').on(columns.createdAt),
   ],
@@ -1379,6 +1400,7 @@ export const candidates = pgTable(
     }),
     notes: varchar('notes'),
     additionalComments: varchar('additional_comments'),
+    skillsSearch: varchar('skills_search'),
     normalizedEmail: varchar('normalized_email'),
     normalizedPhone: varchar('normalized_phone'),
     updatedAt: timestamp('updated_at', { mode: 'string', withTimezone: true, precision: 3 })
@@ -1401,6 +1423,7 @@ export const candidates = pgTable(
     index('candidates_source_job_idx').on(columns.sourceJob),
     index('candidates_sourced_by_idx').on(columns.sourcedBy),
     index('candidates_candidate_account_idx').on(columns.candidateAccount),
+    index('candidates_skills_search_idx').on(columns.skillsSearch),
     uniqueIndex('candidates_normalized_email_idx').on(columns.normalizedEmail),
     uniqueIndex('candidates_normalized_phone_idx').on(columns.normalizedPhone),
     index('candidates_updated_at_idx').on(columns.updatedAt),
@@ -4742,6 +4765,7 @@ type DatabaseSchema = {
   enum_job_lead_assignments_status: typeof enum_job_lead_assignments_status
   enum_recruiter_job_assignments_status: typeof enum_recruiter_job_assignments_status
   enum_candidate_resume_import_batches_status: typeof enum_candidate_resume_import_batches_status
+  enum_candidate_resume_import_batches_source: typeof enum_candidate_resume_import_batches_source
   enum_candidate_resume_import_items_status: typeof enum_candidate_resume_import_items_status
   enum_candidates_source: typeof enum_candidates_source
   enum_candidate_activities_type: typeof enum_candidate_activities_type

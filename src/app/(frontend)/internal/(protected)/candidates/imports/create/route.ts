@@ -1,37 +1,13 @@
 import configPromise from '@payload-config'
-import { after, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
 import { getPayloadAuthHeaders } from '@/lib/auth/payload-auth-headers'
-import {
-  MAX_RESUME_IMPORT_FILES,
-  MAX_RESUME_IMPORT_FILE_SIZE_BYTES,
-  processResumeImportBatch,
-  type ResumeImportFileBuffer,
-} from '@/lib/candidates/resume-imports'
-import { getResumeImportMimeType } from '@/lib/candidates/resume-import-validation'
-import { APP_ROUTES } from '@/lib/constants/routes'
+import { MAX_RESUME_IMPORT_FILES } from '@/lib/candidates/resume-imports'
+import { CANDIDATE_SOURCES, type CandidateSource } from '@/lib/constants/recruitment'
 
 export const runtime = 'nodejs'
-
-const readString = (value: FormDataEntryValue | null): string => {
-  if (typeof value !== 'string') {
-    return ''
-  }
-
-  return value.trim()
-}
-
-const parseNumericID = (value: FormDataEntryValue | null): number | null => {
-  const raw = readString(value)
-
-  if (!raw || !/^\d+$/.test(raw)) {
-    return null
-  }
-
-  return Number(raw)
-}
 
 const toNumericID = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -45,183 +21,53 @@ const toNumericID = (value: unknown): number | null => {
   return null
 }
 
-const buildFailureURL = (request: Request, message: string): URL => {
-  const failureURL = new URL(APP_ROUTES.internal.candidates.importsNew, request.url)
-  failureURL.searchParams.set('error', message)
-  return failureURL
-}
-
+// Starts a bulk upload. The browser then sends each resume to
+// `/imports/[id]/files` one request at a time.
 export async function POST(request: Request) {
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers: await getPayloadAuthHeaders(request.headers) })
   const internalUser = user as InternalUserLike
 
   if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter', 'recruiter'])) {
-    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
+    return NextResponse.json({ error: 'You do not have access to bulk upload.' }, { status: 403 })
   }
 
-  const formData = await request.formData()
-  const sourceJobID = parseNumericID(formData.get('sourceJob'))
-  const resumeFiles = formData
-    .getAll('resumes')
-    .filter((value): value is File => value instanceof File && value.size > 0)
-    .slice(0, MAX_RESUME_IMPORT_FILES + 1)
+  const body = (await request.json().catch(() => null)) as {
+    fileCount?: unknown
+    source?: unknown
+    sourceDetails?: unknown
+  } | null
+  const source = typeof body?.source === 'string' ? body.source : ''
+  const sourceDetails = typeof body?.sourceDetails === 'string' ? body.sourceDetails.trim() : ''
+  const fileCount = Number(body?.fileCount)
 
-  if (resumeFiles.length === 0) {
-    return NextResponse.redirect(buildFailureURL(request, 'Choose at least one resume file.'), 303)
+  if (!CANDIDATE_SOURCES.includes(source as CandidateSource)) {
+    return NextResponse.json({ error: 'Choose which platform these resumes came from.' }, { status: 400 })
   }
 
-  if (resumeFiles.length > MAX_RESUME_IMPORT_FILES) {
-    return NextResponse.redirect(
-      buildFailureURL(
-        request,
-        `Upload a maximum of ${MAX_RESUME_IMPORT_FILES} resumes per bundle.`,
-      ),
-      303,
+  if (source === 'other' && !sourceDetails) {
+    return NextResponse.json({ error: 'Type the platform name for "Other".' }, { status: 400 })
+  }
+
+  if (!Number.isInteger(fileCount) || fileCount < 1 || fileCount > MAX_RESUME_IMPORT_FILES) {
+    return NextResponse.json(
+      { error: `Upload between 1 and ${MAX_RESUME_IMPORT_FILES} resumes at a time.` },
+      { status: 400 },
     )
   }
 
-  const validatedResumeFiles: Array<{ file: File; mimeType: string }> = []
+  const batch = await payload.create({
+    collection: 'candidate-resume-import-batches',
+    data: {
+      source: source as CandidateSource,
+      sourceDetails: sourceDetails || undefined,
+      status: 'queued',
+      totalCount: 0,
+      uploadedBy: toNumericID(internalUser?.id) ?? undefined,
+    },
+    overrideAccess: false,
+    user: internalUser,
+  })
 
-  for (const resumeFile of resumeFiles) {
-    const mimeType = getResumeImportMimeType({
-      filename: resumeFile.name,
-      mimeType: resumeFile.type,
-    })
-
-    if (!mimeType) {
-      return NextResponse.redirect(
-        buildFailureURL(request, `${resumeFile.name} must be a PDF, DOC, or DOCX file.`),
-        303,
-      )
-    }
-
-    if (resumeFile.size > MAX_RESUME_IMPORT_FILE_SIZE_BYTES) {
-      return NextResponse.redirect(
-        buildFailureURL(request, `${resumeFile.name} is larger than 10 MB.`),
-        303,
-      )
-    }
-
-    validatedResumeFiles.push({ file: resumeFile, mimeType })
-  }
-
-  const currentUserID = toNumericID(internalUser?.id)
-  const createdResumeIDs: number[] = []
-  const createdItemIDs: number[] = []
-  let createdBatchID: number | null = null
-
-  try {
-    const batch = await payload.create({
-      collection: 'candidate-resume-import-batches',
-      data: {
-        queuedCount: validatedResumeFiles.length,
-        sourceJob: sourceJobID ?? undefined,
-        status: 'queued',
-        totalCount: validatedResumeFiles.length,
-        uploadedBy: currentUserID ?? undefined,
-      },
-      overrideAccess: false,
-      user: internalUser,
-    })
-
-    createdBatchID = batch.id
-
-    const itemBuffers: Record<string, ResumeImportFileBuffer> = {}
-
-    for (const { file: resumeFile, mimeType } of validatedResumeFiles) {
-      const buffer = Buffer.from(await resumeFile.arrayBuffer())
-      const resume = await payload.create({
-        collection: 'candidate-resumes',
-        data: {
-          alt: resumeFile.name.replace(/\.[^.]+$/, '') || 'Imported Resume',
-          sourceJob: sourceJobID ?? undefined,
-          uploadedBy: currentUserID ?? undefined,
-        },
-        file: {
-          data: buffer,
-          mimetype: mimeType,
-          name: resumeFile.name,
-          size: resumeFile.size,
-        },
-        overrideAccess: false,
-        user: internalUser,
-      })
-
-      createdResumeIDs.push(resume.id)
-
-      const item = await payload.create({
-        collection: 'candidate-resume-import-items',
-        data: {
-          batch: batch.id,
-          resume: resume.id,
-          sourceJob: sourceJobID ?? undefined,
-          status: 'queued',
-          uploadedBy: currentUserID ?? undefined,
-        },
-        overrideAccess: false,
-        user: internalUser,
-      })
-
-      createdItemIDs.push(item.id)
-      itemBuffers[String(item.id)] = {
-        buffer,
-        filename: resume.filename || resumeFile.name,
-        mimeType: resume.mimeType || mimeType,
-      }
-    }
-
-    after(async () => {
-      try {
-        await processResumeImportBatch({
-          batchID: batch.id,
-          itemBuffers,
-        })
-      } catch (error) {
-        console.error('Bulk resume import processing failed', error)
-      }
-    })
-
-    const successURL = new URL(`${APP_ROUTES.internal.candidates.imports}/${batch.id}`, request.url)
-    successURL.searchParams.set('success', 'batchCreated')
-    return NextResponse.redirect(successURL, 303)
-  } catch (error) {
-    for (const itemID of createdItemIDs) {
-      await payload
-        .delete({
-          collection: 'candidate-resume-import-items',
-          id: itemID,
-          overrideAccess: true,
-        })
-        .catch(() => undefined)
-    }
-
-    if (createdBatchID !== null) {
-      await payload
-        .delete({
-          collection: 'candidate-resume-import-batches',
-          id: createdBatchID,
-          overrideAccess: true,
-        })
-        .catch(() => undefined)
-    }
-
-    for (const resumeID of createdResumeIDs) {
-      await payload
-        .delete({
-          collection: 'candidate-resumes',
-          id: resumeID,
-          overrideAccess: true,
-        })
-        .catch(() => undefined)
-    }
-
-    return NextResponse.redirect(
-      buildFailureURL(
-        request,
-        error instanceof Error ? error.message : 'Unable to start resume import. Please retry.',
-      ),
-      303,
-    )
-  }
+  return NextResponse.json({ batchId: batch.id })
 }

@@ -333,7 +333,16 @@ export interface Candidate {
   communicationSkillsRating?: number | null;
   professionalismRating?: number | null;
   overallRating?: number | null;
-  source: 'naukri' | 'linkedin' | 'reference' | 'careerPortal' | 'walkIn' | 'consultancy' | 'database' | 'other';
+  source:
+    | 'naukri'
+    | 'linkedin'
+    | 'indeed'
+    | 'reference'
+    | 'careerPortal'
+    | 'walkIn'
+    | 'consultancy'
+    | 'database'
+    | 'other';
   sourceDetails?: string | null;
   resume?: (number | null) | CandidateResume;
   linkedInURL?: string | null;
@@ -407,6 +416,7 @@ export interface Candidate {
         id?: string | null;
       }[]
     | null;
+  skillsSearch?: string | null;
   normalizedEmail?: string | null;
   normalizedPhone?: string | null;
   updatedAt: string;
@@ -665,6 +675,20 @@ export interface CandidateResumeImportBatch {
   id: number;
   batchCode?: string | null;
   status: 'queued' | 'processing' | 'readyForReview' | 'completed' | 'completedWithErrors' | 'failed';
+  source?:
+    | (
+        | 'naukri'
+        | 'linkedin'
+        | 'indeed'
+        | 'reference'
+        | 'careerPortal'
+        | 'walkIn'
+        | 'consultancy'
+        | 'database'
+        | 'other'
+      )
+    | null;
+  sourceDetails?: string | null;
   sourceJob?: (number | null) | Job;
   uploadedBy?: (number | null) | User;
   totalCount?: number | null;
@@ -673,6 +697,7 @@ export interface CandidateResumeImportBatch {
   parsedCount?: number | null;
   failedCount?: number | null;
   createdCount?: number | null;
+  duplicateCount?: number | null;
   startedAt?: string | null;
   completedAt?: string | null;
   notes?: string | null;
@@ -690,7 +715,7 @@ export interface CandidateResumeImportItem {
   resume: number | CandidateResume;
   sourceJob?: (number | null) | Job;
   uploadedBy?: (number | null) | User;
-  status: 'queued' | 'processing' | 'needsReview' | 'candidateCreated' | 'failed';
+  status: 'queued' | 'processing' | 'needsReview' | 'candidateCreated' | 'duplicate' | 'failed';
   parsedData?:
     | {
         [k: string]: unknown;
@@ -713,6 +738,7 @@ export interface CandidateResumeImportItem {
   processedAt?: string | null;
   candidateCreatedAt?: string | null;
   candidate?: (number | null) | Candidate;
+  dismissedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1929,6 +1955,8 @@ export interface CandidateResumesSelect<T extends boolean = true> {
 export interface CandidateResumeImportBatchesSelect<T extends boolean = true> {
   batchCode?: T;
   status?: T;
+  source?: T;
+  sourceDetails?: T;
   sourceJob?: T;
   uploadedBy?: T;
   totalCount?: T;
@@ -1937,6 +1965,7 @@ export interface CandidateResumeImportBatchesSelect<T extends boolean = true> {
   parsedCount?: T;
   failedCount?: T;
   createdCount?: T;
+  duplicateCount?: T;
   startedAt?: T;
   completedAt?: T;
   notes?: T;
@@ -1968,6 +1997,7 @@ export interface CandidateResumeImportItemsSelect<T extends boolean = true> {
   processedAt?: T;
   candidateCreatedAt?: T;
   candidate?: T;
+  dismissedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2111,6 +2141,7 @@ export interface CandidatesSelect<T extends boolean = true> {
         canSpeak?: T;
         id?: T;
       };
+  skillsSearch?: T;
   normalizedEmail?: T;
   normalizedPhone?: T;
   updatedAt?: T;

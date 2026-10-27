@@ -329,7 +329,7 @@ export default async function InternalHRAnalyticsPage({ searchParams }: HRAnalyt
                 <tr>
                   <th>Employee</th>
                   <th>Role</th>
-                  <th>State</th>
+                  <th>Candidates</th>
                   <th>Score</th>
                   <th>Attendance</th>
                   <th>Jobs</th>
@@ -350,7 +350,9 @@ export default async function InternalHRAnalyticsPage({ searchParams }: HRAnalyt
                       <span className="muted tiny">{row.name}</span>
                     </td>
                     <td>{INTERNAL_ROLE_LABELS[row.role]}</td>
-                    <td>{row.state}</td>
+                    <td title={`${row.resumesUploaded} resumes uploaded, ${row.resumeUploadFailures} failed`}>
+                      {row.candidatesAdded}
+                    </td>
                     <td>{row.score}</td>
                     <td>{row.attendancePct}%</td>
                     <td>{row.jobsCreated}</td>

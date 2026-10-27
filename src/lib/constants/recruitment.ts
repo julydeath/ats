@@ -116,6 +116,7 @@ export const ASSIGNMENT_STATUS_OPTIONS = ASSIGNMENT_STATUSES.map((value) => ({
 export const CANDIDATE_SOURCES = [
   'naukri',
   'linkedin',
+  'indeed',
   'reference',
   'careerPortal',
   'walkIn',
@@ -128,6 +129,7 @@ export type CandidateSource = (typeof CANDIDATE_SOURCES)[number]
 export const CANDIDATE_SOURCE_LABELS: Record<CandidateSource, string> = {
   naukri: 'Naukri',
   linkedin: 'LinkedIn',
+  indeed: 'Indeed',
   reference: 'Reference',
   careerPortal: 'Career Portal',
   walkIn: 'Walk-in',
@@ -190,6 +192,7 @@ export const CANDIDATE_RESUME_IMPORT_ITEM_STATUSES = [
   'processing',
   'needsReview',
   'candidateCreated',
+  'duplicate',
   'failed',
 ] as const
 export type CandidateResumeImportItemStatus = (typeof CANDIDATE_RESUME_IMPORT_ITEM_STATUSES)[number]
@@ -202,6 +205,7 @@ export const CANDIDATE_RESUME_IMPORT_ITEM_STATUS_LABELS: Record<
   processing: 'Processing',
   needsReview: 'Needs Review',
   candidateCreated: 'Candidate Created',
+  duplicate: 'Already Exists',
   failed: 'Failed',
 }
 

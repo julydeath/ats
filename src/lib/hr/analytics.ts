@@ -48,6 +48,7 @@ type EmployeeSelector = {
 type EmployeeScoreRow = {
   applicationsAdded: number
   attendancePct: number
+  candidatesAdded: number
   employeeCode: string
   employeeId: number
   interviewsScheduled: number
@@ -57,6 +58,8 @@ type EmployeeScoreRow = {
   managedClients: number
   name: string
   placementsClosed: number
+  resumeUploadFailures: number
+  resumesUploaded: number
   role: InternalRole
   score: number
   stageMoves: number
@@ -101,6 +104,7 @@ export type HRAnalyticsSummary = {
     approvedLeaveDays: number
     attendanceCompliancePct: number
     avgPerformanceScore: number
+    candidatesAdded: number
     interviewsScheduled: number
     jobsCreated: number
     lopDays: number
@@ -198,6 +202,7 @@ const getDateKey = (value: string | null | undefined): string | null => {
 type MutableEmployeeScore = {
   applicationsAdded: number
   attendanceEquivalentDays: number
+  candidatesAdded: number
   employeeCode: string
   employeeId: number
   interviewsScheduled: number
@@ -207,6 +212,8 @@ type MutableEmployeeScore = {
   managedClients: number
   name: string
   placementsClosed: number
+  resumeUploadFailures: number
+  resumesUploaded: number
   role: InternalRole
   stageMoves: number
   state: string
@@ -230,6 +237,7 @@ const toEmployeeRow = (value: MutableEmployeeScore): EmployeeScoreRow => {
   return {
     applicationsAdded: value.applicationsAdded,
     attendancePct,
+    candidatesAdded: value.candidatesAdded,
     employeeCode: value.employeeCode,
     employeeId: value.employeeId,
     interviewsScheduled: value.interviewsScheduled,
@@ -239,6 +247,8 @@ const toEmployeeRow = (value: MutableEmployeeScore): EmployeeScoreRow => {
     managedClients: value.managedClients,
     name: value.name,
     placementsClosed: value.placementsClosed,
+    resumeUploadFailures: value.resumeUploadFailures,
+    resumesUploaded: value.resumesUploaded,
     role: value.role,
     score: round(clamp(baseScore, 0, 100)),
     stageMoves: value.stageMoves,
@@ -335,6 +345,7 @@ export const getHRAnalyticsSummary = async ({
       return {
         applicationsAdded: 0,
         attendanceEquivalentDays: 0,
+        candidatesAdded: 0,
         employeeCode: employee.employeeCode || `EMP-${employee.id}`,
         employeeId: employee.id,
         interviewsScheduled: 0,
@@ -344,6 +355,8 @@ export const getHRAnalyticsSummary = async ({
         managedClients: 0,
         name: linkedUser.fullName || linkedUser.email || `User ${linkedUser.id}`,
         placementsClosed: 0,
+        resumeUploadFailures: 0,
+        resumesUploaded: 0,
         role,
         stageMoves: 0,
         state: employee.workState || 'Unknown',
@@ -373,6 +386,7 @@ export const getHRAnalyticsSummary = async ({
         approvedLeaveDays: 0,
         attendanceCompliancePct: 0,
         avgPerformanceScore: 0,
+        candidatesAdded: 0,
         interviewsScheduled: 0,
         jobsCreated: 0,
         lopDays: 0,
@@ -408,6 +422,8 @@ export const getHRAnalyticsSummary = async ({
     activeClients,
     payrollLineItems,
     payoutTransactions,
+    candidatesAdded,
+    resumeImportItems,
   ] = await Promise.all([
     payload.find({
       collection: 'attendance-daily-summaries',
@@ -591,6 +607,39 @@ export const getHRAnalyticsSummary = async ({
         { initiatedAt: { less_than_equal: toISO } },
       ]),
     }),
+    payload.find({
+      collection: 'candidates',
+      depth: 0,
+      limit: 10000,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        sourcedBy: true,
+      },
+      user,
+      where: buildWhereAnd([
+        { sourcedBy: { in: userIDs } },
+        { createdAt: { greater_than_equal: fromISO } },
+        { createdAt: { less_than_equal: toISO } },
+      ]),
+    }),
+    payload.find({
+      collection: 'candidate-resume-import-items',
+      depth: 0,
+      limit: 10000,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        status: true,
+        uploadedBy: true,
+      },
+      user,
+      where: buildWhereAnd([
+        { uploadedBy: { in: userIDs } },
+        { createdAt: { greater_than_equal: fromISO } },
+        { createdAt: { less_than_equal: toISO } },
+      ]),
+    }),
   ])
 
   const dayKeys = buildDayKeys(new Date(fromISO), new Date(toISO))
@@ -700,6 +749,27 @@ export const getHRAnalyticsSummary = async ({
     if (day) {
       day.applications += 1
     }
+  })
+
+  candidatesAdded.docs.forEach((row) => {
+    const userID = readRelationID(row.sourcedBy)
+    if (!userID) return
+    const employeeID = employeeIDByUserID.get(userID)
+    if (!employeeID) return
+    const employee = employeeByID.get(employeeID)
+    if (!employee) return
+    employee.candidatesAdded += 1
+  })
+
+  resumeImportItems.docs.forEach((row) => {
+    const userID = readRelationID(row.uploadedBy)
+    if (!userID) return
+    const employeeID = employeeIDByUserID.get(userID)
+    if (!employeeID) return
+    const employee = employeeByID.get(employeeID)
+    if (!employee) return
+    employee.resumesUploaded += 1
+    if (row.status === 'failed') employee.resumeUploadFailures += 1
   })
 
   ;(stageHistory.docs as ApplicationStageHistory[]).forEach((row) => {
@@ -813,6 +883,7 @@ export const getHRAnalyticsSummary = async ({
       : 0
 
   const jobsCreated = employeeRows.reduce((sum, row) => sum + row.jobsCreated, 0)
+  const totalCandidatesAdded = employeeRows.reduce((sum, row) => sum + row.candidatesAdded, 0)
   const sourcedApplications = employeeRows.reduce((sum, row) => sum + row.applicationsAdded, 0)
   const interviewsScheduled = employeeRows.reduce((sum, row) => sum + row.interviewsScheduled, 0)
   const placementsClosed = employeeRows.reduce((sum, row) => sum + row.placementsClosed, 0)
@@ -828,6 +899,7 @@ export const getHRAnalyticsSummary = async ({
       approvedLeaveDays: round(approvedLeaveDays),
       attendanceCompliancePct,
       avgPerformanceScore,
+      candidatesAdded: totalCandidatesAdded,
       interviewsScheduled,
       jobsCreated,
       lopDays,

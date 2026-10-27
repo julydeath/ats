@@ -2,82 +2,83 @@ import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
 
+import { AutoRefresh } from '@/components/internal/AutoRefresh'
+import { BulkResumeUploader } from '@/components/internal/BulkResumeUploader'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
+import {
+  MAX_RESUME_IMPORT_FILES,
+  MAX_RESUME_IMPORT_FILE_SIZE_BYTES,
+  RESUME_IMPORT_STALE_MS,
+} from '@/lib/candidates/resume-imports'
 import { APP_ROUTES } from '@/lib/constants/routes'
-import { MAX_RESUME_IMPORT_FILES } from '@/lib/candidates/resume-imports'
+import { extractRelationshipID } from '@/lib/utils/relationships'
+import type { CandidateResumeImportItem } from '@/payload-types'
 
-const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
-  if (!value) {
-    return fallback
-  }
+const TRAY_WINDOW_DAYS = 14
 
-  if (typeof value === 'number' || typeof value === 'string') {
-    return String(value)
-  }
+const readFilename = (resume: CandidateResumeImportItem['resume']): string =>
+  typeof resume === 'object' && resume ? resume.filename || resume.alt || 'Resume' : 'Resume'
 
-  if (typeof value === 'object') {
-    const typed = value as {
-      clientCode?: string
-      name?: string
-      title?: string
-    }
+const readCandidateName = (candidate: CandidateResumeImportItem['candidate']): string =>
+  typeof candidate === 'object' && candidate ? candidate.fullName : ''
 
-    return typed.title || typed.name || typed.clientCode || fallback
-  }
+const readWarnings = (item: CandidateResumeImportItem): string[] =>
+  (item.warnings || [])
+    .map((warning) => warning.message)
+    .filter((message) => /later\.$/.test(message))
 
-  return fallback
-}
+const formatWhen = (value: string): string =>
+  new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 
-type CandidateImportNewPageProps = {
-  searchParams?: Promise<{
-    error?: string
-  }>
-}
-
-export default async function CandidateImportNewPage({ searchParams }: CandidateImportNewPageProps) {
+export default async function CandidateImportNewPage() {
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
   const payload = await getPayload({ config: configPromise })
-  const resolvedSearchParams = (await searchParams) ?? {}
+  const since = new Date(Date.now() - TRAY_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  const staleBefore = Date.now() - RESUME_IMPORT_STALE_MS
+  const returnTo = APP_ROUTES.internal.candidates.importsNew
 
-  const jobsResult = await payload.find({
-    collection: 'jobs',
+  const itemsResult = await payload.find({
+    collection: 'candidate-resume-import-items',
     depth: 1,
-    limit: 160,
+    limit: 150,
     overrideAccess: false,
     pagination: false,
-    select: {
-      client: true,
-      id: true,
-      jobCode: true,
-      priority: true,
-      title: true,
-    },
-    sort: '-updatedAt',
+    sort: '-createdAt',
     user,
     where: {
-      status: {
-        in: ['active', 'onHold'],
-      },
+      and: [{ uploadedBy: { equals: user.id } }, { createdAt: { greater_than_equal: since } }],
     },
   })
 
-  const jobs = jobsResult.docs.map((job) => ({
-    clientLabel: readLabel(job.client),
-    id: job.id,
-    jobCode: job.jobCode || '',
-    priority: readLabel(job.priority, 'normal'),
-    title: job.title,
-  }))
+  const items = itemsResult.docs as CandidateResumeImportItem[]
+  const isStale = (item: CandidateResumeImportItem) =>
+    item.status === 'processing' && new Date(item.startedAt || item.updatedAt).getTime() < staleBefore
+
+  const pending = items.filter(
+    (item) => (item.status === 'queued' || item.status === 'processing') && !isStale(item),
+  )
+  const attention = items.filter(
+    (item) =>
+      !item.dismissedAt &&
+      (item.status === 'failed' || item.status === 'needsReview' || isStale(item)),
+  )
+  const done = items
+    .filter((item) => item.status === 'candidateCreated' || item.status === 'duplicate')
+    .slice(0, 30)
+  const createdCount = items.filter((item) => item.status === 'candidateCreated').length
 
   return (
     <section className="candidate-import-page">
+      <AutoRefresh active={pending.length > 0} />
+
       <header className="candidate-import-header">
         <div>
           <p className="candidate-import-kicker">Candidates</p>
           <h1>Bulk Resume Upload</h1>
           <p>
-            Upload up to {MAX_RESUME_IMPORT_FILES} resumes and let parsing continue in the background while you keep
-            working.
+            Pick the platform, drop up to {MAX_RESUME_IMPORT_FILES} resumes, and upload. We read the name,
+            contact, skills, and experience and add each candidate automatically. You only need to act
+            on resumes that fail.
           </p>
         </div>
 
@@ -91,70 +92,143 @@ export default async function CandidateImportNewPage({ searchParams }: Candidate
         </div>
       </header>
 
-      {resolvedSearchParams.error ? (
-        <p className="candidate-intake-message candidate-intake-message-error">
-          {String(resolvedSearchParams.error)}
-        </p>
-      ) : null}
+      <BulkResumeUploader
+        createURL={APP_ROUTES.internal.candidates.importsCreate}
+        filesBaseURL={APP_ROUTES.internal.candidates.imports}
+        maxFileSizeBytes={MAX_RESUME_IMPORT_FILE_SIZE_BYTES}
+        maxFiles={MAX_RESUME_IMPORT_FILES}
+      />
 
-      <form
-        action={APP_ROUTES.internal.candidates.importsCreate}
-        className="candidate-import-form"
-        encType="multipart/form-data"
-        method="post"
-      >
-        <section className="candidate-import-card">
-          <h2>Upload Bundle</h2>
-          <div className="candidate-import-fields">
-            <label>
-              <span>Source Job</span>
-              <select name="sourceJob">
-                <option value="">No job selected</option>
-                {jobs.map((job) => (
-                  <option key={`import-job-${job.id}`} value={String(job.id)}>
-                    {(job.jobCode || `JOB-${job.id}`)} | {job.title} | {job.clientLabel}
-                  </option>
-                ))}
-              </select>
-            </label>
+      <section className="candidate-import-list-card" id="my-uploads">
+        <header className="candidate-import-section-head">
+          <h2>My Uploads</h2>
+          <p>
+            Last {TRAY_WINDOW_DAYS} days · {createdCount} candidate{createdCount === 1 ? '' : 's'} added
+            {pending.length > 0 ? ` · ${pending.length} still processing` : ''}
+          </p>
+        </header>
 
-            <label>
-              <span>Resumes</span>
-              <input
-                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                multiple
-                name="resumes"
-                required
-                type="file"
-              />
-            </label>
+        {pending.length > 0 ? (
+          <p className="candidate-import-warning candidate-bulk-processing">
+            Reading {pending.length} resume{pending.length === 1 ? '' : 's'}… this page updates on its own.
+          </p>
+        ) : null}
+
+        {attention.length > 0 ? (
+          <div className="candidate-import-item-list" id="needs-attention">
+            <h3 className="candidate-bulk-group-title">
+              Needs attention ({attention.length})
+            </h3>
+            {attention.map((item) => {
+              const legacyReview = item.status === 'needsReview'
+              const batchID = extractRelationshipID(item.batch)
+
+              return (
+                <article className="candidate-import-item" key={`tray-attention-${item.id}`}>
+                  <div className="candidate-import-item-main">
+                    <span className="candidate-import-status candidate-import-status-failed">
+                      {legacyReview ? 'Needs review' : 'Failed'}
+                    </span>
+                    <h3>{readFilename(item.resume)}</h3>
+                    <p>Uploaded {formatWhen(item.createdAt)}</p>
+                    <p className="candidate-import-error">
+                      {legacyReview
+                        ? 'Uploaded with the old review flow. Open it to finish creating the candidate.'
+                        : isStale(item)
+                          ? 'Reading this resume timed out. Retry it.'
+                          : item.error || 'This resume could not be read.'}
+                    </p>
+                  </div>
+
+                  <div className="candidate-import-item-actions">
+                    {legacyReview ? (
+                      <Link
+                        className="candidate-mgmt-action-link"
+                        href={`${APP_ROUTES.internal.candidates.imports}/${batchID}/items/${item.id}/review`}
+                      >
+                        Review
+                      </Link>
+                    ) : (
+                      <form action={`${APP_ROUTES.internal.candidates.imports}/items/${item.id}`} method="post">
+                        <input name="action" type="hidden" value="retry" />
+                        <input name="returnTo" type="hidden" value={returnTo} />
+                        <button
+                          className="candidate-mgmt-action-link"
+                          data-pending-label="Retrying..."
+                          type="submit"
+                        >
+                          Retry
+                        </button>
+                      </form>
+                    )}
+                    <Link
+                      className="candidate-mgmt-action-link candidate-mgmt-action-link-secondary"
+                      href={APP_ROUTES.internal.candidates.new}
+                    >
+                      Add manually
+                    </Link>
+                    <form action={`${APP_ROUTES.internal.candidates.imports}/items/${item.id}`} method="post">
+                      <input name="action" type="hidden" value="dismiss" />
+                      <input name="returnTo" type="hidden" value={returnTo} />
+                      <button
+                        className="candidate-mgmt-action-link candidate-mgmt-action-link-secondary"
+                        type="submit"
+                      >
+                        Dismiss
+                      </button>
+                    </form>
+                  </div>
+                </article>
+              )
+            })}
           </div>
+        ) : null}
 
-          <div className="candidate-import-note-grid">
-            <div>
-              <strong>Limit</strong>
-              <span>{MAX_RESUME_IMPORT_FILES} files per bundle</span>
-            </div>
-            <div>
-              <strong>Formats</strong>
-              <span>PDF, DOCX, or DOC</span>
-            </div>
-            <div>
-              <strong>Review</strong>
-              <span>Create candidates after parser review</span>
-            </div>
+        {done.length > 0 ? (
+          <div className="candidate-import-item-list">
+            <h3 className="candidate-bulk-group-title">Added</h3>
+            {done.map((item) => {
+              const candidateID = extractRelationshipID(item.candidate)
+              const isDuplicate = item.status === 'duplicate'
+              const warnings = readWarnings(item)
+
+              return (
+                <article className="candidate-import-item" key={`tray-done-${item.id}`}>
+                  <div className="candidate-import-item-main">
+                    <span
+                      className={`candidate-import-status candidate-import-status-${isDuplicate ? 'duplicate' : 'candidateCreated'}`}
+                    >
+                      {isDuplicate ? 'Already in bank' : 'Added'}
+                    </span>
+                    <h3>{readCandidateName(item.candidate) || readFilename(item.resume)}</h3>
+                    <p>
+                      {readFilename(item.resume)} · {formatWhen(item.createdAt)}
+                    </p>
+                    {warnings.length > 0 ? (
+                      <p className="candidate-import-warning">{warnings.join(' ')}</p>
+                    ) : null}
+                  </div>
+
+                  {candidateID ? (
+                    <div className="candidate-import-item-actions">
+                      <Link
+                        className="candidate-mgmt-action-link candidate-mgmt-action-link-secondary"
+                        href={`${APP_ROUTES.internal.candidates.detailBase}/${candidateID}`}
+                      >
+                        Open
+                      </Link>
+                    </div>
+                  ) : null}
+                </article>
+              )
+            })}
           </div>
-        </section>
+        ) : null}
 
-        <footer className="candidate-intake-footer">
-          <Link className="candidate-intake-cancel" href={APP_ROUTES.internal.candidates.list}>
-            Cancel
-          </Link>
-          <button className="candidate-intake-submit" data-pending-label="Uploading..." type="submit">
-            Start Import
-          </button>
-        </footer>
-      </form>
+        {items.length === 0 ? (
+          <p className="candidate-import-empty">Nothing uploaded in the last {TRAY_WINDOW_DAYS} days.</p>
+        ) : null}
+      </section>
     </section>
   )
 }

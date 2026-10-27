@@ -148,6 +148,13 @@ export const CandidateResumeImportItems: CollectionConfig = {
         readOnly: true,
       },
     },
+    {
+      // Set when the uploader clears a failed item from their uploads tray
+      // (re-uploaded it or added the candidate by hand).
+      name: 'dismissedAt',
+      type: 'date',
+      index: true,
+    },
   ],
   hooks: {
     beforeValidate: [

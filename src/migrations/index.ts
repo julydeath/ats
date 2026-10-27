@@ -3,6 +3,7 @@ import * as migration_20260724_000001_optional_candidate_source_job from './2026
 import * as migration_20260810_000001_update_application_pipeline_stages from './20260810_000001_update_application_pipeline_stages';
 import * as migration_20260810_000002_candidate_resume_imports from './20260810_000002_candidate_resume_imports';
 import * as migration_20261020_000001_clients_created_by from './20261020_000001_clients_created_by';
+import * as migration_20261027_000001_quick_resume_intake from './20261027_000001_quick_resume_intake';
 
 export const migrations = [
   {
@@ -29,5 +30,10 @@ export const migrations = [
     up: migration_20261020_000001_clients_created_by.up,
     down: migration_20261020_000001_clients_created_by.down,
     name: '20261020_000001_clients_created_by'
+  },
+  {
+    up: migration_20261027_000001_quick_resume_intake.up,
+    down: migration_20261027_000001_quick_resume_intake.down,
+    name: '20261027_000001_quick_resume_intake'
   },
 ];

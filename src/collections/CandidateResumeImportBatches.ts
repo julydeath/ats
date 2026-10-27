@@ -1,7 +1,10 @@
 import type { Access, CollectionConfig } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
-import { CANDIDATE_RESUME_IMPORT_BATCH_STATUS_OPTIONS } from '@/lib/constants/recruitment'
+import {
+  CANDIDATE_RESUME_IMPORT_BATCH_STATUS_OPTIONS,
+  CANDIDATE_SOURCE_OPTIONS,
+} from '@/lib/constants/recruitment'
 import { resolveBusinessCode } from '@/lib/utils/business-codes'
 
 const resumeImportAccess: Access = ({ req }) =>
@@ -20,7 +23,7 @@ export const CandidateResumeImportBatches: CollectionConfig = {
     delete: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter']),
   },
   admin: {
-    defaultColumns: ['batchCode', 'status', 'sourceJob', 'totalCount', 'parsedCount', 'createdCount', 'updatedAt'],
+    defaultColumns: ['batchCode', 'status', 'source', 'totalCount', 'createdCount', 'failedCount', 'updatedAt'],
     group: 'Candidates',
     useAsTitle: 'batchCode',
   },
@@ -41,6 +44,16 @@ export const CandidateResumeImportBatches: CollectionConfig = {
       defaultValue: 'queued',
       index: true,
       options: CANDIDATE_RESUME_IMPORT_BATCH_STATUS_OPTIONS.map((option) => ({ ...option })),
+    },
+    {
+      name: 'source',
+      type: 'select',
+      index: true,
+      options: CANDIDATE_SOURCE_OPTIONS.map((option) => ({ ...option })),
+    },
+    {
+      name: 'sourceDetails',
+      type: 'text',
     },
     {
       name: 'sourceJob',
@@ -104,6 +117,15 @@ export const CandidateResumeImportBatches: CollectionConfig = {
     },
     {
       name: 'createdCount',
+      type: 'number',
+      defaultValue: 0,
+      min: 0,
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'duplicateCount',
       type: 'number',
       defaultValue: 0,
       min: 0,
