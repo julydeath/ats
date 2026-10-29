@@ -1,9 +1,14 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
 import { CandidateCreateForm } from '@/components/internal/CandidateCreateForm'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { extractRelationshipID } from '@/lib/utils/relationships'
+
+export const metadata: Metadata = {
+  title: 'Add candidate',
+}
 
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   if (!value) {

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
@@ -10,6 +11,10 @@ import {
   INTERVIEW_STATUS_OPTIONS,
 } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
+
+export const metadata: Metadata = {
+  title: 'Interviews',
+}
 
 const PAGE_SIZE = 12
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
@@ -14,6 +15,10 @@ import {
 } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { getHRAnalyticsSummary, normalizeHRAnalyticsFilters } from '@/lib/hr/analytics'
+
+export const metadata: Metadata = {
+  title: 'Dashboard',
+}
 
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   if (!value) {

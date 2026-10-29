@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload, type Where } from 'payload'
@@ -16,6 +17,10 @@ import {
   formatAuditDate,
 } from '@/lib/utils/record-audit'
 import { extractRelationshipID } from '@/lib/utils/relationships'
+
+export const metadata: Metadata = {
+  title: 'Candidates',
+}
 
 const SOURCE_LABELS = new Map(
   CANDIDATE_SOURCE_OPTIONS.map((option) => [option.value, option.label]),

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -11,6 +12,10 @@ import {
   formatAuditDate,
 } from '@/lib/utils/record-audit'
 import { extractRelationshipID } from '@/lib/utils/relationships'
+
+export const metadata: Metadata = {
+  title: 'Clients',
+}
 
 const PAGE_SIZE = 9
 

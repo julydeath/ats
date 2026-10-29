@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
@@ -6,6 +7,10 @@ import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APPLICATION_STAGE_LABELS } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
+
+export const metadata: Metadata = {
+  title: 'Review queue',
+}
 
 const PAGE_SIZE = 8
 

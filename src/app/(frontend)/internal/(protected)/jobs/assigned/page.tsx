@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload, type Where } from 'payload'
@@ -17,6 +18,10 @@ import {
   formatAuditDate,
 } from '@/lib/utils/record-audit'
 import { extractRelationshipID } from '@/lib/utils/relationships'
+
+export const metadata: Metadata = {
+  title: 'Jobs',
+}
 
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   if (!value) {

@@ -1,9 +1,19 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 
+import { BrandLogo } from '@/components/brand/BrandLogo'
 import { InternalLoginForm } from '@/components/internal/InternalLoginForm'
 import { getCurrentInternalUser } from '@/lib/auth/internal-auth'
-import { BRAND } from '@/lib/constants/brand'
 import { APP_ROUTES } from '@/lib/constants/routes'
+
+export const metadata: Metadata = {
+  description: 'Sign in to the internal talent operations workspace.',
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: 'Team sign in',
+}
 
 export default async function InternalLoginPage() {
   const user = await getCurrentInternalUser()
@@ -13,21 +23,15 @@ export default async function InternalLoginPage() {
   }
 
   return (
-    <section className="internal-login-page">
-      <div className="internal-login-shell">
-        <div className="internal-login-panel">
-          <div className="internal-login-center">
-            <header className="internal-login-brand">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt={`${BRAND.name} logo`} className="internal-login-logo" src={BRAND.logoSrc} />
-              <h1>{BRAND.name} HR</h1>
-              <p>Internal Talent Operations Portal</p>
-            </header>
+    <div className="brand-login">
+      <main className="brand-login-main">
+        <header className="brand-login-header">
+          <BrandLogo className="brand-login-logo" height={84} priority />
+          <p>Internal Talent Operations Portal</p>
+        </header>
 
-            <InternalLoginForm />
-          </div>
-        </div>
-      </div>
-    </section>
+        <InternalLoginForm />
+      </main>
+    </div>
   )
 }

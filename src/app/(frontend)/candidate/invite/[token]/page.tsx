@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
@@ -5,6 +6,14 @@ import { getPayload } from 'payload'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { findActiveCandidateInviteByToken } from '@/lib/candidates/invites'
 import { extractRelationshipID } from '@/lib/utils/relationships'
+
+export const metadata: Metadata = {
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: 'Complete your application',
+}
 
 const toNumberIfNumeric = (value: number | string | null): number | string | null => {
   if (typeof value === 'number') {

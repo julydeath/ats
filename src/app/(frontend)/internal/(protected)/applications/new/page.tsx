@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
@@ -5,6 +6,10 @@ import { getPayload } from 'payload'
 import { requireInternalRole } from '@/lib/auth/internal-auth'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
+
+export const metadata: Metadata = {
+  title: 'New application',
+}
 
 const readLabel = (value: unknown, fallback: string = 'Unknown'): string => {
   if (!value) {

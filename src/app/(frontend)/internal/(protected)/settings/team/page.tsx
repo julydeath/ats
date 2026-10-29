@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
@@ -7,6 +8,10 @@ import { HOLIDAY_TYPE_OPTIONS, WEEKDAY_OPTIONS } from '@/lib/constants/hr'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { INTERNAL_ROLE_LABELS } from '@/lib/constants/roles'
 import { extractRelationshipID } from '@/lib/utils/relationships'
+
+export const metadata: Metadata = {
+  title: 'Team settings',
+}
 
 type TeamManagementPageProps = {
   searchParams?: Promise<{

@@ -1,6 +1,8 @@
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 
+import { BrandLogo } from '@/components/brand/BrandLogo'
 import { FormUXEnhancer } from '@/components/internal/FormUXEnhancer'
 import { InternalNavigation } from '@/components/internal/InternalNavigation'
 import { InternalLogoutButton } from '@/components/internal/InternalLogoutButton'
@@ -8,10 +10,20 @@ import { InternalRouteLoadingIndicator } from '@/components/internal/InternalRou
 import { InternalTopTabs } from '@/components/internal/InternalTopTabs'
 import { InternalUXToasts } from '@/components/internal/InternalUXToasts'
 import { requireInternalUser } from '@/lib/auth/internal-auth'
-import { BRAND } from '@/lib/constants/brand'
 import type { InternalRole } from '@/lib/constants/roles'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { INTERNAL_ROLE_LABELS } from '@/lib/constants/roles'
+
+export const metadata: Metadata = {
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: {
+    default: 'Workspace',
+    template: '%s | INSPiREX HR',
+  },
+}
 
 type InternalProtectedLayoutProps = {
   children: ReactNode
@@ -58,8 +70,8 @@ export default async function InternalProtectedLayout({ children }: InternalProt
     <div className="ops-shell">
       <header className="ops-topbar">
         <div className="ops-topbar-left">
-          <Link className="ops-topbar-brand" href={APP_ROUTES.internal.dashboard}>
-            {BRAND.name} HR
+          <Link aria-label="Go to dashboard" className="ops-topbar-brand" href={APP_ROUTES.internal.dashboard}>
+            <BrandLogo className="ops-topbar-logo" height={34} priority />
           </Link>
           <span className="ops-role-badge">{ROLE_BADGE_LABEL[user.role]}</span>
         </div>
@@ -83,15 +95,6 @@ export default async function InternalProtectedLayout({ children }: InternalProt
 
       <div className="ops-body">
         <aside className="ops-sidebar">
-          <div className="ops-side-brand">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img alt="" className="ops-side-brand-logo" src={BRAND.logoSrc} />
-            <div style={{ color: 'white' }}>
-              <p className="ops-side-brand-title">{BRAND.name} HR</p>
-              <p className="ops-side-brand-subtitle">Recruitment Ops</p>
-            </div>
-          </div>
-
           <Link className="ops-post-job-button" href={`${APP_ROUTES.internal.jobs.assigned}#create-job`}>
             + Post New Job
           </Link>

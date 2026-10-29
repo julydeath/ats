@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
@@ -7,6 +8,14 @@ import { APP_ROUTES } from '@/lib/constants/routes'
 
 type CandidateProtectedLayoutProps = {
   children: ReactNode
+}
+
+export const metadata: Metadata = {
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: 'Candidate portal',
 }
 
 export default async function CandidateProtectedLayout({ children }: CandidateProtectedLayoutProps) {

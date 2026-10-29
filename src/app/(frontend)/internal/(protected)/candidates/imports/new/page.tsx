@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
@@ -13,6 +14,10 @@ import {
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { extractRelationshipID } from '@/lib/utils/relationships'
 import type { CandidateResumeImportItem } from '@/payload-types'
+
+export const metadata: Metadata = {
+  title: 'Bulk resume upload',
+}
 
 const TRAY_WINDOW_DAYS = 14
 

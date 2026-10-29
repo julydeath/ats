@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
@@ -12,6 +13,10 @@ import { APP_ROUTES } from '@/lib/constants/routes'
 import { INTERNAL_ROLES, INTERNAL_ROLE_LABELS, type InternalRole } from '@/lib/constants/roles'
 import { getHRAnalyticsSummary, normalizeHRAnalyticsFilters } from '@/lib/hr/analytics'
 import { resolveGraphDateRange, toDateInputValue } from '@/lib/hr/graph-filters'
+
+export const metadata: Metadata = {
+  title: 'HR analytics',
+}
 
 type HRAnalyticsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>

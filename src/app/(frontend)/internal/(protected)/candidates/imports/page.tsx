@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import configPromise from '@payload-config'
 import Link from 'next/link'
 import { getPayload } from 'payload'
@@ -9,6 +10,10 @@ import {
   type CandidateResumeImportBatchStatus,
 } from '@/lib/constants/recruitment'
 import { APP_ROUTES } from '@/lib/constants/routes'
+
+export const metadata: Metadata = {
+  title: 'Resume imports',
+}
 
 const toLabel = (value: unknown, fallback = 'Not provided'): string => {
   if (!value) {

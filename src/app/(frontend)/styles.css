@@ -16330,3 +16330,348 @@ body :is(a, button, input, select, textarea):focus-visible {
     grid-column: auto;
   }
 }
+
+/* ==========================================================================
+   Brand: landing page, sign-in pages, app chrome logo
+   Plain white canvas (no gradient mesh); the logo carries the brand colour.
+   ========================================================================== */
+
+:is(.public-home, .auth-page, .internal-login-page)::before {
+  display: none;
+}
+
+.brand-landing,
+.brand-login {
+  background: var(--canvas);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.brand-button {
+  align-items: center;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  justify-content: center;
+  line-height: 1;
+  min-height: 46px;
+  padding: 0 24px;
+  text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.brand-button-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.brand-button-primary:hover {
+  background: var(--primary-press);
+  border-color: var(--primary-press);
+}
+
+.brand-button-secondary {
+  background: var(--canvas);
+  color: var(--primary);
+}
+
+.brand-button-secondary:hover {
+  background: var(--canvas-soft);
+  border-color: var(--primary-deep);
+  color: var(--primary-deep);
+}
+
+/* Landing */
+
+.brand-landing-main {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  margin: 0 auto;
+  max-width: 1040px;
+  padding: clamp(56px, 12vh, 128px) 16px 64px;
+  text-align: center;
+  width: 100%;
+}
+
+.brand-landing-logo {
+  height: auto;
+  width: min(560px, 86vw);
+}
+
+.brand-landing-main h1 {
+  color: var(--ink);
+  font-size: clamp(2rem, 4.6vw, 3.25rem);
+  font-weight: 300;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+  margin-top: clamp(40px, 7vh, 64px);
+}
+
+.brand-landing-lead {
+  color: var(--ink-mute);
+  font-size: 1.0625rem;
+  font-weight: 300;
+  line-height: 1.6;
+  margin-top: 16px;
+  max-width: 36rem;
+}
+
+.brand-landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 36px;
+}
+
+.brand-landing-highlights {
+  border-top: 1px solid var(--hairline);
+  display: grid;
+  gap: 32px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  list-style: none;
+  margin-top: clamp(64px, 11vh, 104px);
+  padding-top: 32px;
+  text-align: left;
+  width: 100%;
+}
+
+.brand-landing-highlights h2 {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.brand-landing-highlights h2::before {
+  background: var(--primary);
+  border-radius: var(--radius-pill);
+  content: '';
+  display: block;
+  height: 3px;
+  margin-bottom: 14px;
+  width: 24px;
+}
+
+.brand-landing-highlights p {
+  color: var(--ink-mute);
+  font-size: 0.875rem;
+  font-weight: 300;
+  line-height: 1.55;
+  margin-top: 6px;
+}
+
+.brand-footer {
+  align-items: center;
+  border-top: 1px solid var(--hairline);
+  color: var(--ink-mute);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  gap: 8px 24px;
+  justify-content: space-between;
+  padding: 20px clamp(16px, 4vw, 40px);
+}
+
+.brand-footer a {
+  color: var(--ink-mute);
+  text-decoration: none;
+}
+
+.brand-footer a:hover {
+  color: var(--primary);
+}
+
+/* Sign-in pages (internal + candidate) */
+
+.brand-login-main {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 36px;
+  justify-content: center;
+  padding: 56px 16px;
+}
+
+.brand-login-header {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  text-align: center;
+}
+
+.brand-login-logo {
+  height: auto;
+  width: min(380px, 78vw);
+}
+
+.brand-login-header p {
+  color: var(--ink-mute);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.brand-login :is(.internal-login-card, .brand-card) {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    rgba(0, 55, 112, 0.08) 0 8px 24px,
+    rgba(0, 55, 112, 0.04) 0 2px 6px;
+  margin: 0;
+  max-width: none;
+  overflow: hidden;
+  width: min(420px, 100%);
+}
+
+.brand-login .internal-login-card-main,
+.brand-login .brand-card {
+  padding: 32px;
+}
+
+.brand-login :is(.internal-login-copy h1, .brand-card h1) {
+  color: var(--ink);
+  font-size: 1.5rem;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.brand-login :is(.internal-login-copy p, .brand-card .muted) {
+  color: var(--ink-mute);
+  font-size: 0.875rem;
+  font-weight: 300;
+  margin-top: 6px;
+}
+
+.brand-login :is(.internal-login-form, .auth-form) {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.brand-login :is(.internal-login-field-label, .form-field) {
+  color: var(--ink-secondary);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.brand-login :is(.internal-login-input, .input) {
+  background: var(--canvas);
+  border: 1px solid var(--hairline-input);
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+  margin-bottom: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  width: 100%;
+}
+
+.brand-login :is(.internal-login-input, .input):focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(83, 58, 253, 0.14);
+  outline: none;
+}
+
+.brand-login .internal-login-forgot-link {
+  color: var(--primary);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.brand-login .internal-login-remember-row {
+  color: var(--ink-secondary);
+  font-size: 0.8125rem;
+  font-weight: 300;
+}
+
+.brand-login :is(.internal-login-submit, .auth-form .button) {
+  border-radius: var(--radius-pill);
+  font-size: 0.9375rem;
+  margin-top: 8px;
+  min-height: 46px;
+  width: 100%;
+}
+
+.brand-login .internal-login-card-footer {
+  background: var(--canvas-soft);
+  border-top: 1px solid var(--hairline);
+  color: var(--ink-mute);
+  font-size: 0.75rem;
+  padding: 14px 32px;
+  text-align: center;
+}
+
+.brand-login .internal-login-footer-links {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin: 0;
+}
+
+.brand-login .internal-login-footer-links a {
+  color: var(--ink-mute);
+  font-size: 0.8125rem;
+}
+
+.brand-notice {
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  color: var(--ink-secondary);
+  font-size: 0.8125rem;
+  margin-top: 16px;
+  padding: 10px 12px;
+}
+
+/* App chrome */
+
+.ops-topbar-brand {
+  align-items: center;
+  display: inline-flex;
+  line-height: 0;
+}
+
+.ops-topbar-logo {
+  height: 34px;
+  width: auto;
+}
+
+@media (max-width: 720px) {
+  .brand-landing-highlights {
+    gap: 28px;
+    grid-template-columns: 1fr;
+  }
+
+  .brand-landing-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .brand-landing-actions .brand-button {
+    width: 100%;
+  }
+
+  .brand-login .internal-login-card-main,
+  .brand-login .brand-card {
+    padding: 24px;
+  }
+
+  .ops-topbar-logo {
+    height: 26px;
+  }
+}

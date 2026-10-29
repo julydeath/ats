@@ -106,8 +106,8 @@ export const InternalLoginForm = () => {
       <div className="internal-login-card">
         <div className="internal-login-card-main">
           <div className="internal-login-copy">
-            <h2>Welcome back</h2>
-            <p>Enter your credentials to access the dashboard</p>
+            <h1>Sign in</h1>
+            <p>Use your work email to open your workspace.</p>
           </div>
 
           <form className="internal-login-form" onSubmit={handleSubmit}>
@@ -159,7 +159,7 @@ export const InternalLoginForm = () => {
             {error ? <p className="internal-login-error">{error}</p> : null}
 
             <button className="internal-login-submit" disabled={isSubmitting} type="submit">
-              {isSubmitting ? 'Logging in...' : 'Login ->'}
+              {isSubmitting ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
         </div>
