@@ -297,7 +297,8 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
     ])
 
     const resumeMeta = getResumeMeta(candidate.resume)
-    const canCreateApplication = user.role === 'admin' || user.role === 'leadRecruiter'
+    const canCreateApplication =
+      user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
     const canEditCandidate = user.role === 'admin' || user.role === 'leadRecruiter'
     const sourceJobID = extractRelationshipID(candidate.sourceJob)
     const latestApplication = applicationsForCandidate.docs[0] || null

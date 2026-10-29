@@ -235,7 +235,7 @@ export default buildConfig({
 ```tsx
 // components/Logo.tsx
 export default function Logo() {
-  return <img src="/logo.png" alt="My Brand" width={200} />
+  return <img src="/ats-logo.jpeg" alt="My Brand" width={200} />
 }
 ```
 

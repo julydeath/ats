@@ -69,14 +69,14 @@ export const sendCandidateInviteEmail = async ({
   return resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
     to,
-    subject: `Application invite for ${jobTitle} | Realizing Dreams Inspirix HR Services`,
+    subject: `Application invite for ${jobTitle} | Realizing Dreams INSPiREX HR Services`,
     html: `
       <p>Hi ${safeName},</p>
       <p>Your profile has cleared internal review for the role <strong>${jobTitle}</strong>.</p>
       <p>Please complete your application using the secure link below:</p>
       <p><a href="${inviteLink}">${inviteLink}</a></p>
       <p>This one-time invite expires on <strong>${expiryLabel}</strong>.</p>
-      <p>Regards,<br/>Realizing Dreams Inspirix HR Services</p>
+      <p>Regards,<br/>Realizing Dreams INSPiREX HR Services</p>
     `,
   })
 }
@@ -107,7 +107,7 @@ export const sendCandidateAccountAccessEmail = async ({
       <p>Your application has been submitted successfully.</p>
       <p>You can sign in here: <a href="${loginLink}">${loginLink}</a></p>
       <p>After sign in, monitor status on your dashboard: <a href="${dashboardLink}">${dashboardLink}</a></p>
-      <p>Regards,<br/>Realizing Dreams Inspirix HR Services</p>
+      <p>Regards,<br/>Realizing Dreams INSPiREX HR Services</p>
     `,
   })
 }

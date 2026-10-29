@@ -1048,6 +1048,7 @@ export const candidate_resume_import_batches = pgTable(
     status: enum_candidate_resume_import_batches_status('status').notNull().default('queued'),
     source: enum_candidate_resume_import_batches_source('source'),
     sourceDetails: varchar('source_details'),
+    role: varchar('role'),
     sourceJob: integer('source_job_id').references(() => jobs.id, {
       onDelete: 'set null',
     }),
@@ -1075,6 +1076,7 @@ export const candidate_resume_import_batches = pgTable(
     uniqueIndex('candidate_resume_import_batches_batch_code_idx').on(columns.batchCode),
     index('candidate_resume_import_batches_status_idx').on(columns.status),
     index('candidate_resume_import_batches_source_idx').on(columns.source),
+    index('candidate_resume_import_batches_role_idx').on(columns.role),
     index('candidate_resume_import_batches_source_job_idx').on(columns.sourceJob),
     index('candidate_resume_import_batches_uploaded_by_idx').on(columns.uploadedBy),
     index('candidate_resume_import_batches_started_at_idx').on(columns.startedAt),
@@ -1535,6 +1537,9 @@ export const applications = pgTable(
       .references(() => users.id, {
         onDelete: 'set null',
       }),
+    leadRecruiter: integer('lead_recruiter_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
     candidateAccount: integer('candidate_account_id').references(() => candidate_users.id, {
       onDelete: 'set null',
     }),
@@ -1641,6 +1646,7 @@ export const applications = pgTable(
     index('applications_candidate_idx').on(columns.candidate),
     index('applications_job_idx').on(columns.job),
     index('applications_recruiter_idx').on(columns.recruiter),
+    index('applications_lead_recruiter_idx').on(columns.leadRecruiter),
     index('applications_candidate_account_idx').on(columns.candidateAccount),
     index('applications_stage_idx').on(columns.stage),
     index('applications_reviewed_by_idx').on(columns.reviewedBy),
@@ -1650,6 +1656,7 @@ export const applications = pgTable(
     uniqueIndex('applicationCode_idx').on(columns.applicationCode),
     uniqueIndex('candidate_job_idx').on(columns.candidate, columns.job),
     index('job_stage_idx').on(columns.job, columns.stage),
+    index('leadRecruiter_stage_idx').on(columns.leadRecruiter, columns.stage),
     index('candidateAccount_stage_idx').on(columns.candidateAccount, columns.stage),
     index('stage_updatedAt_idx').on(columns.stage, columns.updatedAt),
     index('recruiter_stage_updatedAt_idx').on(columns.recruiter, columns.stage, columns.updatedAt),
@@ -4022,6 +4029,11 @@ export const relations_applications = relations(applications, ({ one }) => ({
     fields: [applications.recruiter],
     references: [users.id],
     relationName: 'recruiter',
+  }),
+  leadRecruiter: one(users, {
+    fields: [applications.leadRecruiter],
+    references: [users.id],
+    relationName: 'leadRecruiter',
   }),
   candidateAccount: one(candidate_users, {
     fields: [applications.candidateAccount],

@@ -347,7 +347,7 @@ const resolveItemOutcome = async ({
   resumeID,
   uploadedByID,
 }: {
-  batch: { source?: string | null; sourceDetails?: string | null }
+  batch: { role?: string | null; source?: string | null; sourceDetails?: string | null }
   file: ResumeImportFileBuffer
   payload: Payload
   resumeID: number | null
@@ -415,6 +415,7 @@ const resolveItemOutcome = async ({
         email: essentials.email,
         firstName: essentials.firstName,
         fullName: essentials.fullName,
+        jobTitle: batch.role || undefined,
         lastName: essentials.lastName,
         phone: essentials.phone,
         resume: resumeID ?? undefined,
@@ -478,6 +479,7 @@ export const processResumeImportItem = async ({
           id: batchID,
           overrideAccess: true,
           select: {
+            role: true,
             source: true,
             sourceDetails: true,
           },

@@ -173,6 +173,19 @@ export const Applications: CollectionConfig = {
       },
     },
     {
+      // Lead recruiter who owns review of this application. Required for new
+      // applications; older applications may not have one.
+      name: 'leadRecruiter',
+      type: 'relationship',
+      relationTo: 'users',
+      index: true,
+      filterOptions: {
+        role: {
+          equals: 'leadRecruiter',
+        },
+      },
+    },
+    {
       name: 'candidateAccount',
       type: 'relationship',
       relationTo: 'candidate-users',
@@ -458,6 +471,75 @@ export const Applications: CollectionConfig = {
           throw new APIError('Candidate, job, and recruiter are required for application mapping.', 400)
         }
 
+        let leadRecruiterID = toNumericID(
+          extractRelationshipID(typedData.leadRecruiter ?? typedOriginalDoc?.leadRecruiter),
+        )
+
+        // Auto-created applications (candidate intake, seeds) don't pick a lead:
+        // use the job's active lead assignment, else the job's owning lead.
+        if (operation === 'create' && !leadRecruiterID) {
+          const assignment = await req.payload.find({
+            collection: 'job-lead-assignments',
+            depth: 0,
+            limit: 1,
+            overrideAccess: true,
+            pagination: false,
+            req,
+            select: {
+              leadRecruiter: true,
+            },
+            sort: '-updatedAt',
+            where: {
+              and: [{ job: { equals: jobID } }, { status: { equals: 'active' } }],
+            },
+          })
+          const job = await req.payload
+            .findByID({
+              collection: 'jobs',
+              depth: 0,
+              id: jobID,
+              overrideAccess: true,
+              req,
+              select: {
+                owningHeadRecruiter: true,
+              },
+            })
+            .catch(() => null)
+
+          leadRecruiterID =
+            toNumericID(extractRelationshipID(assignment.docs[0]?.leadRecruiter)) ??
+            toNumericID(extractRelationshipID(job?.owningHeadRecruiter))
+        }
+        const leadChanged =
+          operation === 'create' ||
+          ('leadRecruiter' in typedData &&
+            String(extractRelationshipID(typedData.leadRecruiter)) !==
+              String(extractRelationshipID(typedOriginalDoc?.leadRecruiter)))
+
+        if (operation === 'create' && !leadRecruiterID) {
+          throw new APIError('Lead recruiter is required.', 400)
+        }
+
+        if (leadChanged && leadRecruiterID) {
+          const lead = await req.payload
+            .findByID({
+              collection: 'users',
+              depth: 0,
+              id: leadRecruiterID,
+              overrideAccess: true,
+              req,
+              select: {
+                isActive: true,
+                role: true,
+              },
+            })
+            .catch(() => null)
+
+          if (!lead || lead.role !== 'leadRecruiter' || lead.isActive === false) {
+            throw new APIError('Choose an active lead recruiter.', 400)
+          }
+        }
+
         if (!req.context?.skipStageTransitionValidation) {
           validateStageTransition({
             nextStage,
@@ -569,6 +651,7 @@ export const Applications: CollectionConfig = {
           interviewScheduledAt: isL1Scheduled ? nowISO : typedOriginalDoc?.interviewScheduledAt,
           job: jobID,
           joinedAt: typedOriginalDoc?.joinedAt,
+          leadRecruiter: leadRecruiterID ?? undefined,
           l1RejectedAt: isL1Rejected ? nowISO : typedOriginalDoc?.l1RejectedAt,
           l1ScheduledAt: isL1Scheduled ? nowISO : typedOriginalDoc?.l1ScheduledAt,
           l2RejectedAt: isL2Rejected ? nowISO : typedOriginalDoc?.l2RejectedAt,
@@ -651,6 +734,9 @@ export const Applications: CollectionConfig = {
     },
     {
       fields: ['job', 'stage'],
+    },
+    {
+      fields: ['leadRecruiter', 'stage'],
     },
     {
       fields: ['candidateAccount', 'stage'],

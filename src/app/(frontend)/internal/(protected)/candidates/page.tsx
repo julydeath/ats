@@ -146,7 +146,8 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
   const requestedPage = Number.parseInt(String(resolvedSearchParams.page || '1'), 10)
   const canCreateCandidate =
     user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
-  const canCreateApplication = user.role === 'admin' || user.role === 'leadRecruiter'
+  const canCreateApplication =
+    user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
   const canEditCandidate = user.role === 'admin' || user.role === 'leadRecruiter'
   const skillKeys = parseSkillQuery(filters.skills)
   const conditions: Where[] = []
@@ -159,6 +160,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
         { phone: { like: filters.q } },
         { currentCompany: { like: filters.q } },
         { currentRole: { like: filters.q } },
+        { jobTitle: { like: filters.q } },
         { skillsSearch: { like: filters.q } },
       ],
     })
@@ -225,6 +227,7 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
         email: true,
         fullName: true,
         id: true,
+        jobTitle: true,
         phone: true,
         skills: true,
         source: true,
@@ -365,11 +368,11 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
           />
 
           <input
-            aria-label="Name, email, phone or company"
+            aria-label="Name, role, email, phone or company"
             className="candidate-mgmt-search"
             defaultValue={filters.q}
             name="q"
-            placeholder="Name, email, phone, company..."
+            placeholder="Name, role, email, phone, company..."
             type="search"
           />
 
@@ -424,7 +427,10 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                 </tr>
               ) : (
                 pagedRows.map((candidate) => {
-                  const candidateName = toDisplayText(candidate.fullName, `Candidate ${candidate.id}`)
+                  const candidateName = toDisplayText(
+                    candidate.fullName,
+                    `Candidate ${candidate.id}`,
+                  )
                   const currentRole = toDisplayText(candidate.currentRole)
                   const currentCompany = toDisplayText(candidate.currentCompany, 'Not provided')
                   const email = toDisplayText(candidate.email, 'No email')
@@ -476,7 +482,10 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                           <div className="candidate-mgmt-skill-pills">
                             {shownSkills.length > 0 ? (
                               shownSkills.map((skill) => (
-                                <span className="candidate-mgmt-skill-pill" key={`${candidate.id}-${skill}`}>
+                                <span
+                                  className="candidate-mgmt-skill-pill"
+                                  key={`${candidate.id}-${skill}`}
+                                >
                                   {skill}
                                 </span>
                               ))
@@ -489,13 +498,16 @@ export default async function CandidatesListPage({ searchParams }: CandidatesLis
                               <span className="candidate-mgmt-skill-more">+{extraSkillsCount}</span>
                             ) : null}
                           </div>
-                          <p>{experienceLabel}</p>
+                          <p>
+                            {toDisplayText(candidate.jobTitle)
+                              ? `${toDisplayText(candidate.jobTitle)} · `
+                              : ''}
+                            {experienceLabel}
+                          </p>
                         </div>
                       </td>
 
-                      <td className="candidate-mgmt-company">
-                        {currentCompany}
-                      </td>
+                      <td className="candidate-mgmt-company">{currentCompany}</td>
 
                       <td>
                         <div className="candidate-mgmt-contact">

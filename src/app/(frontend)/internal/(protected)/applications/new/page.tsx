@@ -39,7 +39,7 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
   const selectedJobID = String(resolvedSearchParams.jobId || '')
   const canSelectRecruiter = user.role !== 'recruiter'
 
-  const [jobsResult, candidatesResult, recruitersResult] = await Promise.all([
+  const [jobsResult, candidatesResult, recruitersResult, leadsResult] = await Promise.all([
     payload.find({
       collection: 'jobs',
       depth: 0,
@@ -115,7 +115,28 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
       : Promise.resolve({
           docs: [] as Array<{ email?: string; fullName?: string; id: number | string }>,
         }),
+    // Recruiters can only read their own user record, so the lead list is
+    // loaded with access bypassed and limited to name/email of active leads.
+    payload.find({
+      collection: 'users',
+      depth: 0,
+      limit: 120,
+      overrideAccess: true,
+      pagination: false,
+      select: {
+        email: true,
+        fullName: true,
+      },
+      sort: 'fullName',
+      where: {
+        and: [{ role: { equals: 'leadRecruiter' } }, { isActive: { equals: true } }],
+      },
+    }),
   ])
+  const defaultLeadID =
+    user.role === 'leadRecruiter' && leadsResult.docs.some((lead) => String(lead.id) === String(user.id))
+      ? String(user.id)
+      : ''
 
   const unresolvedClientIDs = Array.from(
     new Set(
@@ -190,7 +211,8 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
   const missingCoreData =
     jobs.length === 0 ||
     candidates.length === 0 ||
-    (canSelectRecruiter && recruitersResult.docs.length === 0)
+    (canSelectRecruiter && recruitersResult.docs.length === 0) ||
+    leadsResult.docs.length === 0
 
   return (
     <section className="application-create-page">
@@ -198,7 +220,7 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
         <div>
           <p className="application-create-kicker">Applications</p>
           <h1>Create Application Mapping</h1>
-          <p>Link candidate to job with recruiter ownership before moving into review workflow.</p>
+          <p>Link a candidate to a job with a recruiter and the lead recruiter who will review it.</p>
         </div>
         <div className="application-create-header-actions">
           <Link className="application-create-head-btn" href={APP_ROUTES.internal.candidates.list}>
@@ -223,9 +245,15 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
           <p>Visible Jobs</p>
           <strong>{jobs.length}</strong>
         </article>
+        {canSelectRecruiter ? (
+          <article>
+            <p>Recruiters</p>
+            <strong>{recruitersResult.docs.length}</strong>
+          </article>
+        ) : null}
         <article>
-          <p>Recruiters</p>
-          <strong>{recruitersResult.docs.length}</strong>
+          <p>Lead Recruiters</p>
+          <strong>{leadsResult.docs.length}</strong>
         </article>
       </section>
 
@@ -233,7 +261,9 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
         <article className="application-create-empty">
           {canSelectRecruiter && recruitersResult.docs.length === 0
             ? 'No active recruiters found. Add or activate a recruiter first.'
-            : 'At least one visible candidate and one visible job are required to create an application mapping.'}
+            : leadsResult.docs.length === 0
+              ? 'No active lead recruiters found. Add or activate a lead recruiter first.'
+              : 'At least one visible candidate and one visible job are required to create an application mapping.'}
         </article>
       ) : (
         <form action={APP_ROUTES.internal.applications.create} className="application-create-form" method="post">
@@ -280,6 +310,18 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
               ) : (
                 <input name="recruiterId" type="hidden" value={String(user.id)} />
               )}
+
+              <label>
+                <span>Lead Recruiter *</span>
+                <select defaultValue={defaultLeadID} name="leadRecruiterId" required>
+                  <option value="">Select lead recruiter</option>
+                  {leadsResult.docs.map((lead) => (
+                    <option key={`lead-option-${lead.id}`} value={String(lead.id)}>
+                      {lead.fullName || lead.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
               <label>
                 <span>Recruiter Comment</span>

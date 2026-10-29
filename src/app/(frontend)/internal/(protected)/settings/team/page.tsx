@@ -507,7 +507,7 @@ export default async function TeamManagementPage({ searchParams }: TeamManagemen
             </label>
             <label className="team-mgmt-field">
               <span>Email</span>
-              <input className="input" name="email" placeholder="akhil@inspirix.com" required type="email" />
+              <input className="input" name="email" placeholder="akhil@inspirex.com" required type="email" />
             </label>
             <label className="team-mgmt-field">
               <span>Temporary Password</span>

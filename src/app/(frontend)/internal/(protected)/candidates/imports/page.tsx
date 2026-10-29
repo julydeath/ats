@@ -113,7 +113,7 @@ export default async function CandidateImportsPage() {
                       {getStatusLabel(status)}
                     </span>
                     <h3>{batch.batchCode || `Batch ${batch.id}`}</h3>
-                    <p>{batch.source ? CANDIDATE_SOURCE_LABELS[batch.source] : toLabel(batch.sourceJob)}{batch.sourceDetails ? ` (${batch.sourceDetails})` : ''} · {formatDate(batch.createdAt)}</p>
+                    <p>{batch.source ? CANDIDATE_SOURCE_LABELS[batch.source] : toLabel(batch.sourceJob)}{batch.sourceDetails ? ` (${batch.sourceDetails})` : ''}{batch.role ? ` · ${batch.role}` : ''} · {formatDate(batch.createdAt)}</p>
                   </div>
                   <div className="candidate-import-batch-metrics">
                     <span>{totalCount} total</span>

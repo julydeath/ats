@@ -98,17 +98,23 @@ const formatJobCode = (value: unknown): string => {
 const buildQuery = ({
   dateRange,
   job,
+  lead,
   page,
   q,
   recruiter,
 }: {
   dateRange: string
   job: string
+  lead: string
   page: number
   q: string
   recruiter: string
 }): string => {
   const params = new URLSearchParams()
+
+  if (lead) {
+    params.set('lead', lead)
+  }
 
   if (q) {
     params.set('q', q)
@@ -139,6 +145,7 @@ type ApplicationsReviewQueuePageProps = {
     dateRange?: string
     error?: string
     job?: string
+    lead?: string
     page?: string
     q?: string
     recruiter?: string
@@ -152,6 +159,7 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
   const resolvedSearchParams = (await searchParams) ?? {}
   const searchTerm = (resolvedSearchParams.q || '').trim().toLowerCase()
   const recruiterFilter = (resolvedSearchParams.recruiter || '').trim()
+  const leadFilter = (resolvedSearchParams.lead || '').trim()
   const jobFilter = (resolvedSearchParams.job || '').trim()
   const dateRange = (resolvedSearchParams.dateRange || '7').trim()
   const pageInput = Number.parseInt(String(resolvedSearchParams.page || '1'), 10)
@@ -168,6 +176,7 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
         id: true,
         job: true,
         latestComment: true,
+        leadRecruiter: true,
         recruiter: true,
         stage: true,
         updatedAt: true,
@@ -228,6 +237,13 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
       return false
     }
 
+    const leadID = String(extractRelationshipID(application.leadRecruiter) || '')
+    const wantedLeadID = leadFilter === 'me' ? String(user.id) : leadFilter
+
+    if (wantedLeadID && leadID !== wantedLeadID) {
+      return false
+    }
+
     if (jobFilter && jobID !== jobFilter) {
       return false
     }
@@ -244,6 +260,18 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
     ).entries(),
   )
     .filter(([id]) => id.length > 0)
+    .map(([id, label]) => ({ id, label }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+
+  const leadOptions = Array.from(
+    new Map(
+      pendingApplications.docs.map((application) => [
+        String(extractRelationshipID(application.leadRecruiter) || ''),
+        readLabel(application.leadRecruiter),
+      ]),
+    ).entries(),
+  )
+    .filter(([id]) => id.length > 0 && id !== String(user.id))
     .map(([id, label]) => ({ id, label }))
     .sort((a, b) => a.label.localeCompare(b.label))
 
@@ -339,6 +367,16 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
             ))}
           </select>
 
+          <select className="lead-queue-select" defaultValue={leadFilter} name="lead">
+            <option value="">Filter by Lead</option>
+            {user.role === 'leadRecruiter' ? <option value="me">Assigned to me</option> : null}
+            {leadOptions.map((leadOption) => (
+              <option key={`lead-option-${leadOption.id}`} value={leadOption.id}>
+                {leadOption.label}
+              </option>
+            ))}
+          </select>
+
           <select className="lead-queue-select" defaultValue={dateRange} name="dateRange">
             <option value="7">Date Range: Last 7 Days</option>
             <option value="14">Date Range: Last 14 Days</option>
@@ -396,7 +434,12 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
                         <small>{formatJobCode(application.job)}</small>
                       </div>
                     </td>
-                    <td>{readLabel(application.recruiter)}</td>
+                    <td>
+                      <div className="lead-queue-job-cell">
+                        <p>{readLabel(application.recruiter)}</p>
+                        <small>Lead: {readLabel(application.leadRecruiter, 'Not set')}</small>
+                      </div>
+                    </td>
                     <td>{toDateLabel(application.updatedAt)}</td>
                     <td>
                       <span className="lead-queue-status-pill">
@@ -466,6 +509,7 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
                 job: jobFilter,
                 page: Math.max(1, currentPage - 1),
                 q: searchTerm,
+                lead: leadFilter,
                 recruiter: recruiterFilter,
               })}`}
             >
@@ -480,6 +524,7 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
                 job: jobFilter,
                 page: Math.min(totalPages, currentPage + 1),
                 q: searchTerm,
+                lead: leadFilter,
                 recruiter: recruiterFilter,
               })}`}
             >

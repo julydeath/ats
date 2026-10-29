@@ -19,6 +19,7 @@ type BulkResumeUploaderProps = {
   filesBaseURL: string
   maxFileSizeBytes: number
   maxFiles: number
+  roleSuggestions: string[]
 }
 
 const ACCEPTED_EXTENSIONS = ['pdf', 'docx']
@@ -33,11 +34,13 @@ export function BulkResumeUploader({
   filesBaseURL,
   maxFileSizeBytes,
   maxFiles,
+  roleSuggestions,
 }: BulkResumeUploaderProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [source, setSource] = useState('')
   const [sourceDetails, setSourceDetails] = useState('')
+  const [role, setRole] = useState('')
   const [files, setFiles] = useState<QueuedFile[]>([])
   const [rejected, setRejected] = useState<string[]>([])
   const [formError, setFormError] = useState('')
@@ -126,6 +129,11 @@ export function BulkResumeUploader({
       return
     }
 
+    if (!role.trim()) {
+      setFormError('Enter the role these resumes are for.')
+      return
+    }
+
     if (pendingFiles.length === 0) {
       setFormError('Choose at least one resume.')
       return
@@ -135,7 +143,7 @@ export function BulkResumeUploader({
 
     try {
       const createResponse = await fetch(createURL, {
-        body: JSON.stringify({ fileCount: pendingFiles.length, source, sourceDetails }),
+        body: JSON.stringify({ fileCount: pendingFiles.length, role, source, sourceDetails }),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       })
@@ -216,6 +224,24 @@ export function BulkResumeUploader({
                 </option>
               ))}
             </select>
+          </label>
+
+          <label>
+            <span>Role</span>
+            <input
+              disabled={isUploading}
+              list="bulk-role-suggestions"
+              maxLength={120}
+              onChange={(event) => setRole(event.target.value)}
+              placeholder="e.g. Java Developer"
+              required
+              value={role}
+            />
+            <datalist id="bulk-role-suggestions">
+              {roleSuggestions.map((suggestion) => (
+                <option key={`bulk-role-${suggestion}`} value={suggestion} />
+              ))}
+            </datalist>
           </label>
 
           {source === 'other' ? (

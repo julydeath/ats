@@ -113,6 +113,7 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
           notes: true,
           offerReleasedAt: true,
           payRate: true,
+          leadRecruiter: true,
           pipelineSource: true,
           recruiter: true,
           rejectedAt: true,
@@ -206,6 +207,26 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
       stage,
     })
 
+    // Recruiters can't read other users, so the lead may come back as an ID only.
+    const leadRecruiterLabel =
+      application.leadRecruiter && typeof application.leadRecruiter !== 'object'
+        ? readLabel(
+            await payload
+              .findByID({
+                collection: 'users',
+                depth: 0,
+                id: application.leadRecruiter,
+                overrideAccess: true,
+                select: {
+                  email: true,
+                  fullName: true,
+                },
+              })
+              .catch(() => null),
+            'Not set',
+          )
+        : readLabel(application.leadRecruiter, 'Not set')
+
     return (
       <section className="application-detail-page">
         <header className="application-detail-header">
@@ -214,7 +235,7 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
             <h1>{readLabel(application.candidate)}</h1>
             <p>
               {application.applicationCode || `APP-${application.id}`} · Job: {readLabel(application.job)} · Recruiter:{' '}
-              {readLabel(application.recruiter)}
+              {readLabel(application.recruiter)} · Lead: {leadRecruiterLabel}
             </p>
           </div>
           <div className="application-detail-header-actions">

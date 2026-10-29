@@ -23,7 +23,7 @@ export const CandidateResumeImportBatches: CollectionConfig = {
     delete: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter']),
   },
   admin: {
-    defaultColumns: ['batchCode', 'status', 'source', 'totalCount', 'createdCount', 'failedCount', 'updatedAt'],
+    defaultColumns: ['batchCode', 'status', 'source', 'role', 'totalCount', 'createdCount', 'failedCount', 'updatedAt'],
     group: 'Candidates',
     useAsTitle: 'batchCode',
   },
@@ -54,6 +54,12 @@ export const CandidateResumeImportBatches: CollectionConfig = {
     {
       name: 'sourceDetails',
       type: 'text',
+    },
+    {
+      // Role the uploaded resumes were sourced for; copied to each candidate's jobTitle.
+      name: 'role',
+      type: 'text',
+      index: true,
     },
     {
       name: 'sourceJob',

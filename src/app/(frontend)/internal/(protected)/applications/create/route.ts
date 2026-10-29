@@ -45,10 +45,11 @@ export async function POST(request: Request) {
   const clientBillRate = readString(formData.get('clientBillRate')) || undefined
   const payRate = readString(formData.get('payRate')) || undefined
   const recruiterID = parseNumericID(formData.get('recruiterId'))
+  const leadRecruiterID = parseNumericID(formData.get('leadRecruiterId'))
 
-  if (!candidateID || !jobID || !recruiterID) {
+  if (!candidateID || !jobID || !recruiterID || !leadRecruiterID) {
     const failureURL = buildCreateRedirectURL(request)
-    failureURL.searchParams.set('error', 'Candidate, job, and recruiter are required.')
+    failureURL.searchParams.set('error', 'Candidate, job, recruiter, and lead recruiter are required.')
     return NextResponse.redirect(failureURL, 303)
   }
 
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
         clientBillRate,
         job: jobID,
         latestComment,
+        leadRecruiter: leadRecruiterID,
         notes,
         payRate,
         pipelineSource,

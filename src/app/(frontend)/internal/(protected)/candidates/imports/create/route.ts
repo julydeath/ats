@@ -34,11 +34,13 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as {
     fileCount?: unknown
+    role?: unknown
     source?: unknown
     sourceDetails?: unknown
   } | null
   const source = typeof body?.source === 'string' ? body.source : ''
   const sourceDetails = typeof body?.sourceDetails === 'string' ? body.sourceDetails.trim() : ''
+  const role = typeof body?.role === 'string' ? body.role.trim().replace(/\s+/g, ' ').slice(0, 120) : ''
   const fileCount = Number(body?.fileCount)
 
   if (!CANDIDATE_SOURCES.includes(source as CandidateSource)) {
@@ -47,6 +49,10 @@ export async function POST(request: Request) {
 
   if (source === 'other' && !sourceDetails) {
     return NextResponse.json({ error: 'Type the platform name for "Other".' }, { status: 400 })
+  }
+
+  if (!role) {
+    return NextResponse.json({ error: 'Enter the role these resumes are for.' }, { status: 400 })
   }
 
   if (!Number.isInteger(fileCount) || fileCount < 1 || fileCount > MAX_RESUME_IMPORT_FILES) {
@@ -59,6 +65,7 @@ export async function POST(request: Request) {
   const batch = await payload.create({
     collection: 'candidate-resume-import-batches',
     data: {
+      role,
       source: source as CandidateSource,
       sourceDetails: sourceDetails || undefined,
       status: 'queued',

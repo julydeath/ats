@@ -8,6 +8,7 @@ import { InternalRouteLoadingIndicator } from '@/components/internal/InternalRou
 import { InternalTopTabs } from '@/components/internal/InternalTopTabs'
 import { InternalUXToasts } from '@/components/internal/InternalUXToasts'
 import { requireInternalUser } from '@/lib/auth/internal-auth'
+import { BRAND } from '@/lib/constants/brand'
 import type { InternalRole } from '@/lib/constants/roles'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { INTERNAL_ROLE_LABELS } from '@/lib/constants/roles'
@@ -58,7 +59,7 @@ export default async function InternalProtectedLayout({ children }: InternalProt
       <header className="ops-topbar">
         <div className="ops-topbar-left">
           <Link className="ops-topbar-brand" href={APP_ROUTES.internal.dashboard}>
-            Inspirix HR
+            {BRAND.name} HR
           </Link>
           <span className="ops-role-badge">{ROLE_BADGE_LABEL[user.role]}</span>
         </div>
@@ -83,9 +84,10 @@ export default async function InternalProtectedLayout({ children }: InternalProt
       <div className="ops-body">
         <aside className="ops-sidebar">
           <div className="ops-side-brand">
-            <span className="ops-side-brand-mark">I</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img alt="" className="ops-side-brand-logo" src={BRAND.logoSrc} />
             <div style={{ color: 'white' }}>
-              <p className="ops-side-brand-title">Inspirix HR</p>
+              <p className="ops-side-brand-title">{BRAND.name} HR</p>
               <p className="ops-side-brand-subtitle">Recruitment Ops</p>
             </div>
           </div>

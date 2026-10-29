@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import type { ReactNode } from 'react'
 
 import { AppQueryProvider } from '@/components/providers/AppQueryProvider'
+import { BRAND } from '@/lib/constants/brand'
 
 import './styles.css'
 
@@ -14,10 +15,14 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   description:
-    'Recruitment Operations Platform for Realizing Dreams Inspirix HR Services (Internal + Candidate architecture).',
+    'Recruitment Operations Platform for Realizing Dreams INSPiREX HR Services (Internal + Candidate architecture).',
+  icons: {
+    apple: BRAND.logoSrc,
+    icon: BRAND.logoSrc,
+  },
   title: {
-    default: 'Recruitment Ops Platform',
-    template: '%s | Recruitment Ops Platform',
+    default: `${BRAND.name} HR`,
+    template: `%s | ${BRAND.name} HR`,
   },
 }
 

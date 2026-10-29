@@ -1,6 +1,6 @@
 # Recruitment Operations Platform (ATS)
 
-Production-oriented Recruitment Operations Platform for **Realizing Dreams Inspirix HR Services**.
+Production-oriented Recruitment Operations Platform for **Realizing Dreams INSPiREX HR Services**.
 
 Implemented through Phase 6:
 

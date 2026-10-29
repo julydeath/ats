@@ -325,6 +325,22 @@ ul {
   padding: 7.5rem 1rem 2.5rem;
 }
 
+.internal-login-logo {
+  display: block;
+  height: 4.5rem;
+  margin: 0 auto 0.9rem;
+  object-fit: contain;
+  width: auto;
+}
+
+.auth-card-logo {
+  display: block;
+  height: 3rem;
+  margin-bottom: 0.75rem;
+  object-fit: contain;
+  width: auto;
+}
+
 .internal-login-brand h1 {
   color: #0f4cb7;
   font-size: 3.35rem;
@@ -4235,6 +4251,14 @@ ul {
   display: flex;
   gap: 0.6rem;
   padding: 0 0.25rem;
+}
+
+.ops-side-brand-logo {
+  border-radius: 0.45rem;
+  flex-shrink: 0;
+  height: 1.95rem;
+  object-fit: contain;
+  width: 1.95rem;
 }
 
 .ops-side-brand-mark {
@@ -8393,7 +8417,7 @@ ul {
   align-items: center;
   display: grid;
   gap: 0.42rem;
-  grid-template-columns: minmax(220px, 1fr) 180px 180px 180px auto auto;
+  grid-template-columns: minmax(200px, 1fr) 170px 170px 170px 170px auto auto;
 }
 
 .lead-queue-search,
@@ -11884,7 +11908,7 @@ ul {
 .application-create-kpis {
   display: grid;
   gap: 0.5rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .application-create-kpis article {

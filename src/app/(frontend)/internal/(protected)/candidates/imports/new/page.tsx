@@ -19,6 +19,9 @@ const TRAY_WINDOW_DAYS = 14
 const readFilename = (resume: CandidateResumeImportItem['resume']): string =>
   typeof resume === 'object' && resume ? resume.filename || resume.alt || 'Resume' : 'Resume'
 
+const readRole = (batch: CandidateResumeImportItem['batch']): string =>
+  typeof batch === 'object' && batch?.role ? `${batch.role} · ` : ''
+
 const readCandidateName = (candidate: CandidateResumeImportItem['candidate']): string =>
   typeof candidate === 'object' && candidate ? candidate.fullName : ''
 
@@ -28,7 +31,9 @@ const readWarnings = (item: CandidateResumeImportItem): string[] =>
     .filter((message) => /later\.$/.test(message))
 
 const formatWhen = (value: string): string =>
-  new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(
+    new Date(value),
+  )
 
 export default async function CandidateImportNewPage() {
   const user = await requireInternalRole(['admin', 'leadRecruiter', 'recruiter'])
@@ -37,22 +42,45 @@ export default async function CandidateImportNewPage() {
   const staleBefore = Date.now() - RESUME_IMPORT_STALE_MS
   const returnTo = APP_ROUTES.internal.candidates.importsNew
 
-  const itemsResult = await payload.find({
-    collection: 'candidate-resume-import-items',
-    depth: 1,
-    limit: 150,
-    overrideAccess: false,
-    pagination: false,
-    sort: '-createdAt',
-    user,
-    where: {
-      and: [{ uploadedBy: { equals: user.id } }, { createdAt: { greater_than_equal: since } }],
-    },
-  })
+  const [itemsResult, jobsResult] = await Promise.all([
+    payload.find({
+      collection: 'candidate-resume-import-items',
+      depth: 1,
+      limit: 150,
+      overrideAccess: false,
+      pagination: false,
+      sort: '-createdAt',
+      user,
+      where: {
+        and: [{ uploadedBy: { equals: user.id } }, { createdAt: { greater_than_equal: since } }],
+      },
+    }),
+    payload.find({
+      collection: 'jobs',
+      depth: 0,
+      limit: 300,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        title: true,
+      },
+      sort: '-updatedAt',
+      user,
+    }),
+  ])
+
+  const roleSuggestions = Array.from(
+    new Set(
+      jobsResult.docs
+        .map((job) => job.title?.trim())
+        .filter((title): title is string => Boolean(title)),
+    ),
+  ).slice(0, 100)
 
   const items = itemsResult.docs as CandidateResumeImportItem[]
   const isStale = (item: CandidateResumeImportItem) =>
-    item.status === 'processing' && new Date(item.startedAt || item.updatedAt).getTime() < staleBefore
+    item.status === 'processing' &&
+    new Date(item.startedAt || item.updatedAt).getTime() < staleBefore
 
   const pending = items.filter(
     (item) => (item.status === 'queued' || item.status === 'processing') && !isStale(item),
@@ -76,9 +104,9 @@ export default async function CandidateImportNewPage() {
           <p className="candidate-import-kicker">Candidates</p>
           <h1>Bulk Resume Upload</h1>
           <p>
-            Pick the platform, drop up to {MAX_RESUME_IMPORT_FILES} resumes, and upload. We read the name,
-            contact, skills, and experience and add each candidate automatically. You only need to act
-            on resumes that fail.
+            Pick the platform, drop up to {MAX_RESUME_IMPORT_FILES} resumes, and upload. We read the
+            name, contact, skills, and experience and add each candidate automatically. You only
+            need to act on resumes that fail.
           </p>
         </div>
 
@@ -97,28 +125,29 @@ export default async function CandidateImportNewPage() {
         filesBaseURL={APP_ROUTES.internal.candidates.imports}
         maxFileSizeBytes={MAX_RESUME_IMPORT_FILE_SIZE_BYTES}
         maxFiles={MAX_RESUME_IMPORT_FILES}
+        roleSuggestions={roleSuggestions}
       />
 
       <section className="candidate-import-list-card" id="my-uploads">
         <header className="candidate-import-section-head">
           <h2>My Uploads</h2>
           <p>
-            Last {TRAY_WINDOW_DAYS} days · {createdCount} candidate{createdCount === 1 ? '' : 's'} added
+            Last {TRAY_WINDOW_DAYS} days · {createdCount} candidate{createdCount === 1 ? '' : 's'}{' '}
+            added
             {pending.length > 0 ? ` · ${pending.length} still processing` : ''}
           </p>
         </header>
 
         {pending.length > 0 ? (
           <p className="candidate-import-warning candidate-bulk-processing">
-            Reading {pending.length} resume{pending.length === 1 ? '' : 's'}… this page updates on its own.
+            Reading {pending.length} resume{pending.length === 1 ? '' : 's'}… this page updates on
+            its own.
           </p>
         ) : null}
 
         {attention.length > 0 ? (
           <div className="candidate-import-item-list" id="needs-attention">
-            <h3 className="candidate-bulk-group-title">
-              Needs attention ({attention.length})
-            </h3>
+            <h3 className="candidate-bulk-group-title">Needs attention ({attention.length})</h3>
             {attention.map((item) => {
               const legacyReview = item.status === 'needsReview'
               const batchID = extractRelationshipID(item.batch)
@@ -130,7 +159,9 @@ export default async function CandidateImportNewPage() {
                       {legacyReview ? 'Needs review' : 'Failed'}
                     </span>
                     <h3>{readFilename(item.resume)}</h3>
-                    <p>Uploaded {formatWhen(item.createdAt)}</p>
+                    <p>
+                      {readRole(item.batch)}Uploaded {formatWhen(item.createdAt)}
+                    </p>
                     <p className="candidate-import-error">
                       {legacyReview
                         ? 'Uploaded with the old review flow. Open it to finish creating the candidate.'
@@ -149,7 +180,10 @@ export default async function CandidateImportNewPage() {
                         Review
                       </Link>
                     ) : (
-                      <form action={`${APP_ROUTES.internal.candidates.imports}/items/${item.id}`} method="post">
+                      <form
+                        action={`${APP_ROUTES.internal.candidates.imports}/items/${item.id}`}
+                        method="post"
+                      >
                         <input name="action" type="hidden" value="retry" />
                         <input name="returnTo" type="hidden" value={returnTo} />
                         <button
@@ -167,7 +201,10 @@ export default async function CandidateImportNewPage() {
                     >
                       Add manually
                     </Link>
-                    <form action={`${APP_ROUTES.internal.candidates.imports}/items/${item.id}`} method="post">
+                    <form
+                      action={`${APP_ROUTES.internal.candidates.imports}/items/${item.id}`}
+                      method="post"
+                    >
                       <input name="action" type="hidden" value="dismiss" />
                       <input name="returnTo" type="hidden" value={returnTo} />
                       <button
@@ -202,6 +239,7 @@ export default async function CandidateImportNewPage() {
                     </span>
                     <h3>{readCandidateName(item.candidate) || readFilename(item.resume)}</h3>
                     <p>
+                      {readRole(item.batch)}
                       {readFilename(item.resume)} · {formatWhen(item.createdAt)}
                     </p>
                     {warnings.length > 0 ? (
@@ -226,7 +264,9 @@ export default async function CandidateImportNewPage() {
         ) : null}
 
         {items.length === 0 ? (
-          <p className="candidate-import-empty">Nothing uploaded in the last {TRAY_WINDOW_DAYS} days.</p>
+          <p className="candidate-import-empty">
+            Nothing uploaded in the last {TRAY_WINDOW_DAYS} days.
+          </p>
         ) : null}
       </section>
     </section>

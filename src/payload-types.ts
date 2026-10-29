@@ -689,6 +689,7 @@ export interface CandidateResumeImportBatch {
       )
     | null;
   sourceDetails?: string | null;
+  role?: string | null;
   sourceJob?: (number | null) | Job;
   uploadedBy?: (number | null) | User;
   totalCount?: number | null;
@@ -776,6 +777,7 @@ export interface Application {
   candidate: number | Candidate;
   job: number | Job;
   recruiter: number | User;
+  leadRecruiter?: (number | null) | User;
   candidateAccount?: (number | null) | CandidateUser;
   stage:
     | 'sourced'
@@ -1957,6 +1959,7 @@ export interface CandidateResumeImportBatchesSelect<T extends boolean = true> {
   status?: T;
   source?: T;
   sourceDetails?: T;
+  role?: T;
   sourceJob?: T;
   uploadedBy?: T;
   totalCount?: T;
@@ -2179,6 +2182,7 @@ export interface ApplicationsSelect<T extends boolean = true> {
   candidate?: T;
   job?: T;
   recruiter?: T;
+  leadRecruiter?: T;
   candidateAccount?: T;
   stage?: T;
   notes?: T;

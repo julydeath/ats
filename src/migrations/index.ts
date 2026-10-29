@@ -4,6 +4,8 @@ import * as migration_20260810_000001_update_application_pipeline_stages from '.
 import * as migration_20260810_000002_candidate_resume_imports from './20260810_000002_candidate_resume_imports';
 import * as migration_20261020_000001_clients_created_by from './20261020_000001_clients_created_by';
 import * as migration_20261027_000001_quick_resume_intake from './20261027_000001_quick_resume_intake';
+import * as migration_20261028_000001_bulk_upload_role from './20261028_000001_bulk_upload_role';
+import * as migration_20261028_000002_application_lead_recruiter from './20261028_000002_application_lead_recruiter';
 
 export const migrations = [
   {
@@ -35,5 +37,15 @@ export const migrations = [
     up: migration_20261027_000001_quick_resume_intake.up,
     down: migration_20261027_000001_quick_resume_intake.down,
     name: '20261027_000001_quick_resume_intake'
+  },
+  {
+    up: migration_20261028_000001_bulk_upload_role.up,
+    down: migration_20261028_000001_bulk_upload_role.down,
+    name: '20261028_000001_bulk_upload_role'
+  },
+  {
+    up: migration_20261028_000002_application_lead_recruiter.up,
+    down: migration_20261028_000002_application_lead_recruiter.down,
+    name: '20261028_000002_application_lead_recruiter'
   },
 ];

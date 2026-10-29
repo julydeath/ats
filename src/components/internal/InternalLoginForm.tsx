@@ -120,7 +120,7 @@ export const InternalLoginForm = () => {
               id="email"
               name="email"
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="name@inspirix.com"
+              placeholder="name@inspirex.com"
               required
               type="email"
               value={email}
@@ -164,7 +164,7 @@ export const InternalLoginForm = () => {
           </form>
         </div>
 
-        <div className="internal-login-card-footer">Secured by Inspirix Identity Services</div>
+        <div className="internal-login-card-footer">Secured by INSPiREX Identity Services</div>
       </div>
 
       <div className="internal-login-footer-links">
