@@ -1,7 +1,7 @@
 import { APIError, type CollectionConfig } from 'payload'
 
 import { hasInternalRole, type InternalUserLike } from '@/access/internalRoles'
-import { interviewsManageAccess, interviewsReadAccess } from '@/access/visibility'
+import { interviewsManageAccess, interviewsReadAccess, interviewsUpdateAccess } from '@/access/visibility'
 import {
   type ApplicationStage,
   INTERVIEW_MODE_OPTIONS,
@@ -87,7 +87,7 @@ export const Interviews: CollectionConfig = {
     admin: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin', 'leadRecruiter', 'recruiter']),
     create: interviewsManageAccess,
     read: interviewsReadAccess,
-    update: interviewsManageAccess,
+    update: interviewsUpdateAccess,
     delete: ({ req }) => hasInternalRole(req.user as InternalUserLike, ['admin']),
   },
   admin: {
@@ -287,6 +287,11 @@ export const Interviews: CollectionConfig = {
         const candidateID = extractRelationshipID(application.candidate)
         const jobID = extractRelationshipID(application.job)
         const recruiterID = extractRelationshipID(application.recruiter)
+
+        if (!recruiterID && hasInternalRole(req.user as InternalUserLike, ['recruiter'])) {
+          throw new APIError('Application not found.', 404)
+        }
+
         let clientID: number | string | null = null
 
         if (jobID) {

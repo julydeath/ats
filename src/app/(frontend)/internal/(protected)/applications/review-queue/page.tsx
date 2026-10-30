@@ -224,7 +224,7 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
     const haystack = [
       readLabel(application.candidate),
       readLabel(application.job),
-      readLabel(application.recruiter),
+      readLabel(application.recruiter, 'Lead-managed'),
       formatJobCode(application.job),
     ]
       .join(' ')
@@ -260,7 +260,7 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
     new Map(
       pendingApplications.docs.map((application) => [
         String(extractRelationshipID(application.recruiter) || ''),
-        readLabel(application.recruiter),
+        readLabel(application.recruiter, 'Lead-managed'),
       ]),
     ).entries(),
   )
@@ -441,7 +441,7 @@ export default async function ApplicationsReviewQueuePage({ searchParams }: Appl
                     </td>
                     <td>
                       <div className="lead-queue-job-cell">
-                        <p>{readLabel(application.recruiter)}</p>
+                        <p>{readLabel(application.recruiter, 'Lead-managed')}</p>
                         <small>Lead: {readLabel(application.leadRecruiter, 'Not set')}</small>
                       </div>
                     </td>

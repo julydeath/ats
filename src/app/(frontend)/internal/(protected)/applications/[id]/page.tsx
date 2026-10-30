@@ -202,6 +202,28 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
 
     const stage = application.stage as ApplicationStage
     const stageLabel = APPLICATION_STAGE_LABELS[stage] || stage
+    const canAssignRecruiter =
+      !application.recruiter && (user.role === 'admin' || user.role === 'leadRecruiter')
+    const assignableRecruiters = canAssignRecruiter
+      ? (
+          await payload.find({
+            collection: 'users',
+            depth: 0,
+            limit: 120,
+            overrideAccess: false,
+            pagination: false,
+            select: {
+              email: true,
+              fullName: true,
+            },
+            sort: 'fullName',
+            user,
+            where: {
+              and: [{ role: { equals: 'recruiter' } }, { isActive: { equals: true } }],
+            },
+          })
+        ).docs
+      : []
     const stageTargets = getAllowedTargets({
       role: user.role,
       stage,
@@ -235,7 +257,7 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
             <h1>{readLabel(application.candidate)}</h1>
             <p>
               {application.applicationCode || `APP-${application.id}`} · Job: {readLabel(application.job)} · Recruiter:{' '}
-              {readLabel(application.recruiter)} · Lead: {leadRecruiterLabel}
+              {readLabel(application.recruiter, 'Lead-managed')} · Lead: {leadRecruiterLabel}
             </p>
           </div>
           <div className="application-detail-header-actions">
@@ -342,6 +364,37 @@ export default async function ApplicationDetailPage({ params, searchParams }: Ap
             </div>
           </article>
         </div>
+
+        {canAssignRecruiter ? (
+          <article className="application-detail-card">
+            <h2>Assign Recruiter</h2>
+            <p className="application-detail-empty">
+              This application is lead-managed and hidden from recruiters. Assigning a recruiter
+              moves it to the normal recruiter flow.
+            </p>
+            <form
+              action={APP_ROUTES.internal.applications.assignRecruiter}
+              className="application-detail-form"
+              method="post"
+            >
+              <input name="applicationId" type="hidden" value={String(application.id)} />
+              <label>
+                <span>Recruiter</span>
+                <select defaultValue="" name="recruiterId" required>
+                  <option value="">Select recruiter</option>
+                  {assignableRecruiters.map((recruiter) => (
+                    <option key={`assign-recruiter-${recruiter.id}`} value={String(recruiter.id)}>
+                      {recruiter.fullName || recruiter.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button data-pending-label="Assigning..." type="submit">
+                Assign Recruiter
+              </button>
+            </form>
+          </article>
+        ) : null}
 
         {stageTargets.length > 0 ? (
           <article className="application-detail-card">

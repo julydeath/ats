@@ -335,7 +335,7 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
 
       const haystack = [
         readLabel(application.candidate),
-        readLabel(application.recruiter),
+        readLabel(application.recruiter, 'Lead-managed'),
         readLabel(application.job),
         typeof candidate === 'object' ? candidate?.currentCompany || '' : '',
         typeof candidate === 'object' ? candidate?.currentRole || '' : '',
@@ -421,7 +421,7 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
         flowEntries: stageHistoryByApplication.get(String(application.id)) || [],
         id: application.id,
         latestComment: application.latestComment || '',
-        recruiterName: readLabel(application.recruiter),
+        recruiterName: readLabel(application.recruiter, 'Lead-managed'),
         stage: application.stage as ApplicationStage,
         updatedAt: application.updatedAt,
       }
@@ -429,7 +429,7 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
 
     const teamMembers = Array.from(
       new Set(
-        applications.docs.map((application) => readLabel(application.recruiter)).filter(Boolean),
+        applications.docs.map((application) => readLabel(application.recruiter, '')).filter(Boolean),
       ),
     ).slice(0, 4)
 
@@ -683,7 +683,7 @@ export default async function JobBoardPage({ params, searchParams }: JobBoardPag
                       {readLabel(application.candidate)}
                     </p>
                     <p className="job-detail-discussion-meta">
-                      {readLabel(application.recruiter)} ·{' '}
+                      {readLabel(application.recruiter, 'Lead-managed')} ·{' '}
                       {APPLICATION_STAGE_LABELS[application.stage as ApplicationStage]}
                     </p>
                     <p className="job-detail-discussion-text">{application.latestComment}</p>

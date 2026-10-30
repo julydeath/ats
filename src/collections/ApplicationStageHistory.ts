@@ -57,10 +57,10 @@ export const ApplicationStageHistory: CollectionConfig = {
       },
     },
     {
+      // Empty for lead-managed applications.
       name: 'recruiter',
       type: 'relationship',
       relationTo: 'users',
-      required: true,
       index: true,
       filterOptions: {
         role: {

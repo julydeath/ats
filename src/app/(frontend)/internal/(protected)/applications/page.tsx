@@ -135,7 +135,7 @@ export default async function ApplicationsListPage({ searchParams }: Application
       application.applicationCode || '',
       readLabel(application.candidate),
       readLabel(application.job),
-      readLabel(application.recruiter),
+      readLabel(application.recruiter, 'Lead-managed'),
       application.latestComment || '',
       application.notes || '',
     ]
@@ -230,7 +230,7 @@ export default async function ApplicationsListPage({ searchParams }: Application
                         <p className="stage-card-name">{readLabel(application.candidate)}</p>
                         <p className="stage-card-meta">{application.applicationCode || `APP-${application.id}`}</p>
                         <p className="stage-card-meta">{readLabel(application.job)}</p>
-                        <p className="stage-card-meta">Recruiter: {readLabel(application.recruiter)}</p>
+                        <p className="stage-card-meta">Recruiter: {readLabel(application.recruiter, 'Lead-managed')}</p>
                         <p className="stage-card-meta">
                           Updated: {new Date(application.updatedAt).toLocaleString('en-IN')}
                         </p>

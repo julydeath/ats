@@ -776,7 +776,7 @@ export interface Application {
   applicationCode?: string | null;
   candidate: number | Candidate;
   job: number | Job;
-  recruiter: number | User;
+  recruiter?: (number | null) | User;
   leadRecruiter?: (number | null) | User;
   candidateAccount?: (number | null) | CandidateUser;
   stage:
@@ -839,7 +839,7 @@ export interface ApplicationStageHistory {
   candidate: number | Candidate;
   candidateAccount?: (number | null) | CandidateUser;
   job: number | Job;
-  recruiter: number | User;
+  recruiter?: (number | null) | User;
   fromStage?:
     | (
         | 'sourced'

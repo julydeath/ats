@@ -184,7 +184,7 @@ const buildRecruiterPerformance = (
   const map = new Map<string, RecruiterPerformance>()
 
   items.forEach((item) => {
-    const recruiterName = readLabel(item.recruiter)
+    const recruiterName = readLabel(item.recruiter, 'Lead-managed')
     const existing = map.get(recruiterName)
     const reviewedIncrement = 1
     const approvalsIncrement = item.toStage === 'screened' ? 1 : 0
@@ -369,7 +369,7 @@ export default async function InternalDashboardPage() {
                     <div>
                       <p>{readLabel(application.candidate)}</p>
                       <small>
-                        {readLabel(application.job)} · Recruiter: {readLabel(application.recruiter)}
+                        {readLabel(application.job)} · Recruiter: {readLabel(application.recruiter, 'Lead-managed')}
                       </small>
                     </div>
                     <span className="role-dashboard-row-meta">{toRelativeTime(application.updatedAt)}</span>
@@ -427,7 +427,7 @@ export default async function InternalDashboardPage() {
                           {APPLICATION_STAGE_LABELS[entry.toStage]}: {readLabel(entry.candidate)}
                         </p>
                         <small>
-                          Recruiter: {readLabel(entry.recruiter)} · {toRelativeTime(entry.changedAt)}
+                          Recruiter: {readLabel(entry.recruiter, 'Lead-managed')} · {toRelativeTime(entry.changedAt)}
                         </small>
                       </div>
                     </article>

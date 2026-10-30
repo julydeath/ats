@@ -1532,11 +1532,9 @@ export const applications = pgTable(
       .references(() => jobs.id, {
         onDelete: 'set null',
       }),
-    recruiter: integer('recruiter_id')
-      .notNull()
-      .references(() => users.id, {
-        onDelete: 'set null',
-      }),
+    recruiter: integer('recruiter_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
     leadRecruiter: integer('lead_recruiter_id').references(() => users.id, {
       onDelete: 'set null',
     }),
@@ -1687,11 +1685,9 @@ export const application_stage_history = pgTable(
       .references(() => jobs.id, {
         onDelete: 'set null',
       }),
-    recruiter: integer('recruiter_id')
-      .notNull()
-      .references(() => users.id, {
-        onDelete: 'set null',
-      }),
+    recruiter: integer('recruiter_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
     fromStage: enum_application_stage_history_from_stage('from_stage'),
     toStage: enum_application_stage_history_to_stage('to_stage').notNull(),
     comment: varchar('comment'),

@@ -150,7 +150,11 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
     ? String(resolvedSearchParams.dateRange || '30')
     : '30'
   const isCreateModalOpen = resolvedSearchParams.create === '1'
-  const canCreateJobs = user.role === 'admin' || user.role === 'leadRecruiter'
+  // Recruiters can post jobs for existing clients but must hand ownership to a lead.
+  const canCreateJobs =
+    user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
+  const canChooseJobLead = user.role === 'admin' || user.role === 'recruiter'
+  const canAssignJobRecruiters = user.role === 'admin' || user.role === 'leadRecruiter'
   const canSourceCandidates =
     user.role === 'admin' || user.role === 'leadRecruiter' || user.role === 'recruiter'
   const canReassignJobs = user.role === 'admin' || user.role === 'leadRecruiter'
@@ -266,12 +270,14 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
           },
         },
       }),
-      isCreateModalOpen && user.role === 'admin'
+      // Recruiters can only read their own user record, so the lead list is
+      // loaded with access bypassed and limited to name/email of active leads.
+      isCreateModalOpen && canChooseJobLead
         ? payload.find({
             collection: 'users',
             depth: 0,
             limit: 80,
-            overrideAccess: false,
+            overrideAccess: true,
             pagination: false,
             select: {
               email: true,
@@ -296,7 +302,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
             },
           })
         : Promise.resolve(null),
-      isCreateModalOpen && canCreateJobs
+      isCreateModalOpen && canAssignJobRecruiters
         ? payload.find({
             collection: 'users',
             depth: 0,
@@ -581,16 +587,15 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
       )
     : 0
 
-  const leadsOptions =
-    user.role === 'admin'
-      ? (leadsResult?.docs ?? [])
-      : [
-          {
-            email: user.email,
-            fullName: user.fullName || user.email,
-            id: user.id,
-          },
-        ]
+  const leadsOptions = canChooseJobLead
+    ? (leadsResult?.docs ?? [])
+    : [
+        {
+          email: user.email,
+          fullName: user.fullName || user.email,
+          id: user.id,
+        },
+      ]
   const recruiterUserOptions = recruitersResult.docs
 
   const successMessage =
@@ -907,7 +912,11 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
             {clientsResult.docs.length === 0 ? (
               <div className="jobs-modal-empty">
                 <p>No active clients available in your current visibility scope.</p>
-                <Link href={APP_ROUTES.internal.clients.list}>Create Client First</Link>
+                {user.role === 'recruiter' ? (
+                  <p>Ask your lead recruiter to add the client first.</p>
+                ) : (
+                  <Link href={APP_ROUTES.internal.clients.list}>Create Client First</Link>
+                )}
               </div>
             ) : (
               <form
@@ -1033,7 +1042,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                 </div>
 
                 <div className="jobs-modal-grid">
-                  {user.role === 'admin' ? (
+                  {canChooseJobLead ? (
                     <label className="jobs-modal-field" htmlFor="create-job-lead">
                       <span>Lead Recruiter</span>
                       <select defaultValue="" id="create-job-lead" name="leadRecruiterId" required>
@@ -1078,17 +1087,37 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                     </select>
                   </label>
 
-                  <label className="jobs-modal-field" htmlFor="create-job-primary-recruiter">
-                    <span>Primary Recruiter</span>
-                    <select
-                      defaultValue=""
-                      id="create-job-primary-recruiter"
-                      name="primaryRecruiterId"
-                    >
-                      <option value="">Unassigned</option>
+                  {canAssignJobRecruiters ? (
+                    <label className="jobs-modal-field" htmlFor="create-job-primary-recruiter">
+                      <span>Primary Recruiter</span>
+                      <select
+                        defaultValue=""
+                        id="create-job-primary-recruiter"
+                        name="primaryRecruiterId"
+                      >
+                        <option value="">Unassigned</option>
+                        {recruiterUserOptions.map((recruiter) => (
+                          <option
+                            key={`create-job-primary-recruiter-${recruiter.id}`}
+                            value={String(recruiter.id)}
+                          >
+                            {recruiter.fullName || recruiter.email}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <input name="primaryRecruiterId" type="hidden" value={String(user.id)} />
+                  )}
+                </div>
+
+                {canAssignJobRecruiters ? (
+                  <label className="jobs-modal-field" htmlFor="create-job-assigned-to">
+                    <span>Assigned Recruiters</span>
+                    <select id="create-job-assigned-to" multiple name="assignedTo" size={4}>
                       {recruiterUserOptions.map((recruiter) => (
                         <option
-                          key={`create-job-primary-recruiter-${recruiter.id}`}
+                          key={`create-job-assigned-to-${recruiter.id}`}
                           value={String(recruiter.id)}
                         >
                           {recruiter.fullName || recruiter.email}
@@ -1096,21 +1125,7 @@ export default async function AssignedJobsPage({ searchParams }: AssignedJobsPag
                       ))}
                     </select>
                   </label>
-                </div>
-
-                <label className="jobs-modal-field" htmlFor="create-job-assigned-to">
-                  <span>Assigned Recruiters</span>
-                  <select id="create-job-assigned-to" multiple name="assignedTo" size={4}>
-                    {recruiterUserOptions.map((recruiter) => (
-                      <option
-                        key={`create-job-assigned-to-${recruiter.id}`}
-                        value={String(recruiter.id)}
-                      >
-                        {recruiter.fullName || recruiter.email}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                ) : null}
 
                 <div className="jobs-modal-grid">
                   <label className="jobs-modal-field" htmlFor="create-job-status">

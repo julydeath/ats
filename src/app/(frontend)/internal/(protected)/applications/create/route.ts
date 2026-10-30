@@ -47,7 +47,15 @@ export async function POST(request: Request) {
   const recruiterID = parseNumericID(formData.get('recruiterId'))
   const leadRecruiterID = parseNumericID(formData.get('leadRecruiterId'))
 
-  if (!candidateID || !jobID || !recruiterID || !leadRecruiterID) {
+  // Leads and admins may leave the recruiter empty to create a lead-managed
+  // application; a lead doing so owns it themself.
+  const isLeadManaged = !recruiterID && hasInternalRole(internalUser, ['admin', 'leadRecruiter'])
+  const effectiveLeadRecruiterID =
+    isLeadManaged && hasInternalRole(internalUser, ['leadRecruiter'])
+      ? parseNumericID(String(internalUser?.id ?? ''))
+      : leadRecruiterID
+
+  if (!candidateID || !jobID || (!recruiterID && !isLeadManaged) || !effectiveLeadRecruiterID) {
     const failureURL = buildCreateRedirectURL(request)
     failureURL.searchParams.set('error', 'Candidate, job, recruiter, and lead recruiter are required.')
     return NextResponse.redirect(failureURL, 303)
@@ -61,11 +69,11 @@ export async function POST(request: Request) {
         clientBillRate,
         job: jobID,
         latestComment,
-        leadRecruiter: leadRecruiterID,
+        leadRecruiter: effectiveLeadRecruiterID,
         notes,
         payRate,
         pipelineSource,
-        recruiter: recruiterID,
+        recruiter: recruiterID ?? undefined,
         stage: 'sourced',
         submissionType,
       },

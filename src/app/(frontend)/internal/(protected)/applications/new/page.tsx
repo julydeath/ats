@@ -302,9 +302,15 @@ export default async function ApplicationsNewPage({ searchParams }: Applications
 
               {canSelectRecruiter ? (
                 <label>
-                  <span>Recruiter *</span>
-                  <select name="recruiterId" required>
-                    <option value="">Select recruiter</option>
+                  <span>Recruiter</span>
+                  {/* Leaving this empty makes the application lead-managed: the lead
+                      works it end to end and recruiters never see it. */}
+                  <select defaultValue="" name="recruiterId">
+                    <option value="">
+                      {user.role === 'leadRecruiter'
+                        ? 'No recruiter (I will manage it myself)'
+                        : 'No recruiter (lead-managed)'}
+                    </option>
                     {recruitersResult.docs.map((recruiter) => (
                       <option key={`recruiter-option-${recruiter.id}`} value={String(recruiter.id)}>
                         {recruiter.fullName || recruiter.email}

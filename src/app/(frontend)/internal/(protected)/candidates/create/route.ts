@@ -373,13 +373,11 @@ export async function POST(request: Request) {
           user: internalUser,
         })
         const jobPrimaryRecruiterID = toNumericID(extractRelationshipID(sourceJob.primaryRecruiter))
+        // Leads and admins without a primary recruiter on the job create a
+        // lead-managed application (no recruiter).
         const applicationRecruiterID = hasInternalRole(internalUser, ['recruiter'])
           ? currentUserID
-          : jobPrimaryRecruiterID ?? currentUserID
-
-        if (!applicationRecruiterID) {
-          throw new Error('No recruiter is available for the selected job.')
-        }
+          : jobPrimaryRecruiterID
 
         await payload.create({
           collection: 'applications',
@@ -391,7 +389,7 @@ export async function POST(request: Request) {
             notes: notes || undefined,
             payRate: sourceJob.payRate || undefined,
             pipelineSource: source,
-            recruiter: applicationRecruiterID,
+            recruiter: applicationRecruiterID ?? undefined,
             stage: 'sourced',
             submissionType: 'candidateIntake',
           },

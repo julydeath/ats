@@ -70,6 +70,7 @@ export const APP_ROUTES = {
       parseResume: '/internal/candidates/parse-resume',
     },
     applications: {
+      assignRecruiter: '/internal/applications/assign-recruiter',
       create: '/internal/applications/create',
       detailBase: '/internal/applications',
       list: '/internal/applications',

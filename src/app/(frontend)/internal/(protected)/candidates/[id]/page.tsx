@@ -366,7 +366,7 @@ export default async function CandidateDetailPage({ params, searchParams }: Cand
         title: 'Candidate Profile Updated',
       },
       ...applicationsForCandidate.docs.slice(0, 4).map((application) => ({
-        body: `${readStageLabel(application.stage)} · Recruiter ${readLabel(application.recruiter)}`,
+        body: `${readStageLabel(application.stage)} · Recruiter ${readLabel(application.recruiter, 'Lead-managed')}`,
         date: formatDateTime(application.updatedAt),
         title: readLabel(application.job),
       })),

@@ -168,12 +168,18 @@ export async function POST(request: Request) {
   const internalUser = user as InternalUserLike
   const currentUserID = toNumericID(internalUser?.id)
 
-  if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter']) || !currentUserID) {
+  if (!hasInternalRole(internalUser, ['admin', 'leadRecruiter', 'recruiter']) || !currentUserID) {
     return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
   }
 
   const formData = await request.formData()
   const jobID = parseNumericID(formData.get('jobId'))
+  const isRecruiter = hasInternalRole(internalUser, ['recruiter'])
+
+  // Recruiters may post new jobs but editing stays with the owning lead and admins.
+  if (isRecruiter && jobID) {
+    return NextResponse.redirect(new URL(APP_ROUTES.internal.dashboard, request.url), 303)
+  }
   const failureURL = jobID ? buildJobEditRedirectURL(request, jobID) : buildRedirectURL(request)
   const clientID = parseNumericID(formData.get('clientId'))
   const title = readString(formData.get('title'))
@@ -200,8 +206,10 @@ export async function POST(request: Request) {
   const targetClosureDate = readString(formData.get('targetClosureDate')) || undefined
   const requirementAssignedOn = readString(formData.get('requirementAssignedOn')) || undefined
   const recruitmentManagerID = parseNumericID(formData.get('recruitmentManagerId'))
-  const primaryRecruiterID = parseNumericID(formData.get('primaryRecruiterId'))
-  const assignedToIDs = parseMultiNumericIDs(formData.getAll('assignedTo'))
+  const primaryRecruiterID = isRecruiter
+    ? currentUserID
+    : parseNumericID(formData.get('primaryRecruiterId'))
+  const assignedToIDs = isRecruiter ? [] : parseMultiNumericIDs(formData.getAll('assignedTo'))
   const jobDescriptionFileInput = formData.get('jobDescriptionFile')
   let leadRecruiterID = parseNumericID(formData.get('leadRecruiterId'))
 
@@ -234,7 +242,12 @@ export async function POST(request: Request) {
   }
 
   if (!leadRecruiterID) {
-    failureURL.searchParams.set('error', 'Lead Recruiter assignment is required to create job.')
+    failureURL.searchParams.set(
+      'error',
+      isRecruiter
+        ? 'Select the lead recruiter who will own this job.'
+        : 'Lead Recruiter assignment is required to create job.',
+    )
     return NextResponse.redirect(failureURL, 303)
   }
 

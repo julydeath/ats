@@ -161,10 +161,11 @@ export const Applications: CollectionConfig = {
       index: true,
     },
     {
+      // Empty only on lead-managed applications: created by a lead or admin
+      // without a recruiter, worked by the lead and hidden from recruiters.
       name: 'recruiter',
       type: 'relationship',
       relationTo: 'users',
-      required: true,
       index: true,
       filterOptions: {
         role: {
@@ -467,13 +468,24 @@ export const Applications: CollectionConfig = {
         const nextStage = normalizeStage(typedData.stage ?? typedOriginalDoc?.stage ?? DEFAULT_STAGE)
         const stageChanged = operation === 'create' || previousStage !== nextStage
 
-        if (!candidateID || !jobID || !recruiterID) {
-          throw new APIError('Candidate, job, and recruiter are required for application mapping.', 400)
+        if (!candidateID || !jobID) {
+          throw new APIError('Candidate and job are required for application mapping.', 400)
+        }
+
+        const isLeadManaged = !recruiterID
+
+        if (isLeadManaged && !hasInternalRole(user, ['admin', 'leadRecruiter'])) {
+          throw new APIError('Recruiter is required for application mapping.', 400)
         }
 
         let leadRecruiterID = toNumericID(
           extractRelationshipID(typedData.leadRecruiter ?? typedOriginalDoc?.leadRecruiter),
         )
+
+        // A lead creating without a recruiter manages the application themself.
+        if (operation === 'create' && isLeadManaged && hasInternalRole(user, ['leadRecruiter'])) {
+          leadRecruiterID = currentUserID
+        }
 
         // Auto-created applications (candidate intake, seeds) don't pick a lead:
         // use the job's active lead assignment, else the job's owning lead.
@@ -518,6 +530,34 @@ export const Applications: CollectionConfig = {
 
         if (operation === 'create' && !leadRecruiterID) {
           throw new APIError('Lead recruiter is required.', 400)
+        }
+
+        if (isLeadManaged && !leadRecruiterID) {
+          throw new APIError('Lead recruiter is required when no recruiter is assigned.', 400)
+        }
+
+        const recruiterChanged =
+          operation === 'create' ||
+          String(recruiterID) !== String(extractRelationshipID(typedOriginalDoc?.recruiter) ?? null)
+
+        if (recruiterChanged && recruiterID) {
+          const recruiter = await req.payload
+            .findByID({
+              collection: 'users',
+              depth: 0,
+              id: recruiterID,
+              overrideAccess: true,
+              req,
+              select: {
+                isActive: true,
+                role: true,
+              },
+            })
+            .catch(() => null)
+
+          if (!recruiter || recruiter.role !== 'recruiter' || recruiter.isActive === false) {
+            throw new APIError('Choose an active recruiter.', 400)
+          }
         }
 
         if (leadChanged && leadRecruiterID) {
@@ -697,7 +737,7 @@ export const Applications: CollectionConfig = {
         const candidateAccountID = toNumericID(extractRelationshipID(doc.candidateAccount))
         const actorID = toNumericID(req.user?.id)
 
-        if (!applicationID || !candidateID || !jobID || !recruiterID || !stageTransition.toStage) {
+        if (!applicationID || !candidateID || !jobID || !stageTransition.toStage) {
           throw new APIError('Unable to persist application stage history due to missing linkage fields.', 500)
         }
 
@@ -712,7 +752,7 @@ export const Applications: CollectionConfig = {
             comment: stageTransition.comment || undefined,
             fromStage: stageTransition.fromStage || undefined,
             job: jobID,
-            recruiter: recruiterID,
+            recruiter: recruiterID ?? undefined,
             toStage: stageTransition.toStage,
           },
           overrideAccess: true,

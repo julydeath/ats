@@ -478,6 +478,32 @@ export const Jobs: CollectionConfig = {
           owningHeadRecruiterID = currentUserID
         }
 
+        // Recruiter-posted jobs must name their owning lead explicitly; no
+        // fallback to the client's lead.
+        if (operation === 'create' && hasInternalRole(user, ['recruiter'])) {
+          if (!owningHeadRecruiterID) {
+            throw new APIError('Select the lead recruiter who will own this job.', 400)
+          }
+
+          const lead = await req.payload
+            .findByID({
+              collection: 'users',
+              depth: 0,
+              id: owningHeadRecruiterID,
+              overrideAccess: true,
+              req,
+              select: {
+                isActive: true,
+                role: true,
+              },
+            })
+            .catch(() => null)
+
+          if (!lead || lead.role !== 'leadRecruiter' || lead.isActive === false) {
+            throw new APIError('Choose an active lead recruiter.', 400)
+          }
+        }
+
         if (clientID && !owningHeadRecruiterID) {
           const clientDoc = await req.payload.findByID({
             collection: 'clients',
