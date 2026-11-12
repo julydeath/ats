@@ -2,15 +2,13 @@ import { type PayloadRequest, type Where } from 'payload'
 
 import type { AttendanceStatus } from '@/lib/constants/hr'
 import { readRelationID } from '@/lib/hr/common'
+import { getISTMinutesOfDay, toISTDateOnly } from '@/lib/utils/timezone'
 import type { AttendanceShift, EmployeeProfile } from '@/payload-types'
 
 const toISODate = (value: Date): string => value.toISOString().slice(0, 10)
 
-const toDateOnly = (value: string | Date): Date => {
-  const raw = typeof value === 'string' ? new Date(value) : new Date(value)
-  raw.setHours(0, 0, 0, 0)
-  return raw
-}
+// Calendar day in IST, stored as UTC midnight of that day.
+const toDateOnly = (value: string | Date): Date => toISTDateOnly(value)
 
 const parseHHMM = (value: string | null | undefined): number | null => {
   if (!value) return null
@@ -29,7 +27,7 @@ const parseHHMM = (value: string | null | undefined): number | null => {
 
 const weekdayKey = (date: Date): string => {
   const map = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-  return map[date.getDay()] || 'monday'
+  return map[date.getUTCDay()] || 'monday'
 }
 
 export const calculateWorkedMinutes = (startISO: string, endISO: string): number => {
@@ -128,7 +126,7 @@ const findApprovedLeaveOnDate = async ({
 }) => {
   const startOfDay = toDateOnly(date).toISOString()
   const endOfDay = new Date(toDateOnly(date))
-  endOfDay.setHours(23, 59, 59, 999)
+  endOfDay.setUTCHours(23, 59, 59, 999)
 
   const where: Where = {
     and: [
@@ -258,7 +256,7 @@ const computeAttendance = ({
   if (shiftStart !== null && typeof profile.lastPunchInAt === 'string') {
     const inDate = new Date(profile.lastPunchInAt)
     if (!Number.isNaN(inDate.getTime())) {
-      const inMinutes = inDate.getHours() * 60 + inDate.getMinutes()
+      const inMinutes = getISTMinutesOfDay(inDate)
       lateMinutes = Math.max(0, inMinutes - (shiftStart + graceMinutes))
     }
   }

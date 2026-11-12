@@ -5,6 +5,7 @@ import { attendanceLogManageAccess, attendanceLogReadAccess } from '@/access/hr'
 import { ATTENDANCE_SOURCE_OPTIONS } from '@/lib/constants/hr'
 import { updateAttendanceDailySummaryFromLog } from '@/lib/hr/attendance'
 import { resolveBusinessCode } from '@/lib/utils/business-codes'
+import { toISTDateOnly } from '@/lib/utils/timezone'
 
 const readDateOrNull = (value: unknown): string | null => {
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -153,12 +154,12 @@ export const AttendanceLogs: CollectionConfig = {
           throw new APIError('Punch-out time cannot be earlier than punch-in.', 400)
         }
 
-        const punchDate = new Date(punchInAt)
-        punchDate.setHours(0, 0, 0, 0)
+        const punchDate = toISTDateOnly(punchInAt)
 
         return {
           ...typedData,
-          punchDate: typedData.punchDate || punchDate.toISOString(),
+          // Always the IST calendar day of punch-in (callers may pass a full timestamp).
+          punchDate: punchDate.toISOString(),
           punchInAt,
           punchOutAt: punchOutAt || undefined,
           workedMinutes: punchOutAt ? minutesBetween(punchInAt, punchOutAt) : 0,

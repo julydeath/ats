@@ -1,5 +1,6 @@
 import type { AttendanceStatus } from '@/lib/constants/hr'
 import type { InternalRole } from '@/lib/constants/roles'
+import { toISTDateOnly } from '@/lib/utils/timezone'
 
 export type AttendanceViewMode = 'my' | 'team'
 
@@ -135,7 +136,7 @@ export const buildAttendanceCalendarDays = ({
 
   const weekdayStart = (monthStart.getDay() + 6) % 7
   const calendarStart = addDays(monthStart, -weekdayStart)
-  const todayISO = startOfDay(new Date()).toISOString().slice(0, 10)
+  const todayISO = toISTDateOnly(new Date()).toISOString().slice(0, 10)
 
   return Array.from({ length: 42 }, (_, index) => {
     const dayDate = addDays(calendarStart, index)

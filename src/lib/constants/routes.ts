@@ -18,6 +18,7 @@ export const APP_ROUTES = {
       deleteHolidayFromCalendar: '/internal/settings/team/delete-holiday-from-calendar',
       deleteShift: '/internal/settings/team/delete-shift',
       toggleActive: '/internal/settings/team/toggle-active',
+      updateEmployeeProfile: '/internal/settings/team/update-employee-profile',
     },
     hr: {
       analytics: '/internal/hr/analytics',

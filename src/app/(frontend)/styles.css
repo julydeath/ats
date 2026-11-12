@@ -12906,6 +12906,8 @@ ul {
 .team-mgmt-form-actions {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   justify-content: flex-start;
 }
 
@@ -13032,6 +13034,17 @@ ul {
 
 .team-mgmt-toggle-button {
   min-width: 92px;
+}
+
+.team-mgmt-edit-button {
+  min-width: 72px;
+}
+
+.team-mgmt-row-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 .team-mgmt-setup-grid {
@@ -13513,19 +13526,22 @@ ul {
 
 :is(.internal-shell, .ops-shell) .payroll-run-settlement,
 :is(.internal-shell, .ops-shell) .payroll-employee-cell,
+:is(.internal-shell, .ops-shell) .employee-cell,
 :is(.internal-shell, .ops-shell) .payroll-status-stack {
   display: grid;
   gap: 0.16rem;
 }
 
 :is(.internal-shell, .ops-shell) .payroll-run-settlement strong,
-:is(.internal-shell, .ops-shell) .payroll-employee-cell strong {
+:is(.internal-shell, .ops-shell) .payroll-employee-cell strong,
+:is(.internal-shell, .ops-shell) .employee-cell strong {
   color: #112f56;
   font-size: 0.84rem;
 }
 
 :is(.internal-shell, .ops-shell) .payroll-run-settlement span,
 :is(.internal-shell, .ops-shell) .payroll-employee-cell span,
+:is(.internal-shell, .ops-shell) .employee-cell span,
 :is(.internal-shell, .ops-shell) .payroll-cell-subtle {
   color: #647896;
   font-size: 0.74rem;

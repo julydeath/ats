@@ -8,6 +8,7 @@ import { HOLIDAY_TYPE_OPTIONS, WEEKDAY_OPTIONS } from '@/lib/constants/hr'
 import { APP_ROUTES } from '@/lib/constants/routes'
 import { INTERNAL_ROLE_LABELS } from '@/lib/constants/roles'
 import { extractRelationshipID } from '@/lib/utils/relationships'
+import { toISTDateOnly } from '@/lib/utils/timezone'
 
 export const metadata: Metadata = {
   title: 'Team settings',
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 
 type TeamManagementPageProps = {
   searchParams?: Promise<{
+    edit?: string
     error?: string
     success?: string
   }>
@@ -70,6 +72,7 @@ const parseSuccess = (value?: string): string | null => {
   if (value === 'holidayRemoved') return 'Holiday removed from calendar successfully.'
   if (value === 'memberActivated') return 'Team member activated.'
   if (value === 'memberDeactivated') return 'Team member deactivated.'
+  if (value === 'profileUpdated') return 'Employee profile updated successfully.'
   return null
 }
 
@@ -126,14 +129,19 @@ export default async function TeamManagementPage({ searchParams }: TeamManagemen
       overrideAccess: false,
       pagination: false,
       select: {
+        attendanceShift: true,
         dateOfJoining: true,
+        department: true,
         designation: true,
         employeeCode: true,
         employmentStatus: true,
+        holidayCalendar: true,
         id: true,
+        isPayrollEligible: true,
         payoutReady: true,
         reportingManager: true,
         user: true,
+        weeklyOffDays: true,
         workLocation: true,
         workState: true,
       },
@@ -225,6 +233,51 @@ export default async function TeamManagementPage({ searchParams }: TeamManagemen
     const mappedUserID = toNumberID(extractRelationshipID(profile.user))
     return Boolean(mappedUserID && visibleUserIDs.has(mappedUserID))
   })
+
+  const shiftLabelByID = new Map<string, string>()
+  shiftsResult.docs.forEach((shift) => shiftLabelByID.set(String(shift.id), shift.name || shift.shiftCode || 'Shift'))
+
+  const calendarLabelByID = new Map<string, string>()
+  holidaysResult.docs.forEach((calendar) =>
+    calendarLabelByID.set(
+      String(calendar.id),
+      [calendar.name, calendar.year ? String(calendar.year) : null].filter(Boolean).join(' · ') || 'Calendar',
+    ),
+  )
+
+  const readShiftLabel = (value: unknown): string | null => {
+    const id = extractRelationshipID(value)
+    if (id === null) return null
+    return shiftLabelByID.get(String(id)) || readLabel(value, 'Assigned')
+  }
+
+  const readCalendarLabel = (value: unknown): string | null => {
+    const id = extractRelationshipID(value)
+    if (id === null) return null
+    return calendarLabelByID.get(String(id)) || readLabel(value, 'Assigned')
+  }
+
+  const missingAttendanceSetupCount = visibleProfiles.filter(
+    (profile) =>
+      extractRelationshipID(profile.attendanceShift) === null ||
+      extractRelationshipID(profile.holidayCalendar) === null,
+  ).length
+
+  const editingProfile = params.edit
+    ? visibleProfiles.find((profile) => String(profile.id) === params.edit) || null
+    : null
+  const editingUser = editingProfile
+    ? usersResult.docs.find((member) => String(member.id) === String(extractRelationshipID(editingProfile.user)))
+    : undefined
+  const editingShiftID = editingProfile ? extractRelationshipID(editingProfile.attendanceShift) : null
+  const editingCalendarID = editingProfile ? extractRelationshipID(editingProfile.holidayCalendar) : null
+  const editingManagerID = editingProfile ? extractRelationshipID(editingProfile.reportingManager) : null
+  const editingWeeklyOff = new Set<string>(
+    Array.isArray(editingProfile?.weeklyOffDays) ? (editingProfile.weeklyOffDays as string[]) : [],
+  )
+  const editingJoiningDate = editingProfile?.dateOfJoining
+    ? toISTDateOnly(editingProfile.dateOfJoining).toISOString().slice(0, 10)
+    : todayISO()
 
   const managerCandidates = usersResult.docs.filter((member) =>
     member.role === 'admin' || member.role === 'leadRecruiter',
@@ -740,11 +793,150 @@ export default async function TeamManagementPage({ searchParams }: TeamManagemen
         </article>
       ) : null}
 
+      {editingProfile ? (
+        <article className="panel panel-span-2 team-mgmt-panel" id="edit-employee">
+          <div className="team-mgmt-directory-head">
+            <h2>Edit Employee · {editingUser ? readLabel(editingUser) : readLabel(editingProfile.user)}</h2>
+            <p>{editingProfile.employeeCode}</p>
+          </div>
+          <p className="panel-subtitle">
+            Update onboarding details. Attendance shift and holiday calendar drive late marks, holidays, and LOP.
+          </p>
+          <form action={APP_ROUTES.internal.team.updateEmployeeProfile} className="team-mgmt-form" method="post">
+            <input name="profileId" type="hidden" value={editingProfile.id} />
+            <div className="team-mgmt-form-grid">
+              <label className="team-mgmt-field">
+                <span>Attendance Shift</span>
+                <select
+                  className="input"
+                  defaultValue={editingShiftID !== null ? String(editingShiftID) : ''}
+                  name="attendanceShiftId"
+                >
+                  <option value="">Not assigned</option>
+                  {shiftsResult.docs.map((shift) => (
+                    <option key={`edit-shift-${shift.id}`} value={String(shift.id)}>
+                      {shift.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="team-mgmt-field">
+                <span>Holiday Calendar</span>
+                <select
+                  className="input"
+                  defaultValue={editingCalendarID !== null ? String(editingCalendarID) : ''}
+                  name="holidayCalendarId"
+                >
+                  <option value="">Not assigned</option>
+                  {holidaysResult.docs.map((calendar) => (
+                    <option key={`edit-holiday-${calendar.id}`} value={String(calendar.id)}>
+                      {calendar.name} · {calendar.state || 'All'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {currentUser.role === 'admin' ? (
+                <label className="team-mgmt-field">
+                  <span>Reporting Manager</span>
+                  <select
+                    className="input"
+                    defaultValue={editingManagerID !== null ? String(editingManagerID) : ''}
+                    name="reportingManagerId"
+                  >
+                    <option value="">No manager</option>
+                    {managerCandidates.map((member) => (
+                      <option key={`edit-manager-${member.id}`} value={String(member.id)}>
+                        {readLabel(member)} · {INTERNAL_ROLE_LABELS[member.role]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <label className="team-mgmt-field">
+                <span>Date of Joining</span>
+                <input className="input" defaultValue={editingJoiningDate} name="dateOfJoining" required type="date" />
+              </label>
+              <label className="team-mgmt-field">
+                <span>Designation</span>
+                <input
+                  className="input"
+                  defaultValue={editingProfile.designation || ''}
+                  name="designation"
+                  required
+                  type="text"
+                />
+              </label>
+              <label className="team-mgmt-field">
+                <span>Department</span>
+                <input
+                  className="input"
+                  defaultValue={editingProfile.department || 'Recruitment'}
+                  name="department"
+                  type="text"
+                />
+              </label>
+              <label className="team-mgmt-field">
+                <span>Work Location</span>
+                <input
+                  className="input"
+                  defaultValue={editingProfile.workLocation || ''}
+                  name="workLocation"
+                  required
+                  type="text"
+                />
+              </label>
+              <label className="team-mgmt-field">
+                <span>Work State</span>
+                <input
+                  className="input"
+                  defaultValue={editingProfile.workState || ''}
+                  name="workState"
+                  required
+                  type="text"
+                />
+              </label>
+            </div>
+            <p className="panel-subtitle">Weekly off days</p>
+            <div className="team-mgmt-checkbox-grid">
+              {WEEKDAY_OPTIONS.map((day) => (
+                <label className="team-mgmt-checkbox" key={`edit-weekly-off-${day.value}`}>
+                  <input
+                    defaultChecked={editingWeeklyOff.has(day.value)}
+                    name="weeklyOffDays"
+                    type="checkbox"
+                    value={day.value}
+                  />
+                  <span>{day.label}</span>
+                </label>
+              ))}
+              <label className="team-mgmt-checkbox">
+                <input defaultChecked={editingProfile.isPayrollEligible !== false} name="isPayrollEligible" type="checkbox" />
+                <span>Payroll Eligible</span>
+              </label>
+            </div>
+            <div className="team-mgmt-form-actions">
+              <Link className="button button-secondary" href={APP_ROUTES.internal.team.base}>
+                Cancel
+              </Link>
+              <button className="button" type="submit">
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </article>
+      ) : null}
+
       <article className="panel panel-span-2 team-mgmt-panel">
         <div className="team-mgmt-directory-head">
           <h2>Team Directory</h2>
           <p>{totalMembersCount} records</p>
         </div>
+        {missingAttendanceSetupCount > 0 ? (
+          <p className="team-mgmt-feedback team-mgmt-feedback-error">
+            {missingAttendanceSetupCount} employee{missingAttendanceSetupCount === 1 ? '' : 's'} missing an attendance
+            shift or holiday calendar. Use Edit to assign them.
+          </p>
+        ) : null}
         {usersResult.docs.length === 0 ? (
           <p className="panel-subtitle">No team members found.</p>
         ) : (
@@ -757,9 +949,11 @@ export default async function TeamManagementPage({ searchParams }: TeamManagemen
                   <th>Account</th>
                   <th>Employee Profile</th>
                   <th>Reporting Manager</th>
+                  <th>Shift</th>
+                  <th>Holiday Calendar</th>
                   <th>Compensation</th>
                   <th>Payout Ready</th>
-                  {currentUser.role === 'admin' ? <th>Action</th> : null}
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -774,6 +968,8 @@ export default async function TeamManagementPage({ searchParams }: TeamManagemen
                     .slice(0, 2)
                     .toUpperCase()
                   const canToggle = member.role !== 'admin'
+                  const shiftLabel = profile ? readShiftLabel(profile.attendanceShift) : null
+                  const calendarLabel = profile ? readCalendarLabel(profile.holidayCalendar) : null
 
                   return (
                     <tr key={`team-row-${member.id}`}>
@@ -810,6 +1006,24 @@ export default async function TeamManagementPage({ searchParams }: TeamManagemen
                       </td>
                       <td>{profile ? readLabel(profile.reportingManager, 'Not assigned') : '—'}</td>
                       <td>
+                        {!profile ? (
+                          '—'
+                        ) : shiftLabel ? (
+                          shiftLabel
+                        ) : (
+                          <span className="team-mgmt-pill team-mgmt-pill-danger">Not assigned</span>
+                        )}
+                      </td>
+                      <td>
+                        {!profile ? (
+                          '—'
+                        ) : calendarLabel ? (
+                          calendarLabel
+                        ) : (
+                          <span className="team-mgmt-pill team-mgmt-pill-danger">Not assigned</span>
+                        )}
+                      </td>
+                      <td>
                         {currentUser.role === 'admin'
                           ? compensation
                             ? formatMoney(compensation.monthlyGross)
@@ -829,9 +1043,17 @@ export default async function TeamManagementPage({ searchParams }: TeamManagemen
                           '—'
                         )}
                       </td>
-                      {currentUser.role === 'admin' ? (
-                        <td>
-                          {canToggle ? (
+                      <td>
+                        <div className="team-mgmt-row-actions">
+                          {profile ? (
+                            <Link
+                              className="button button-secondary team-mgmt-edit-button"
+                              href={`${APP_ROUTES.internal.team.base}?edit=${profile.id}#edit-employee`}
+                            >
+                              Edit
+                            </Link>
+                          ) : null}
+                          {currentUser.role === 'admin' && canToggle ? (
                             <form action={APP_ROUTES.internal.team.toggleActive} method="post">
                               <input name="userId" type="hidden" value={member.id} />
                               <input name="activate" type="hidden" value={member.isActive ? '0' : '1'} />
@@ -844,11 +1066,10 @@ export default async function TeamManagementPage({ searchParams }: TeamManagemen
                                 {member.isActive ? 'Deactivate' : 'Activate'}
                               </button>
                             </form>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
-                      ) : null}
+                          ) : null}
+                          {!profile && !(currentUser.role === 'admin' && canToggle) ? '—' : null}
+                        </div>
+                      </td>
                     </tr>
                   )
                 })}

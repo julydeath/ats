@@ -11,6 +11,7 @@ import {
   buildAttendanceCalendarDays,
   normalizeAttendanceQueryFilters,
 } from '@/lib/hr/attendance-query'
+import { APP_TIME_ZONE } from '@/lib/utils/timezone'
 
 type AttendancePageProps = {
   searchParams?: Promise<{
@@ -29,6 +30,7 @@ const formatDate = (value: string): string =>
   new Date(value).toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
+    timeZone: APP_TIME_ZONE,
     year: 'numeric',
   })
 
@@ -42,6 +44,7 @@ const formatDateTime = (value?: string | null): string => {
     hour: '2-digit',
     minute: '2-digit',
     month: 'short',
+    timeZone: APP_TIME_ZONE,
   })
 }
 
@@ -285,6 +288,67 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
   const teamSummaries = teamSummariesResult.docs
   const openSessions = openSessionsResult.docs
 
+  // Attendance rows reference employee profiles, which only carry the employee code.
+  // Resolve the linked user's name so tables show people, not IDs.
+  const referencedProfileIDs = Array.from(
+    new Set(
+      [...selectedSummaries, ...selectedLogs, ...teamSummaries, ...openSessions]
+        .map((row) => (typeof row.employee === 'object' && row.employee ? row.employee.id : row.employee))
+        .filter((value): value is number => typeof value === 'number'),
+    ),
+  )
+
+  const namedProfilesResult =
+    referencedProfileIDs.length > 0
+      ? await payload.find({
+          collection: 'employee-profiles',
+          depth: 1,
+          limit: referencedProfileIDs.length,
+          overrideAccess: false,
+          pagination: false,
+          select: {
+            employeeCode: true,
+            user: true,
+          },
+          user,
+          where: {
+            id: {
+              in: referencedProfileIDs,
+            },
+          },
+        })
+      : { docs: [] as any[] }
+
+  const employeeIdentityByID = new Map<string, { code: string; name: string }>()
+  namedProfilesResult.docs.forEach((profile) => {
+    const code = typeof profile.employeeCode === 'string' ? profile.employeeCode : ''
+    employeeIdentityByID.set(String(profile.id), {
+      code,
+      name:
+        profile.user && typeof profile.user === 'object'
+          ? readLabel(profile.user, code || 'Unknown')
+          : code || 'Unknown',
+    })
+  })
+
+  const readEmployeeIdentity = (value: unknown): { code: string; name: string } => {
+    const id = typeof value === 'object' && value ? (value as { id?: unknown }).id : value
+    const known = id !== undefined && id !== null ? employeeIdentityByID.get(String(id)) : undefined
+    if (known) return known
+    const fallback = readLabel(value, 'Unknown')
+    return { code: fallback, name: fallback }
+  }
+
+  const renderEmployeeCell = (value: unknown) => {
+    const identity = readEmployeeIdentity(value)
+    return (
+      <div className="employee-cell">
+        <strong>{identity.name}</strong>
+        {identity.code && identity.code !== identity.name ? <span>{identity.code}</span> : null}
+      </div>
+    )
+  }
+
   const statusCounts = selectedSummaries.reduce(
     (acc, row) => {
       const status = String(row.status || 'absent') as AttendanceStatus
@@ -321,6 +385,7 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
   })
 
   const teamRows = new Map<string, {
+    employeeCode: string
     employeeLabel: string
     halfDay: number
     leave: number
@@ -331,8 +396,10 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
 
   teamSummaries.forEach((row) => {
     const key = String(typeof row.employee === 'object' ? row.employee.id : row.employee)
+    const identity = readEmployeeIdentity(row.employee)
     const existing = teamRows.get(key) || {
-      employeeLabel: readLabel(row.employee, 'Unknown'),
+      employeeCode: identity.code,
+      employeeLabel: identity.name,
       halfDay: 0,
       leave: 0,
       lop: 0,
@@ -364,6 +431,7 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
       label: new Date(row.date).toLocaleDateString('en-IN', {
         day: '2-digit',
         month: 'short',
+        timeZone: APP_TIME_ZONE,
       }),
       value: Number(row.workedMinutes || 0),
     }))
@@ -495,7 +563,7 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
                   <option value="">All Employees</option>
                   {employeeOptionsResult.docs.map((profile) => (
                     <option key={`attendance-employee-${profile.id}`} value={profile.id}>
-                      {profile.employeeCode} · {readLabel(profile.user)}
+                      {readLabel(profile.user, profile.employeeCode || 'Unknown')} · {profile.employeeCode}
                     </option>
                   ))}
                 </select>
@@ -576,7 +644,7 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
             <ul>
               {openSessions.slice(0, 10).map((row) => (
                 <li key={`open-attendance-${row.id}`}>
-                  {readLabel(row.employee)} · {formatDateTime(row.punchInAt)}
+                  {readEmployeeIdentity(row.employee).name} · {formatDateTime(row.punchInAt)}
                 </li>
               ))}
             </ul>
@@ -604,8 +672,15 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
                 </thead>
                 <tbody>
                   {teamRowsSorted.map((row) => (
-                    <tr key={`team-attendance-${row.employeeLabel}`}>
-                      <td>{row.employeeLabel}</td>
+                    <tr key={`team-attendance-${row.employeeCode}`}>
+                      <td>
+                        <div className="employee-cell">
+                          <strong>{row.employeeLabel}</strong>
+                          {row.employeeCode && row.employeeCode !== row.employeeLabel ? (
+                            <span>{row.employeeCode}</span>
+                          ) : null}
+                        </div>
+                      </td>
                       <td>{row.total}</td>
                       <td>{row.present}</td>
                       <td>{row.leave}</td>
@@ -639,7 +714,7 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
               <tbody>
                 {selectedLogs.slice(0, 50).map((row) => (
                   <tr key={`attendance-log-${row.id}`}>
-                    <td>{readLabel(row.employee)}</td>
+                    <td>{renderEmployeeCell(row.employee)}</td>
                     <td>{formatDateTime(row.punchInAt)}</td>
                     <td>{formatDateTime(row.punchOutAt)}</td>
                     <td>{row.workedMinutes || 0}</td>
@@ -674,7 +749,7 @@ export default async function InternalHRAttendancePage({ searchParams }: Attenda
                 {selectedSummaries.slice().reverse().map((row) => (
                   <tr key={`attendance-summary-${row.id}`}>
                     <td>{formatDate(row.date)}</td>
-                    <td>{readLabel(row.employee)}</td>
+                    <td>{renderEmployeeCell(row.employee)}</td>
                     <td>{ATTENDANCE_STATUS_LABELS[row.status as AttendanceStatus] || String(row.status)}</td>
                     <td>{row.workedMinutes || 0}</td>
                     <td>{row.lateMinutes || 0}</td>
